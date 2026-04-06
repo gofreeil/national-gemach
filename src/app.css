@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+    --animate-pulse-slow: pulse-slow 11s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+    @keyframes pulse-slow {
+        0%, 100% { opacity: 1; }
+        36% { opacity: 0.5; }
+    }
+
+    --color-primary: #2563eb;
+    --color-primary-light: #60a5fa;
+    --color-bg-dark: #070b14;
+}
+
+:root {
+    --header-height: 90px;
+    --bg-deep: #070b14;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Assistant', sans-serif;
+    background-color: var(--bg-deep);
+    color: #f8fafc;
+    direction: rtl;
+    font-size: 16.5px;
+    overflow-x: hidden;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.skip-link {
+    position: absolute;
+    top: -100px;
+    right: 0;
+    background: #005fcc;
+    color: #ffffff;
+    padding: 10px 20px;
+    z-index: 99999;
+    font-weight: 700;
+    font-size: 1rem;
+    border-radius: 0 0 6px 6px;
+    text-decoration: none;
+    transition: top 0.2s ease;
+}
+.skip-link:focus { top: 0; }
+
+:focus-visible {
+    outline: 3px solid #005fcc !important;
+    outline-offset: 3px !important;
+    border-radius: 3px;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
