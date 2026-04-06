@@ -90,7 +90,7 @@
                 <img
                     src="/images/הגמח הארצי.png"
                     alt="הגמח הארצי לוגו"
-                    class="h-16 w-16 rounded-xl object-cover shadow-lg animate-pulse-slow hover:scale-105 transition-transform"
+                    class="h-16 w-16 rounded-xl object-cover shadow-lg scale-110 hover:scale-125 transition-transform duration-300"
                 />
                 <div>
                     <h1 class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent group-hover:opacity-80 transition-opacity">
