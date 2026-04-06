@@ -19,6 +19,7 @@ export const categories = [
     { key: 'tools', label: 'כלים', icon: '🔧' },
     { key: 'wedding', label: 'חתונה', icon: '💍' },
     { key: 'judaism', label: 'יהדות', icon: '✡️' },
+    { key: 'initiatives', label: 'מיזמים חשובים לציבור', icon: '🌟' },
     { key: 'other', label: 'אחר', icon: '📦' },
 ];
 

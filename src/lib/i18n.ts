@@ -32,6 +32,7 @@ register('he', () => Promise.resolve({
         tools: "כלים",
         wedding: "חתונה",
         judaism: "יהדות",
+        initiatives: "מיזמים חשובים לציבור",
         other: "אחר"
     }
 }));
@@ -68,6 +69,7 @@ register('en', () => Promise.resolve({
         tools: "Tools",
         wedding: "Wedding",
         judaism: "Judaism",
+        initiatives: "Important Public Initiatives",
         other: "Other"
     }
 }));
@@ -104,6 +106,7 @@ register('ru', () => Promise.resolve({
         tools: "Инструменты",
         wedding: "Свадьба",
         judaism: "Иудаизм",
+        initiatives: "Важные общественные инициативы",
         other: "Другое"
     }
 }));
