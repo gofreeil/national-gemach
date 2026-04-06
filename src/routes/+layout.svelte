@@ -14,7 +14,7 @@
 <svelte:head>
     <title>הגמח הארצי – כל הגמחים תחת קורת גג אחת</title>
     <meta name="description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
-    <link rel="icon" href="/images/דירוג ציבורי.jpeg" type="image/jpeg" />
+    <link rel="icon" href="/images/הגמח הארצי.png" type="image/png" />
 </svelte:head>
 
 <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>

@@ -44,7 +44,11 @@
         <!-- Mobile -->
         <div class="md:hidden flex items-center justify-between h-[72px]">
             <a href="/" class="flex items-center gap-3 min-w-0 flex-1">
-                <div class="text-3xl flex-shrink-0" aria-hidden="true">🤝</div>
+                <img
+                    src="/images/הגמח הארצי.png"
+                    alt="הגמח הארצי לוגו"
+                    class="h-10 w-10 flex-shrink-0 rounded-lg object-cover"
+                />
                 <div class="min-w-0">
                     <h1 class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight truncate">
                         הגמח הארצי
@@ -83,7 +87,11 @@
         <div class="hidden md:flex items-center justify-between py-4">
             <!-- Logo + Title -->
             <a href="/" class="flex items-center gap-4 group">
-                <div class="text-5xl animate-pulse-slow" aria-hidden="true">🤝</div>
+                <img
+                    src="/images/הגמח הארצי.png"
+                    alt="הגמח הארצי לוגו"
+                    class="h-16 w-16 rounded-xl object-cover shadow-lg animate-pulse-slow hover:scale-105 transition-transform"
+                />
                 <div>
                     <h1 class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent group-hover:opacity-80 transition-opacity">
                         הגמח הארצי
