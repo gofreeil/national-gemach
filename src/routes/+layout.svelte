@@ -5,6 +5,7 @@
     import Header from '$lib/components/Header.svelte';
     import Footer from '$lib/components/Footer.svelte';
     import AdsSidebar from '$lib/components/AdsSidebar.svelte';
+    import RightAdBanner from '$lib/components/RightAdBanner.svelte';
     import MobileAdsBanner from '$lib/components/MobileAdsBanner.svelte';
 
     let { children } = $props();
@@ -13,7 +14,7 @@
 <svelte:head>
     <title>הגמח הארצי – כל הגמחים תחת קורת גג אחת</title>
     <meta name="description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/images/דירוג ציבורי.jpeg" type="image/jpeg" />
 </svelte:head>
 
 <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>
@@ -23,7 +24,7 @@
     <Header />
 
     <div class="layout-container flex-grow">
-        <AdsSidebar />
+        <RightAdBanner />
         <main id="main-content" tabindex="-1" class="main-content">
             {@render children()}
         </main>
