@@ -1,52 +1,8 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { ads } from '$lib/adsData';
 
     let showBanner = false;
-
-    const ads = [
-        {
-            title: 'בתי הפיוס',
-            summary: 'עזרה בדין ופיוס בסיכסוכים',
-            url: 'https://www.melecshop.com/page/peace-on-earth',
-            color: 'from-orange-600 to-red-600'
-        },
-        {
-            title: 'ועדי שכונות',
-            summary: 'הצטרף לוועד השכונה שלך',
-            url: 'https://www.melecshop.com/page/peace-on-earth_VRHH',
-            color: 'from-blue-600 to-cyan-600'
-        },
-        {
-            title: 'קבוצת רכישה',
-            summary: 'הוזל את ההוצאות החודשיות',
-            url: 'https://purchasing-groups.vercel.app/',
-            color: 'from-green-600 to-emerald-600'
-        },
-        {
-            title: 'השקעות קבוצתיות',
-            summary: 'הצטרף אל מועדון המשקיעים של מהפכת הכלכלה המבוזרת!',
-            url: 'https://www.melecshop.com/page/free',
-            color: 'from-amber-600 to-orange-600'
-        },
-        {
-            title: 'גידול ביתי',
-            summary: 'מערכת לגידול ביתי (בקרוב)',
-            url: 'https://www.melecshop.com/page/free',
-            color: 'from-teal-500 to-teal-600'
-        },
-        {
-            title: 'בעלי מקצוע כשירים',
-            summary: 'מחפש בעל מקצוע איכותי?',
-            url: 'https://index-chi-sage.vercel.app/',
-            color: 'from-yellow-500 to-orange-500'
-        },
-        {
-            title: 'ביקורת על העיריה',
-            summary: 'יש לך תלונה לעיריה?',
-            url: 'https://right-to-live.vercel.app/',
-            color: 'from-red-600 to-pink-600'
-        }
-    ];
 
     function handleKeydown(e: KeyboardEvent) {
         if (e.key === 'Escape' && showBanner) {
