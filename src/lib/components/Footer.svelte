@@ -21,7 +21,7 @@
                 class="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
                 <img
-                    src="/images/יוצאים לחירות תמונה ויקיפדיה.png"
+                    src="/images/yotzim-lecherut.png"
                     alt="יוצאים לחירות"
                     class="h-28 w-28 md:h-32 md:w-32 object-contain rounded-lg hover:scale-105 transition-transform flex-shrink-0"
                 />

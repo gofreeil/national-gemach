@@ -45,7 +45,7 @@
         <div class="md:hidden flex items-center justify-between h-[72px]">
             <a href="/" class="flex items-center gap-3 min-w-0 flex-1">
                 <img
-                    src="/images/הגמח הארצי.png"
+                    src="/images/hagemach-haartzi.png"
                     alt="הגמח הארצי לוגו"
                     class="h-10 w-10 flex-shrink-0 rounded-lg object-cover"
                 />
@@ -88,7 +88,7 @@
             <!-- Logo + Title -->
             <a href="/" class="flex items-center gap-4 group">
                 <img
-                    src="/images/הגמח הארצי.png"
+                    src="/images/hagemach-haartzi.png"
                     alt="הגמח הארצי לוגו"
                     class="h-16 w-16 rounded-xl object-cover shadow-lg scale-110 hover:scale-125 transition-transform duration-300"
                 />

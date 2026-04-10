@@ -56,20 +56,5 @@
         </a>
         {/each}
 
-        <!-- מקום פרסום פנוי -->
-        <a
-            href="/advertise"
-            aria-label="מקום פרסום פנוי – לחץ לפרטים על פרסום"
-            class="block overflow-hidden rounded-lg border-4 border-dashed border-blue-400/50 bg-blue-900/10 backdrop-blur-sm shadow-lg transition-all hover:scale-105 hover:border-blue-500 hover:bg-blue-900/20"
-        >
-            <div class="flex h-48 flex-col items-center justify-center p-4 text-center">
-                <div class="mb-2 text-4xl">📢</div>
-                <p class="text-sm font-bold text-blue-300">מקום פרסום</p>
-                <p class="text-xs text-blue-400">זה יכול להיות שלך!</p>
-                <div class="mt-2 rounded bg-blue-500 px-3 py-1 text-xs font-bold text-white">
-                    לחץ לפרטים
-                </div>
-            </div>
-        </a>
     </div>
 </aside>
