@@ -113,7 +113,7 @@
 
                 <!-- Add Gemach button -->
                 <a
-                    href="/add"
+                    href="https://community-blush.vercel.app/gmachim/add"
                     class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm hover:opacity-90 transition-opacity shadow-lg"
                 >
                     + הוסף גמח

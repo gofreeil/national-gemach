@@ -279,7 +279,7 @@
             <h3 class="text-xl font-black text-white mb-2">יש לך גמח?</h3>
             <p class="text-gray-300 text-sm mb-4">הוסף אותו למאגר הארצי ועזור לאנשים למצוא אותך בקלות</p>
             <a
-                href="/add"
+                href="https://community-blush.vercel.app/gmachim/add"
                 class="inline-block px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:opacity-90 transition-opacity shadow-lg"
             >
                 הוסף גמח חינם
