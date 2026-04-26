@@ -56,9 +56,36 @@
     <h1 class="text-4xl md:text-5xl font-black mb-3 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
         הגמח הארצי
     </h1>
-    <p class="text-xl md:text-2xl text-gray-300 font-bold mb-8">
+    <p class="text-xl md:text-2xl text-gray-300 font-bold mb-6">
         כל הגמחים תחת קורת גג אחת
     </p>
+
+    <!-- Alternate path: search by city + map (community site) -->
+    <div class="max-w-2xl mx-auto mb-8 px-4">
+        <a
+            href="https://community-blush.vercel.app"
+            class="group flex items-center justify-center gap-3 px-5 py-3 rounded-2xl
+                   bg-gradient-to-r from-amber-600/15 to-orange-600/15
+                   border border-amber-500/30 hover:border-amber-400/60
+                   hover:from-amber-600/25 hover:to-orange-600/25
+                   transition-all"
+            aria-label="עבור לחיפוש לפי עיר ומפה באתר קהילה בשכונה"
+        >
+            <span class="text-2xl" aria-hidden="true">🗺️</span>
+            <div class="text-right">
+                <div class="text-amber-300 font-bold text-sm md:text-base">
+                    מחפש גמ"ח לפי <strong>עיר</strong> או על <strong>מפה</strong>?
+                </div>
+                <div class="text-amber-200/70 text-xs md:text-sm">
+                    עבור לאתר "קהילה בשכונה" →
+                </div>
+            </div>
+            <span class="text-amber-300 text-xl group-hover:-translate-x-1 transition-transform" aria-hidden="true">←</span>
+        </a>
+        <p class="text-gray-500 text-xs mt-2">
+            כאן באתר הארצי — חיפוש לפי <strong class="text-gray-400">שם</strong> ו<strong class="text-gray-400">רשימה</strong>
+        </p>
+    </div>
 
     <!-- Search Bar -->
     <div class="max-w-2xl mx-auto">
