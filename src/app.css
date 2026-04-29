@@ -34,6 +34,18 @@ body {
     box-sizing: border-box;
 }
 
+/* native <option> dropdown styling — ensure dark theme readability */
+select option,
+select optgroup {
+    background-color: #0f172a;
+    color: #f8fafc;
+}
+select option:checked,
+select option:hover {
+    background-color: #1e293b;
+    color: #ffffff;
+}
+
 .skip-link {
     position: absolute;
     top: -100px;
