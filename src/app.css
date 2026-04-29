@@ -34,16 +34,18 @@ body {
     box-sizing: border-box;
 }
 
-/* native <option> dropdown styling — ensure dark theme readability */
+/* native <option> dropdown — Windows/Chrome force black system text,
+   so options must use a light background. White bg + dark text is the
+   only combination that renders readably across browsers. */
 select option,
 select optgroup {
-    background-color: #0f172a;
-    color: #f8fafc;
+    background-color: #ffffff;
+    color: #0f172a;
 }
-select option:checked,
-select option:hover {
-    background-color: #1e293b;
-    color: #ffffff;
+select option:checked {
+    background-color: #e0e7ff;
+    color: #0f172a;
+    font-weight: 700;
 }
 
 .skip-link {
