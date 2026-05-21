@@ -21,6 +21,16 @@ export interface Ad {
 
 export const ads: Ad[] = [
     {
+        title: 'החנות החברתית',
+        summary: 'כנסו לחנות לחיים טובים יותר',
+        url: 'https://heirut-shop.vercel.app/',
+        color: 'from-emerald-600 to-teal-700',
+        image: '/images/freedom-store.png',
+        hoverTitle: 'החנות החברתית',
+        hoverText: 'מוצרים נבחרים לבריאות, חקלאות, טכנולוגיה ועוד',
+        footerText: 'לחנות שלנו',
+    },
+    {
         title: 'בתי הפיוס',
         summary: 'יש לך סיכסוך? לחץ לפתרון',
         url: 'https://www.melecshop.com/page/peace-on-earth',
