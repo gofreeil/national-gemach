@@ -33,7 +33,7 @@ export const ads: Ad[] = [
     {
         title: 'בתי הפיוס',
         summary: 'יש לך סיכסוך? לחץ לפתרון',
-        url: 'https://www.melecshop.com/page/peace-on-earth',
+        url: 'https://chachmim.vercel.app/',
         color: 'from-orange-600 to-red-600',
         image: '/images/bati-hapius.png',
         hoverTitle: 'בתי הפיוס',
