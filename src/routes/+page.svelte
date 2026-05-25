@@ -63,7 +63,7 @@
     <!-- Alternate path: search by city + map (community site) -->
     <div class="max-w-2xl mx-auto mb-8 px-4">
         <a
-            href="https://community-blush.vercel.app"
+            href="https://community-il.vercel.app"
             class="group flex items-center justify-center gap-3 px-5 py-3 rounded-2xl
                    bg-gradient-to-r from-amber-600/15 to-orange-600/15
                    border border-amber-500/30 hover:border-amber-400/60
@@ -279,7 +279,7 @@
             <h3 class="text-xl font-black text-white mb-2">יש לך גמח?</h3>
             <p class="text-gray-300 text-sm mb-4">הוסף אותו למאגר הארצי ועזור לאנשים למצוא אותך בקלות</p>
             <a
-                href="https://community-blush.vercel.app/gmachim/add"
+                href="https://community-il.vercel.app/gmachim/add"
                 class="inline-block px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:opacity-90 transition-opacity shadow-lg"
             >
                 הוסף גמח חינם
