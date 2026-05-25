@@ -13,7 +13,7 @@
         >
             <!-- Right: Brand image + text (ימין) -->
             <a
-                href="https://freedom-gamma-five.vercel.app/"
+                href="https://freedom-il.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="יוצאים לחירות – לכלל פעילות התנועה החברתית (נפתח בחלון חדש)"
