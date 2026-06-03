@@ -1,6 +1,6 @@
 // ============================================================
-// Strapi 5 HTTP Client — national-gemach
-// משותף עם אתר "קהילה בשכונה" — אותו STRAPI_URL + STRAPI_TOKEN
+// Strapi 5 HTTP Client - national-gemach
+// משותף עם אתר "קהילה בשכונה" - אותו STRAPI_URL + STRAPI_TOKEN
 // ============================================================
 
 import { env } from '$env/dynamic/private';
@@ -68,7 +68,7 @@ export async function strapiGet<T = unknown>(
             lastError = err;
         }
         if (attempt < RETRY_ATTEMPTS) {
-            console.warn(`[Strapi] GET ${path} — retry ${attempt}/${RETRY_ATTEMPTS - 1}`);
+            console.warn(`[Strapi] GET ${path} - retry ${attempt}/${RETRY_ATTEMPTS - 1}`);
             await delay(RETRY_DELAY_MS * attempt);
         }
     }

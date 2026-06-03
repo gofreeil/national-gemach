@@ -83,7 +83,7 @@
             <span class="text-amber-300 text-xl group-hover:-translate-x-1 transition-transform" aria-hidden="true">←</span>
         </a>
         <p class="text-gray-500 text-xs mt-2">
-            כאן באתר הארצי — חיפוש לפי <strong class="text-gray-400">שם</strong> ו<strong class="text-gray-400">רשימה</strong>
+            כאן באתר הארצי - חיפוש לפי <strong class="text-gray-400">שם</strong> ו<strong class="text-gray-400">רשימה</strong>
         </p>
     </div>
 

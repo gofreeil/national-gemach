@@ -204,7 +204,7 @@
                             <span
                                 class="text-base font-bold {ad.textColor} {ad.hoverText} opacity-90 drop-shadow-sm"
                             >
-                                — {ad.description}
+                                - {ad.description}
                             </span>
                         </div>
                     </div>

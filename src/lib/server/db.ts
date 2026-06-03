@@ -1,5 +1,5 @@
 // ============================================================
-// db.ts — שכבת נתונים לגמ"חים מ-Strapi
+// db.ts - שכבת נתונים לגמ"חים מ-Strapi
 // משותף עם אתר "קהילה בשכונה"
 // ============================================================
 
@@ -33,10 +33,10 @@ function mapItemToGemach(item: StrapiItem): Gemach {
     const extra = (item.extra_fields ?? {}) as Record<string, unknown>;
     const rawType = (extra.gmach_type ?? '').toString().trim();
 
-    // Normalize sub-category — use known key if matched, otherwise 'other'
+    // Normalize sub-category - use known key if matched, otherwise 'other'
     const subCategory = KNOWN_KEYS.has(rawType) ? rawType : 'other';
 
-    // tags — prefer real tags saved by the publisher, fall back to derived ones
+    // tags - prefer real tags saved by the publisher, fall back to derived ones
     let tags: string[] = [];
     if (Array.isArray(extra.tags)) {
         tags = (extra.tags as unknown[]).filter(t => typeof t === 'string').map(t => t as string);
