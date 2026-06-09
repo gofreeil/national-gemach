@@ -52,11 +52,14 @@
 
 <!-- Hero Section -->
 <section class="text-center py-10 md:py-16 px-4">
-    <img
-        src="/images/logo.png"
-        alt="הגמח הארצי לוגו"
-        class="mx-auto mb-4 h-32 w-32 md:h-40 md:w-40 rounded-2xl bg-white p-2 object-contain shadow-xl"
-    />
+    <div class="mx-auto mb-4 h-32 w-32 md:h-40 md:w-40 rounded-2xl overflow-hidden bg-white shadow-xl">
+        <img
+            src="/images/logo.png"
+            alt="הגמח הארצי לוגו"
+            class="w-full h-full object-cover scale-[1.55]"
+            style="object-position: center;"
+        />
+    </div>
     <h1 class="text-4xl md:text-5xl font-black mb-3 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
         הגמח הארצי
     </h1>
