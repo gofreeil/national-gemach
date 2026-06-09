@@ -14,7 +14,30 @@
 <svelte:head>
     <title>הגמח הארצי – כל הגמחים תחת קורת גג אחת</title>
     <meta name="description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
-    <link rel="icon" href="/images/hagemach-haartzi.png" type="image/png" />
+
+    <link rel="icon" href="/images/logo.png" type="image/png" />
+    <link rel="shortcut icon" href="/images/logo.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/images/logo.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="הגמח הארצי" />
+    <meta property="og:title" content="הגמח הארצי – כל הגמחים תחת קורת גג אחת" />
+    <meta property="og:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
+    <meta property="og:image" content="https://national-gemach.vercel.app/images/logo.png" />
+    <meta property="og:image:secure_url" content="https://national-gemach.vercel.app/images/logo.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1254" />
+    <meta property="og:image:height" content="1254" />
+    <meta property="og:image:alt" content="הגמח הארצי – לוגו" />
+    <meta property="og:url" content="https://national-gemach.vercel.app/" />
+    <meta property="og:locale" content="he_IL" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="הגמח הארצי – כל הגמחים תחת קורת גג אחת" />
+    <meta name="twitter:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
+    <meta name="twitter:image" content="https://national-gemach.vercel.app/images/logo.png" />
+
+    <meta name="theme-color" content="#0f172a" />
 </svelte:head>
 
 <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>

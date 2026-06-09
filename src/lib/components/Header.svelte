@@ -45,9 +45,9 @@
         <div class="md:hidden flex items-center justify-between h-[72px]">
             <a href="/" class="flex items-center gap-3 min-w-0 flex-1">
                 <img
-                    src="/images/hagemach-haartzi.png"
+                    src="/images/logo.png"
                     alt="הגמח הארצי לוגו"
-                    class="h-10 w-10 flex-shrink-0 rounded-lg object-cover"
+                    class="h-10 w-10 flex-shrink-0 rounded-lg object-contain bg-white p-0.5"
                 />
                 <div class="min-w-0">
                     <h1 class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight truncate">
@@ -88,9 +88,9 @@
             <!-- Logo + Title -->
             <a href="/" class="flex items-center gap-4 group">
                 <img
-                    src="/images/hagemach-haartzi.png"
+                    src="/images/logo.png"
                     alt="הגמח הארצי לוגו"
-                    class="h-16 w-16 rounded-xl object-cover shadow-lg scale-110 hover:scale-125 transition-transform duration-300"
+                    class="h-16 w-16 rounded-xl object-contain bg-white p-1 shadow-lg scale-110 hover:scale-125 transition-transform duration-300"
                 />
                 <div>
                     <h1 class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent group-hover:opacity-80 transition-opacity">
