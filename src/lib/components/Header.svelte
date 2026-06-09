@@ -87,18 +87,18 @@
         <!-- Desktop -->
         <div class="hidden md:flex items-center justify-between py-4">
             <!-- Logo + Title -->
-            <a href="/" class="flex items-center gap-4 group">
+            <a href="/" class="brand-link flex items-center gap-4">
                 <img
                     src="/images/logo.png"
                     alt="הגמח הארצי לוגו"
-                    class="h-20 w-20 rounded-xl object-cover bg-white shadow-lg scale-150 hover:scale-[1.65] transition-transform duration-300"
+                    class="brand-logo h-20 w-20 rounded-xl object-cover bg-white shadow-lg"
                     style="object-position: center;"
                 />
-                <div>
-                    <h1 class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent group-hover:opacity-80 transition-opacity">
+                <div class="brand-text">
+                    <h1 class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent">
                         הגמח הארצי
                     </h1>
-                    <p class="text-gray-300 text-base font-bold group-hover:opacity-80 transition-opacity">
+                    <p class="text-gray-300 text-base font-bold">
                         כל הגמחים תחת קורת גג אחת
                     </p>
                 </div>
@@ -152,3 +152,22 @@
         </div>
     </div>
 </header>
+
+<style>
+    .brand-logo {
+        scale: 1.5;
+        transform-origin: center;
+        transition: scale 300ms ease;
+    }
+    .brand-text {
+        transform-origin: right center;
+        transition: scale 300ms ease, opacity 300ms ease;
+    }
+    .brand-link:hover .brand-logo {
+        scale: 1.75;
+    }
+    .brand-link:hover .brand-text {
+        scale: 1.08;
+        opacity: 0.95;
+    }
+</style>
