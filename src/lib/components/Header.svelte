@@ -44,12 +44,14 @@
         <!-- Mobile -->
         <div class="md:hidden flex items-center justify-between h-[72px]">
             <a href="/" class="flex items-center gap-3 min-w-0 flex-1">
-                <img
-                    src="/images/logo.png"
-                    alt="הגמח הארצי לוגו"
-                    class="h-14 w-14 flex-shrink-0 rounded-lg object-cover bg-white scale-125"
-                    style="object-position: center; transform-origin: center;"
-                />
+                <div class="h-10 w-10 flex-shrink-0 rounded-lg overflow-hidden bg-white">
+                    <img
+                        src="/images/logo.png"
+                        alt="הגמח הארצי לוגו"
+                        class="w-full h-full object-cover scale-[1.55]"
+                        style="object-position: center;"
+                    />
+                </div>
                 <div class="min-w-0">
                     <h1 class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight truncate">
                         הגמח הארצי
@@ -88,12 +90,14 @@
         <div class="hidden md:flex items-center justify-between py-4">
             <!-- Logo + Title -->
             <a href="/" class="brand-link flex items-center gap-4">
-                <img
-                    src="/images/logo.png"
-                    alt="הגמח הארצי לוגו"
-                    class="brand-logo h-20 w-20 rounded-xl object-cover bg-white shadow-lg"
-                    style="object-position: center;"
-                />
+                <div class="brand-logo-frame h-16 w-16 rounded-xl overflow-hidden bg-white shadow-lg">
+                    <img
+                        src="/images/logo.png"
+                        alt="הגמח הארצי לוגו"
+                        class="brand-logo w-full h-full object-cover scale-[1.55]"
+                        style="object-position: center;"
+                    />
+                </div>
                 <div class="brand-text">
                     <h1 class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent">
                         הגמח הארצי
@@ -154,14 +158,18 @@
 </header>
 
 <style>
+    .brand-logo-frame {
+        transition: scale 300ms ease;
+    }
     .brand-logo {
-        scale: 1.5;
-        transform-origin: center;
         transition: scale 300ms ease;
     }
     .brand-text {
         transform-origin: right center;
         transition: scale 300ms ease, opacity 300ms ease;
+    }
+    .brand-link:hover .brand-logo-frame {
+        scale: 1.1;
     }
     .brand-link:hover .brand-logo {
         scale: 1.75;
