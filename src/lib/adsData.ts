@@ -35,7 +35,7 @@ export const ads: Ad[] = [
         summary: 'כל הגמחים תחת קורת גג אחת',
         url: 'https://national-gemach.vercel.app/',
         color: 'from-pink-600 via-fuchsia-600 to-purple-700',
-        image: '/images/logo.png',
+        image: '/images/hagemach-haartzi.png',
         hoverTitle: 'הגמ"ח הארצי',
         hoverText: 'אתר את העזרה הדרושה לך',
         footerText: 'הגמ"ח הארצי – כל הגמחים תחת קורת גג אחת',
