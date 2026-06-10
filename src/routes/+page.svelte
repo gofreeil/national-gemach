@@ -52,7 +52,7 @@
 
 <!-- Hero Section -->
 <section class="text-center py-10 md:py-16 px-4">
-    <div class="mx-auto mb-4 h-32 w-32 md:h-40 md:w-40 rounded-2xl overflow-hidden bg-white shadow-xl">
+    <div class="mx-auto mb-4 h-40 w-40 md:h-52 md:w-52 rounded-2xl overflow-hidden bg-white shadow-xl border-2 border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
         <img
             src="/images/logo.png"
             alt="הגמח הארצי לוגו"
