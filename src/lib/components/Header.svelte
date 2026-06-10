@@ -49,7 +49,7 @@
                         src="/images/logo.png"
                         alt="הגמח הארצי לוגו"
                         class="w-full h-full object-cover scale-[1.15]"
-                        style="object-position: center;"
+                        style="object-position: center; translate: 0 4%;"
                     />
                 </div>
                 <div class="min-w-0">
@@ -95,7 +95,7 @@
                         src="/images/logo.png"
                         alt="הגמח הארצי לוגו"
                         class="brand-logo w-full h-full object-cover scale-[1.15]"
-                        style="object-position: center;"
+                        style="object-position: center; translate: 0 4%;"
                     />
                 </div>
                 <div class="brand-text">

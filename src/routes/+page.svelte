@@ -57,7 +57,7 @@
             src="/images/logo.png"
             alt="הגמח הארצי לוגו"
             class="w-full h-full object-cover scale-[1.15]"
-            style="object-position: center;"
+            style="object-position: center; translate: 0 4%;"
         />
     </div>
     <h1 class="text-4xl md:text-5xl font-black mb-3 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
