@@ -52,7 +52,7 @@
 
 <!-- Hero Section -->
 <section class="text-center py-10 md:py-16 px-4">
-    <div class="mx-auto mb-4 h-40 w-40 md:h-52 md:w-52 rounded-2xl overflow-hidden bg-white shadow-xl border-2 border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+    <div class="mx-auto mb-4 h-40 w-40 md:h-52 md:w-52 rounded-2xl overflow-hidden bg-white shadow-xl border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
         <img
             src="/images/logo.png"
             alt="הגמח הארצי לוגו"

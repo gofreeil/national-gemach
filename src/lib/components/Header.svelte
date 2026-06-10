@@ -44,7 +44,7 @@
         <!-- Mobile -->
         <div class="md:hidden flex items-center justify-between h-[72px]">
             <a href="/" class="flex items-center gap-3 min-w-0 flex-1">
-                <div class="h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-white border-2 border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.25)]">
+                <div class="h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-white border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.25)]">
                     <img
                         src="/images/logo.png"
                         alt="הגמח הארצי לוגו"
@@ -90,7 +90,7 @@
         <div class="hidden md:flex items-center justify-between py-4">
             <!-- Logo + Title -->
             <a href="/" class="brand-link flex items-center gap-4">
-                <div class="brand-logo-frame h-20 w-20 rounded-xl overflow-hidden bg-white shadow-lg border-2 border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_10px_15px_-3px_rgba(0,0,0,0.1)]">
+                <div class="brand-logo-frame h-20 w-20 rounded-xl overflow-hidden bg-white shadow-lg border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_10px_15px_-3px_rgba(0,0,0,0.1)]">
                     <img
                         src="/images/logo.png"
                         alt="הגמח הארצי לוגו"
