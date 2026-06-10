@@ -12,7 +12,7 @@
 </script>
 
 <svelte:head>
-    <title>הגמח הארצי – כל הגמחים תחת קורת גג אחת</title>
+    <title>הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</title>
     <meta name="description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
 
     <link rel="icon" href="/images/logo.png" type="image/png" />
@@ -20,20 +20,20 @@
     <link rel="apple-touch-icon" href="/images/logo.png" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="הגמח הארצי" />
-    <meta property="og:title" content="הגמח הארצי – כל הגמחים תחת קורת גג אחת" />
+    <meta property="og:site_name" content="הגמ&quot;ח הארצי" />
+    <meta property="og:title" content="הגמ&quot;ח הארצי – כל הגמחים בארץ בכף ידך" />
     <meta property="og:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
     <meta property="og:image" content="https://national-gemach.vercel.app/images/logo.png" />
     <meta property="og:image:secure_url" content="https://national-gemach.vercel.app/images/logo.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1254" />
     <meta property="og:image:height" content="1254" />
-    <meta property="og:image:alt" content="הגמח הארצי – לוגו" />
+    <meta property="og:image:alt" content="הגמ&quot;ח הארצי – לוגו" />
     <meta property="og:url" content="https://national-gemach.vercel.app/" />
     <meta property="og:locale" content="he_IL" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="הגמח הארצי – כל הגמחים תחת קורת גג אחת" />
+    <meta name="twitter:title" content="הגמ&quot;ח הארצי – כל הגמחים בארץ בכף ידך" />
     <meta name="twitter:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
     <meta name="twitter:image" content="https://national-gemach.vercel.app/images/logo.png" />
 

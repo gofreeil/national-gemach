@@ -61,10 +61,10 @@
         />
     </div>
     <h1 class="text-4xl md:text-5xl font-black mb-3 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-        הגמח הארצי
+        הגמ"ח הארצי
     </h1>
     <p class="text-xl md:text-2xl text-gray-300 font-bold mb-6">
-        כל הגמחים תחת קורת גג אחת
+        כל הגמחים בארץ בכף ידך
     </p>
 
     <!-- Alternate path: search by city + map (community site) -->

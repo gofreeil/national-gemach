@@ -54,9 +54,9 @@
                 </div>
                 <div class="min-w-0">
                     <h1 class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight truncate">
-                        הגמח הארצי
+                        הגמ"ח הארצי
                     </h1>
-                    <p class="text-xs text-gray-400 truncate">כל הגמחים תחת קורת גג אחת</p>
+                    <p class="text-xs text-gray-400 truncate">כל הגמחים בארץ בכף ידך</p>
                 </div>
             </a>
             <div class="flex items-center gap-2">
@@ -100,10 +100,10 @@
                 </div>
                 <div class="brand-text">
                     <h1 class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent">
-                        הגמח הארצי
+                        הגמ"ח הארצי
                     </h1>
                     <p class="text-gray-300 text-base font-bold">
-                        כל הגמחים תחת קורת גג אחת
+                        כל הגמחים בארץ בכף ידך
                     </p>
                 </div>
             </a>
