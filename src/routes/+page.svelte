@@ -18,7 +18,9 @@
                 g.description.toLowerCase().includes(q) ||
                 g.tags.some(t => t.toLowerCase().includes(q)) ||
                 g.city.toLowerCase().includes(q) ||
-                (g.neighborhood?.toLowerCase().includes(q) ?? false)
+                (g.neighborhood?.toLowerCase().includes(q) ?? false) ||
+                (g.contact?.toLowerCase().includes(q) ?? false) ||
+                (g.notes?.toLowerCase().includes(q) ?? false)
             );
             const matchesCategory = !selectedCategory || g.category === selectedCategory;
             const matchesCity = !selectedCity || g.city === selectedCity;
@@ -207,15 +209,33 @@
                                     </span>
                                 </div>
                                 <p class="text-gray-300 text-sm mt-2 leading-relaxed">{gemach.description}</p>
-                                {#if gemach.phone}
-                                    <a
-                                        href="tel:{gemach.phone}"
-                                        class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
-                                        aria-label="התקשר ל{gemach.name}"
-                                    >
-                                        📞 {gemach.phone}
-                                    </a>
+                                {#if gemach.contact}
+                                    <p class="text-xs text-gray-400 mt-2">👤 {gemach.contact}</p>
                                 {/if}
+                                {#if gemach.notes}
+                                    <p class="text-xs text-amber-300/80 mt-1">💬 {gemach.notes}</p>
+                                {/if}
+                                <div class="flex items-center gap-4 mt-3 flex-wrap">
+                                    {#if gemach.phone}
+                                        <a
+                                            href="tel:{gemach.phone}"
+                                            class="inline-flex items-center gap-2 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
+                                            aria-label="התקשר ל{gemach.name}"
+                                        >
+                                            📞 {gemach.phone}
+                                        </a>
+                                    {/if}
+                                    {#if gemach.link}
+                                        <a
+                                            href={gemach.link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="inline-flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                                        >
+                                            🔗 קישור
+                                        </a>
+                                    {/if}
+                                </div>
                             </div>
                         </div>
                     </article>

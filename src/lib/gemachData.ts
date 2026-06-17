@@ -7,6 +7,9 @@ export interface Gemach {
     phone?: string;
     description: string;
     tags: string[];
+    contact?: string;
+    link?: string;
+    notes?: string;
 }
 
 export const categories = [
