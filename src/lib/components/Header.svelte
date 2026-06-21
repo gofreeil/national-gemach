@@ -119,7 +119,7 @@
 
                 <!-- Add Gemach button -->
                 <a
-                    href="https://community-il.vercel.app/gmachim/add"
+                    href="https://community.gofreeil.com/gmachim/add"
                     class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm hover:opacity-90 transition-opacity shadow-lg"
                 >
                     + הוסף גמח

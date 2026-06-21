@@ -23,19 +23,19 @@
     <meta property="og:site_name" content="הגמ&quot;ח הארצי" />
     <meta property="og:title" content="הגמ&quot;ח הארצי – כל הגמחים בארץ בכף ידך" />
     <meta property="og:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
-    <meta property="og:image" content="https://national-gemach.vercel.app/images/logo.png" />
-    <meta property="og:image:secure_url" content="https://national-gemach.vercel.app/images/logo.png" />
+    <meta property="og:image" content="https://gemach.gofreeil.com/images/logo.png" />
+    <meta property="og:image:secure_url" content="https://gemach.gofreeil.com/images/logo.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1254" />
     <meta property="og:image:height" content="1254" />
     <meta property="og:image:alt" content="הגמ&quot;ח הארצי – לוגו" />
-    <meta property="og:url" content="https://national-gemach.vercel.app/" />
+    <meta property="og:url" content="https://gemach.gofreeil.com/" />
     <meta property="og:locale" content="he_IL" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="הגמ&quot;ח הארצי – כל הגמחים בארץ בכף ידך" />
     <meta name="twitter:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
-    <meta name="twitter:image" content="https://national-gemach.vercel.app/images/logo.png" />
+    <meta name="twitter:image" content="https://gemach.gofreeil.com/images/logo.png" />
 
     <meta name="theme-color" content="#0f172a" />
 </svelte:head>
