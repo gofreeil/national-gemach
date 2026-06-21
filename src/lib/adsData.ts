@@ -21,6 +21,16 @@ export interface Ad {
 
 export const ads: Ad[] = [
     {
+        title: 'קהילה בשכונה',
+        summary: 'כל יתרונות השכונה תחת קורת גג אחת',
+        url: 'https://community-il.vercel.app/',
+        color: 'from-blue-500 to-purple-600',
+        image: '/images/community-neighborhood.png',
+        hoverTitle: 'קהילה בשכונה',
+        hoverText: 'כל יתרונות השכונה תחת קורת גג אחת',
+        footerText: 'תהנה מכל היתרונות של הקהילה בשכונה שלך',
+    },
+    {
         title: 'בתי הפיוס',
         summary: 'יש לך סיכסוך? לחץ לפתרון',
         url: 'https://chachmim.vercel.app/',
@@ -61,16 +71,6 @@ export const ads: Ad[] = [
         hoverText: 'הוזל את ההוצאות שלך',
         footerText: 'הוזל מיד את ההוצאות החודשיות שלך – כוחנו באחדותנו',
         imageStyle: 'height: 8rem',
-    },
-    {
-        title: 'השקעות קבוצתיות',
-        summary: 'הצטרף אל מועדון המשקיעים',
-        url: 'https://www.melecshop.com/page/free',
-        color: 'from-amber-600 to-orange-600',
-        image: '/images/partners/investments.png',
-        hoverTitle: 'השקעות קבוצתיות',
-        hoverText: 'התחבר עם קבוצת המשקיעים',
-        footerText: 'הצטרף אל מועדון המשקיעים של מהפכת הכלכלה המבוזרת!',
     },
     {
         title: 'גידול ביתי',
