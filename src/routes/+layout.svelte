@@ -6,7 +6,7 @@
     import Footer from '$lib/components/Footer.svelte';
     import AdsSidebar from '$lib/components/AdsSidebar.svelte';
     import RightAdBanner from '$lib/components/RightAdBanner.svelte';
-    import MobileAdsBanner from '$lib/components/MobileAdsBanner.svelte';
+    import MobileAdsDrawer from '$lib/components/MobileAdsDrawer.svelte';
 
     let { children } = $props();
 </script>
@@ -41,7 +41,7 @@
 </svelte:head>
 
 <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>
-<MobileAdsBanner />
+<MobileAdsDrawer />
 
 <div class="min-h-screen flex flex-col bg-[#0f172a]">
     <Header />
