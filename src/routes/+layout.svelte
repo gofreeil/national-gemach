@@ -8,7 +8,7 @@
     import RightAdBanner from '$lib/components/RightAdBanner.svelte';
     import MobileAdsDrawer from '$lib/components/MobileAdsDrawer.svelte';
 
-    let { children } = $props();
+    let { children, data } = $props();
 </script>
 
 <svelte:head>
@@ -44,7 +44,7 @@
 <MobileAdsDrawer />
 
 <div class="min-h-screen flex flex-col bg-[#0f172a]">
-    <Header />
+    <Header user={data.user} />
 
     <div class="layout-container flex-grow">
         <RightAdBanner />

@@ -2,6 +2,9 @@
     import { locale } from 'svelte-i18n';
     import { onMount } from 'svelte';
 
+    // משתמש מחובר (מגיע מ-+layout.server דרך +layout.svelte); null = אנונימי
+    let { user = null }: { user?: { name: string; email: string } | null } = $props();
+
     let languages = [
         { name: "עברית", code: "he", flag: "il" },
         { name: "English", code: "en", flag: "us" },
@@ -53,10 +56,10 @@
                     />
                 </div>
                 <div class="min-w-0">
-                    <h1 class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight truncate">
+                    <h1 class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight">
                         הגמ"ח הארצי
                     </h1>
-                    <p class="text-xs text-gray-400 truncate">כל הגמחים בארץ בכף ידך</p>
+                    <p class="text-xs text-gray-400 leading-tight">כל הגמחים בארץ בכף ידך</p>
                 </div>
             </a>
             <div class="flex items-center gap-2">
@@ -116,6 +119,26 @@
                     <span class="text-white text-sm font-bold">{onlineUsers}</span>
                     <span class="text-gray-300 text-sm">מחוברים</span>
                 </div>
+
+                <!-- התחברות / אזור אישי -->
+                {#if user}
+                    <a
+                        href="/profile"
+                        class="flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 text-sm font-bold text-white transition-colors"
+                        title="האזור האישי שלי"
+                    >
+                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-xs">👤</span>
+                        <span class="hidden sm:inline max-w-[120px] truncate">{user.name || user.email}</span>
+                    </a>
+                {:else}
+                    <a
+                        href="/login?redirect=/profile"
+                        class="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 px-3 py-2 text-sm font-bold text-white transition-all"
+                    >
+                        <span>🕊️</span>
+                        <span class="hidden sm:inline">התחברות</span>
+                    </a>
+                {/if}
 
                 <!-- Add Gemach button -->
                 <a

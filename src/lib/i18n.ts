@@ -1,4 +1,4 @@
-import { register, init, getLocaleFromNavigator } from 'svelte-i18n';
+import { register, init } from 'svelte-i18n';
 
 register('he', () => Promise.resolve({
     site_title: "הגמח הארצי",
@@ -113,5 +113,6 @@ register('ru', () => Promise.resolve({
 
 init({
     fallbackLocale: 'he',
-    initialLocale: getLocaleFromNavigator() || 'he',
+    // תמיד עברית כברירת מחדל — שפת המכשיר לא קובעת; רק בחירה ידנית שנשמרה
+    initialLocale: (typeof window !== 'undefined' && localStorage.getItem('lang')) || 'he',
 });
