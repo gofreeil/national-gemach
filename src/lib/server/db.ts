@@ -28,6 +28,11 @@ interface StrapiItem {
 
 const KNOWN_KEYS = new Set(categories.map(c => c.key));
 
+// קטגוריית הגמ"חים באוסף ה-items המשותף. חייבת להיות זהה למפתח שבו משתמש
+// אתר "קהילה בשכונה" (categoryConfig.gemachim) — זה מה שמסנכרן את הפריטים
+// דו-כיוונית בין שני האתרים. תת-הקטגוריה נשמרת ב-extra_fields.gmach_type.
+const CATEGORY = 'gemachim';
+
 /** ממפה item של Strapi לסכמת Gemach של האתר הארצי */
 function mapItemToGemach(item: StrapiItem): Gemach {
     const extra = (item.extra_fields ?? {}) as Record<string, unknown>;
@@ -62,7 +67,7 @@ function mapItemToGemach(item: StrapiItem): Gemach {
 export async function getAllGemachim(): Promise<Gemach[]> {
     try {
         const res = await strapiGet<{ data: StrapiItem[] }>('/api/items', {
-            'filters[category][$eq]': 'gmach',
+            'filters[category][$eq]': CATEGORY,
             'filters[status1][$eq]':  'active',
             'sort':                   'createdAt:desc',
             'pagination[limit]':      '1000',
@@ -99,7 +104,7 @@ export async function createGemach(input: CreateGemachInput): Promise<{ id: stri
     const res = await strapiPost<{ data: StrapiItem }>('/api/items', {
         data: {
             label:        input.name,
-            category:     'gmach',
+            category:     CATEGORY,
             description:  input.description ?? '',
             contact:      input.contact     ?? '',
             phone:        input.phone,
