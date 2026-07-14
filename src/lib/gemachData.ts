@@ -21,7 +21,7 @@ export const categories = [
     { key: 'food', label: 'מזון', icon: '🥫' },
     { key: 'tools', label: 'כלים', icon: '🔧' },
     { key: 'wedding', label: 'חתונה', icon: '💍' },
-    { key: 'judaism', label: 'יהדות', icon: '✡️' },
+    { key: 'judaism', label: 'יהדות', icon: '🕎' },
     { key: 'initiatives', label: 'מיזמים חשובים לציבור', icon: '🌟' },
     { key: 'other', label: 'אחר', icon: '📦' },
 ];

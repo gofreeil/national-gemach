@@ -196,7 +196,7 @@
                     <article class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/8 hover:border-white/20 transition-all">
                         <div class="flex items-start gap-3">
                             <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
-                                {getCategoryIcon(gemach.category)}
+                                {#if gemach.category === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}{getCategoryIcon(gemach.category)}{/if}
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h3 class="font-black text-white text-lg leading-tight">{gemach.name}</h3>
@@ -256,7 +256,7 @@
                            hover:bg-white/10 hover:border-white/25 hover:scale-105 transition-all cursor-pointer"
                     aria-label="חפש גמחי {cat.label}"
                 >
-                    <span class="text-3xl" aria-hidden="true">{cat.icon}</span>
+                    {#if cat.key === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}<span class="text-3xl" aria-hidden="true">{cat.icon}</span>{/if}
                     <span class="text-sm font-bold text-gray-200">{cat.label}</span>
                     <span class="text-xs text-gray-500">
                         {gemachim.filter(g => g.category === cat.key).length} גמחים
@@ -272,7 +272,7 @@
                 <article class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/8 hover:border-white/20 transition-all">
                     <div class="flex items-start gap-3">
                         <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
-                            {getCategoryIcon(gemach.category)}
+                            {#if gemach.category === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}{getCategoryIcon(gemach.category)}{/if}
                         </div>
                         <div class="flex-1 min-w-0">
                             <h3 class="font-black text-white text-lg leading-tight">{gemach.name}</h3>
