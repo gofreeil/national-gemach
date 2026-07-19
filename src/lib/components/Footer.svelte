@@ -6,10 +6,10 @@
     const tFn = (k: string) => { void _loc; return get(t)(k); };
 </script>
 
-<footer class="bg-[#0d1117] border-t border-white/10 py-2 mt-3 md:mt-0">
+<footer class="bg-[#0d1117] border-t border-white/10 py-0 md:py-2 mt-1 md:mt-0">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div
-            class="flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6"
+            class="flex flex-col md:flex-row items-center justify-between gap-0 md:gap-6"
         >
             <!-- Right: Brand image + text (ימין) -->
             <a
@@ -21,7 +21,7 @@
                 class="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
                 <img
-                    src="/images/yotzim-lecherut.png"
+                    src="/images/yotzim-lecherut.webp"
                     alt="יוצאים לחירות"
                     class="h-28 w-28 md:h-32 md:w-32 object-contain rounded-lg hover:scale-105 transition-transform flex-shrink-0"
                 />
@@ -58,11 +58,12 @@
             <!-- Center: Links -->
             <nav
                 aria-label="ניווט תחתון"
-                class="flex items-center gap-4 text-base md:text-lg text-gray-300 font-bold"
+                class="flex items-center gap-4 text-base md:text-lg text-gray-300 font-bold flex-wrap justify-center"
             >
-                <a href="/legal" class="hover:text-white transition-colors"
-                    >תנאי שימוש ופרטיות</a
-                >
+                <a href="https://community.gofreeil.com/about/legal" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">
+                    <span class="md:hidden block">תנאי שימוש<br />הצהרת נגישות וכו'</span>
+                    <span class="hidden md:inline-block whitespace-nowrap">תנאי שימוש, הצהרת נגישות וכו'</span>
+                </a>
                 <span class="text-gray-600 font-black" aria-hidden="true">|</span>
                 <a
                     href="mailto:freedomhasbegun@gmail.com"
@@ -71,11 +72,11 @@
                 >{tFn("contact_us")}</a
                 >
                 <span class="text-gray-600 font-black" aria-hidden="true">|</span>
-                <a href="/legal#accessibility" class="hover:text-white transition-colors">הצהרת נגישות</a>
+                <a href="https://community.gofreeil.com/about/advertise" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">פרסם אצלנו</a>
             </nav>
 
             <!-- Left: Copyright -->
-            <p class="text-gray-400 font-bold text-sm md:text-lg text-center md:text-right">
+            <p class="text-gray-400 font-bold text-[10px] md:text-lg text-center md:text-right pb-4 md:pb-0">
                 &copy; {new Date().getFullYear()} {tFn("all_rights_reserved")}
             </p>
         </div>

@@ -41,7 +41,7 @@
 </svelte:head>
 
 <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>
-<MobileAdsDrawer />
+<MobileAdsDrawer user={data.user} />
 
 <div class="min-h-screen flex flex-col bg-[#0f172a]">
     <Header user={data.user} adminRole={data.adminRole} />

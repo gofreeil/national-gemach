@@ -1,6 +1,16 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { ads } from '$lib/adsData';
+	import { page } from '$app/state';
+
+	let isAuthPage = $derived(
+		page.url.pathname === '/login' ||
+		page.url.pathname === '/register'
+	);
+
+	interface Props {
+		user?: { name: string; email: string } | null;
+	}
+	let { user = null }: Props = $props();
 
 	let open = $state(false);
 	let collapsed = $state(false);
@@ -46,9 +56,11 @@
 	const CLOSE_THRESHOLD = -100;
 	const COLLAPSE_THRESHOLD = -20;
 
-	onMount(() => {
-		// ברירת מחדל: 4/5 מגובה המסך
-		tabY = Math.round((window.innerHeight * 4) / 5);
+	$effect(() => {
+		if (typeof window !== 'undefined' && tabY === 0) {
+			// ברירת מחדל: החלק התחתון של המסך (4/5 מהגובה)
+			tabY = Math.round(window.innerHeight * 4 / 5);
+		}
 	});
 
 	function onTabTouchStart(e: TouchEvent) {
@@ -168,31 +180,32 @@
 </script>
 
 <!-- מוצג רק בנייד / טאבלט -->
-<div class="mobile-ads-root" dir="rtl">
+<div class="lg:hidden" dir="rtl">
+
 	<!-- Overlay כהה כשפתוח -->
 	{#if open}
-		<button
-			class="overlay"
-			onclick={closeAll}
-			aria-label="סגור פרסומות"
-		></button>
+	<button
+		class="overlay"
+		onclick={closeAll}
+		aria-label="סגור פרסומות"
+	></button>
 	{/if}
 
 	<!-- ה-Drawer והלשונית נעים יחד כיחידה אחת -->
 	<div class="drawer-system" class:is-open={open} bind:this={drawerSystemEl}>
 
 	<!-- Drawer -->
-	<div
-		class="drawer"
+	<div class="drawer"
 		role="dialog"
 		aria-modal="true"
-		aria-label="ההטבות מהקהילה הארצית"
+		aria-label="האזור האישי וההטבות מהקהילה הארצית"
 		aria-hidden={!open}
 		ontouchstart={onDrawerTouchStart}
 		ontouchend={onDrawerTouchEnd}
 	>
+		<!-- כפתור התחברות / אזור אישי -->
 		<div class="section-title section-title-first">
-			הטבות ארציות <span class="title-gold">יוצאים לחירות</span>
+			האזור האישי
 			<button
 				type="button"
 				class="close-btn"
@@ -200,69 +213,90 @@
 				aria-label="סגור"
 			>×</button>
 		</div>
+		<div class="auth-section">
+			{#if user}
+			<a href="/profile" class="profile-btn" onclick={closeAll}>
+				<span class="profile-avatar-placeholder">👤</span>
+				<div class="profile-btn-text">
+					<span class="profile-btn-name">{user.name || user.email}</span>
+					<span class="profile-btn-sub">לאזור האישי שלי ←</span>
+				</div>
+			</a>
+			{:else}
+			<a href="/login?redirect=/profile" class="login-btn" onclick={closeAll}>
+				<div class="anon-avatar-wrap">
+					<span class="anon-avatar">
+						<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+							<circle cx="20" cy="20" r="20" fill="#374151"/>
+							<circle cx="20" cy="16" r="7" fill="#6b7280"/>
+							<ellipse cx="20" cy="34" rx="12" ry="8" fill="#6b7280"/>
+						</svg>
+					</span>
+					<span class="login-icon">🔐</span>
+				</div>
+				<div class="login-btn-text">
+					<span class="login-btn-title">התחברות / הרשמה</span>
+					<span class="login-btn-sub">לאזור האישי שלך ←</span>
+				</div>
+			</a>
+			{/if}
+		</div>
 
 		<!-- רשימת פרסומות -->
 		<div class="ads-list">
-			{#each ads as ad, i (i)}
-				<a
-					href={ad.url}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="ad-card"
-					onclick={closeAll}
-				>
-					<div class="ad-img-wrap">
-						<img
-							src={ad.image}
-							alt={ad.title}
-							class="ad-img"
-							decoding="async"
-						/>
-					</div>
-					<div class="ad-body">
-						<p class="ad-title">{ad.title}</p>
-						<p class="ad-desc">{ad.summary}</p>
-						<span class="ad-cta" title={ad.hoverText ?? undefined}
-							>← {ad.footerText ?? ad.summary}</span
-						>
-					</div>
-				</a>
+			<div class="section-title section-title-benefits">הטבות ארציות <span class="title-gold">יוצאים לחירות</span></div>
+
+			{#each ads as ad (ad.id)}
+			<a
+				href={ad.href}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="ad-card"
+				onclick={closeAll}
+			>
+				<div class="ad-img-wrap">
+					<img
+						src={ad.image}
+						alt={ad.title}
+						class="ad-img"
+						loading="lazy"
+						decoding="async"
+					/>
+				</div>
+				<div class="ad-body">
+					<p class="ad-title">{ad.title}</p>
+					<p class="ad-desc">{ad.description}</p>
+					<span class="ad-cta" title={ad.hover ?? undefined}>← {ad.cta}</span>
+				</div>
+			</a>
 			{/each}
 		</div>
 	</div>
 
-	<!-- לשונית מחוברת לקצה הימני של הבאנר -->
-	{#if tabY > 0}
-		<button
-			class="tab"
-			class:tab-dragging={tabDragging}
-			class:tab-collapsed={collapsed && !open}
-			style="top: {tabY}px; transform: translateY(-50%);"
-			onclick={onTabClick}
-			use:nonPassiveTouch
-			aria-label="פתח הטבות מהקהילה"
-		>
-			{#if !(collapsed && !open)}
-				<span class="tab-text">הטבות מהקהילה</span>
-			{/if}
-		</button>
+	<!-- לשונית מחוברת לקצה הימני של הבאנר.
+	     מרונדרת כבר בשרת (SSR) עם מיקום ברירת-מחדל ב-CSS — כך שהיא מופיעה מיד,
+	     גם בחיבור איטי שבו ה-JS עוד לא נטען. tabY מחליף את המיקום ברגע שה-JS רץ. -->
+	{#if !isAuthPage}
+	<button
+		class="tab"
+		class:tab-dragging={tabDragging}
+		class:tab-collapsed={collapsed && !open}
+		style="top: {tabY > 0 ? `${tabY}px` : '80%'}; transform: translateY(-50%);"
+		onclick={onTabClick}
+		use:nonPassiveTouch
+		aria-label="פתח הטבות לקהילה"
+	>
+		{#if !(collapsed && !open)}
+			<span class="tab-text">לאזור האישי ולהטבות</span>
+		{/if}
+	</button>
 	{/if}
 
 	</div>
+
 </div>
 
 <style>
-	/* מוצג רק בנייד / טאבלט — נעלם בדסקטופ (≥1024px, תואם ל-AdsSidebar) */
-	.mobile-ads-root {
-		display: contents;
-	}
-
-	@media (min-width: 1024px) {
-		.mobile-ads-root {
-			display: none;
-		}
-	}
-
 	/* ---- Overlay ---- */
 	.overlay {
 		position: fixed;
@@ -299,6 +333,7 @@
 		height: 100%;
 		width: 100%;
 		background: linear-gradient(180deg, #0a0f1e 0%, #070b14 100%);
+		border-left: none;
 		border-right: 1px solid rgba(99, 102, 241, 0.2);
 		display: flex;
 		flex-direction: column;
@@ -308,7 +343,7 @@
 
 	/* ---- כותרת סקציה ---- */
 	.section-title {
-		font-size: 1.15rem;
+		font-size: 1.25rem;
 		font-weight: 900;
 		background: linear-gradient(90deg, #38bdf8, #818cf8, #a78bfa);
 		-webkit-background-clip: text;
@@ -318,17 +353,24 @@
 		padding: 0.9rem 1.25rem 0.6rem;
 		letter-spacing: 0.05em;
 		flex-shrink: 0;
+		border-top: 2px solid rgba(56, 189, 248, 0.25);
+		text-shadow: none;
 		position: relative;
 	}
 
+	.section-title:first-of-type,
 	.section-title-first {
-		padding-top: 0.7rem;
-		padding-bottom: 0.5rem;
+		border-top: none;
 	}
 
-	.title-gold {
-		color: #fbbf24;
-		-webkit-text-fill-color: #fbbf24;
+	.section-title-first {
+		padding-top: 0.5rem;
+		padding-bottom: 0.4rem;
+	}
+
+	.section-title.section-title-benefits {
+		border-top: 2px solid rgba(56, 189, 248, 0.25);
+		margin: 0 -0.75rem 0.5rem;
 	}
 
 	.close-btn {
@@ -351,12 +393,105 @@
 		cursor: pointer;
 		padding: 0;
 		-webkit-text-fill-color: #e0e7ff;
+		background-clip: border-box;
+		-webkit-background-clip: border-box;
 		transition: background 0.2s, border-color 0.2s;
 	}
 
 	.close-btn:hover {
 		background: rgba(99, 102, 241, 0.3);
 		border-color: rgba(99, 102, 241, 0.6);
+	}
+
+	.title-gold {
+		color: #fbbf24;
+	}
+
+	/* ---- כפתור auth ---- */
+	.auth-section {
+		padding: 0.5rem 0.75rem 0.65rem;
+		margin-bottom: 0.25rem;
+		border-bottom: 1px solid rgba(99,102,241,0.15);
+		flex-shrink: 0;
+	}
+
+	.profile-btn, .login-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		width: 100%;
+		padding: 0.75rem 1rem;
+		border-radius: 0.75rem;
+		text-decoration: none;
+		transition: background 0.2s;
+	}
+
+	.profile-btn {
+		background: rgba(99,102,241,0.12);
+		border: 1px solid rgba(99,102,241,0.3);
+	}
+	.profile-btn:hover { background: rgba(99,102,241,0.22); }
+
+	.login-btn {
+		background: rgba(250,204,21,0.1);
+		border: 1px solid rgba(250,204,21,0.3);
+	}
+	.login-btn:hover { background: rgba(250,204,21,0.18); }
+
+	.profile-avatar-placeholder {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		background: rgba(99,102,241,0.2);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.2rem;
+		flex-shrink: 0;
+	}
+
+	.anon-avatar-wrap {
+		position: relative;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+	}
+
+	.anon-avatar {
+		border-radius: 50%;
+		overflow: hidden;
+		display: flex;
+	}
+
+	.login-icon {
+		font-size: 0.9rem;
+		position: absolute;
+		bottom: -2px;
+		left: -4px;
+	}
+
+	.profile-btn-text, .login-btn-text {
+		display: flex;
+		flex-direction: column;
+		text-align: right;
+		flex: 1;
+	}
+
+	.profile-btn-name {
+		font-size: 0.9rem;
+		font-weight: 700;
+		color: #e0e7ff;
+	}
+
+	.profile-btn-sub, .login-btn-sub {
+		font-size: 0.7rem;
+		color: #94a3b8;
+	}
+
+	.login-btn-title {
+		font-size: 0.9rem;
+		font-weight: 700;
+		color: #fde047;
 	}
 
 	/* ---- רשימת פרסומות ---- */
@@ -370,15 +505,15 @@
 		flex-direction: column;
 		gap: 0.75rem;
 		scrollbar-width: thin;
-		scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+		scrollbar-color: rgba(99,102,241,0.3) transparent;
 	}
 
 	/* ---- כרטיס פרסומת ---- */
 	.ad-card {
 		display: flex;
 		gap: 0.75rem;
-		background: rgba(255, 255, 255, 0.05);
-		border: 1px solid rgba(99, 102, 241, 0.15);
+		background: rgba(255,255,255,0.05);
+		border: 1px solid rgba(99,102,241,0.15);
 		border-radius: 0.75rem;
 		text-decoration: none;
 		transition: background 0.2s, border-color 0.2s, transform 0.15s;
@@ -387,8 +522,8 @@
 	}
 
 	.ad-card:hover {
-		background: rgba(99, 102, 241, 0.12);
-		border-color: rgba(99, 102, 241, 0.35);
+		background: rgba(99,102,241,0.12);
+		border-color: rgba(99,102,241,0.35);
 		transform: scale(1.01);
 	}
 
@@ -400,7 +535,6 @@
 		overflow: hidden;
 		flex-shrink: 0;
 		background: #1e293b;
-		border: 2px solid #facc15;
 	}
 
 	.ad-img {
@@ -443,12 +577,12 @@
 		font-size: 0.7rem;
 		color: #a5b4fc;
 		font-weight: 600;
-		background: rgba(99, 102, 241, 0.12);
+		background: rgba(99,102,241,0.12);
 		border-radius: 4px;
 		padding: 0.15rem 0.45rem;
 	}
 
-	/* ---- לשונית — מחוברת לקצה הימני של ה-drawer ---- */
+	/* ---- לשונית — מחוברת לקצה הימני של ה-drawer בתוך drawer-system ---- */
 	.tab {
 		position: absolute;
 		left: 100%;
@@ -460,7 +594,7 @@
 		border-radius: 0 9px 9px 0;
 		padding: 0.6rem 0.3rem;
 		cursor: grab;
-		box-shadow: 2px 0 6px rgba(79, 70, 229, 0.25);
+		box-shadow: 2px 0 6px rgba(79,70,229,0.25);
 		transition: padding 0.2s ease, box-shadow 0.2s, border-radius 0.2s;
 		touch-action: none;
 		overscroll-behavior: contain;
@@ -483,7 +617,7 @@
 	}
 
 	.tab:hover {
-		box-shadow: 2px 0 10px rgba(79, 70, 229, 0.45);
+		box-shadow: 2px 0 10px rgba(79,70,229,0.45);
 	}
 
 	.tab-dragging {

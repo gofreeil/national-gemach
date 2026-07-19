@@ -161,7 +161,7 @@
 <!-- RightAdBanner.svelte -->
 <aside
     aria-label="פרסומות"
-    class="hidden xl:block w-36 flex-shrink-0 relative h-fit pb-8 text-center"
+    class="hidden xl:block w-36 flex-shrink-0 sticky top-4 h-fit pb-8 text-center"
 >
     <h4
         class="text-xs font-bold text-amber-400 uppercase tracking-widest mb-2 px-2"
@@ -171,7 +171,7 @@
     <div class="space-y-3">
         {#each displayedAds as ad, index}
             <div
-                class="h-[470px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed {ad.borderColor} {ad.bgColor} p-3 text-center transition-all {ad.hoverBorder} {ad.hoverBg} group duration-700 relative overflow-hidden"
+                class="h-[490px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed {ad.borderColor} {ad.bgColor} p-3 text-center transition-all {ad.hoverBorder} {ad.hoverBg} group duration-700 relative overflow-hidden"
                 style="animation: fadeIn 0.7s ease-in-out;"
             >
                 <!-- Ad Numbering -->
@@ -199,18 +199,20 @@
                             <span
                                 class="text-2xl font-black {ad.textColor} {ad.hoverText} tracking-wider drop-shadow-sm"
                             >
-                                {ad.text} זה
+                                מקום פרסום זה
                             </span>
                             <span
                                 class="text-base font-bold {ad.textColor} {ad.hoverText} opacity-90 drop-shadow-sm"
                             >
-                                - {ad.description}
+                                - יכול להיות שלך
                             </span>
                         </div>
                     </div>
 
                     <a
-                        href="/advertise"
+                        href="https://community.gofreeil.com/about/advertise"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         class="mb-4 z-10 rounded-full {ad.buttonColor} px-5 py-2 text-sm font-bold text-white shadow-xl transition-transform hover:scale-105"
                     >
                         לפרטים
