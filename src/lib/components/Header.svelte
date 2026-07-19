@@ -3,7 +3,13 @@
     import { onMount } from 'svelte';
 
     // משתמש מחובר (מגיע מ-+layout.server דרך +layout.svelte); null = אנונימי
-    let { user = null }: { user?: { name: string; email: string } | null } = $props();
+    let {
+        user = null,
+        adminRole = null
+    }: {
+        user?: { name: string; email: string } | null;
+        adminRole?: 'super_admin' | 'admin' | null;
+    } = $props();
 
     let languages = [
         { name: "עברית", code: "he", flag: "il" },
@@ -63,6 +69,37 @@
                 </div>
             </a>
             <div class="flex items-center gap-2">
+                <!-- פאנל ניהול (מורשים בלבד) -->
+                {#if adminRole}
+                    <a
+                        href="/admin"
+                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white transition-colors"
+                        aria-label="פאנל ניהול"
+                        title="פאנל ניהול"
+                    >
+                        <span aria-hidden="true">🛠️</span>
+                    </a>
+                {/if}
+                <!-- התחברות / אזור אישי -->
+                {#if user}
+                    <a
+                        href="/profile"
+                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                        aria-label="האזור האישי שלי"
+                        title={user.name || user.email}
+                    >
+                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-xs" aria-hidden="true">👤</span>
+                    </a>
+                {:else}
+                    <a
+                        href="/login?redirect=/profile"
+                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white transition-colors"
+                        aria-label="התחברות / אזור אישי"
+                        title="התחברות"
+                    >
+                        <span aria-hidden="true">🕊️</span>
+                    </a>
+                {/if}
                 <!-- Language -->
                 <div class="relative lang-dropdown">
                     <button
@@ -119,6 +156,19 @@
                     <span class="text-white text-sm font-bold">{onlineUsers}</span>
                     <span class="text-gray-300 text-sm">מחוברים</span>
                 </div>
+
+                <!-- פאנל ניהול (מורשים בלבד) -->
+                {#if adminRole}
+                    <a
+                        href="/admin"
+                        class="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-3 py-2 text-sm font-bold text-white transition-all shadow-lg"
+                        title={adminRole === 'super_admin' ? 'פאנל ניהול (סופר-אדמין)' : 'פאנל ניהול'}
+                    >
+                        <span aria-hidden="true">🛠️</span>
+                        <span class="hidden sm:inline">ניהול</span>
+                        {#if adminRole === 'super_admin'}<span class="text-amber-300" aria-hidden="true">★</span>{/if}
+                    </a>
+                {/if}
 
                 <!-- התחברות / אזור אישי -->
                 {#if user}

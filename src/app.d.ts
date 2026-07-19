@@ -20,6 +20,7 @@ declare module '@auth/core/types' {
 		user: {
 			id: string;
 			provider?: string;
+			phone?: string;
 			strapiJwt?: string;
 		} & DefaultSession['user'];
 	}
@@ -29,6 +30,7 @@ declare module '@auth/core/jwt' {
 	interface JWT {
 		dbUserId?: string;
 		provider?: string;
+		phone?: string;
 		strapiJwt?: string;
 	}
 }

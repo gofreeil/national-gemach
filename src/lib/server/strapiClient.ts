@@ -88,3 +88,32 @@ export async function strapiPost<T = unknown>(path: string, body: unknown): Prom
     }
     return res.json() as Promise<T>;
 }
+
+export async function strapiPut<T = unknown>(path: string, body: unknown): Promise<T> {
+    const res = await fetch(STRAPI_URL + path, {
+        method:  'PUT',
+        headers: getHeaders(),
+        body:    JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        if (isContentTypeError(res.status, text)) throw new StrapiContentTypeError(path, res.status);
+        throw new Error(`[Strapi] PUT ${path} → ${res.status}: ${text}`);
+    }
+    return res.json() as Promise<T>;
+}
+
+export async function strapiDelete<T = unknown>(path: string): Promise<T> {
+    const res = await fetch(STRAPI_URL + path, {
+        method:  'DELETE',
+        headers: getHeaders(),
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        if (isContentTypeError(res.status, text)) throw new StrapiContentTypeError(path, res.status);
+        throw new Error(`[Strapi] DELETE ${path} → ${res.status}: ${text}`);
+    }
+    // Strapi returns the deleted entity; some configs return 204 with empty body
+    const text = await res.text();
+    return (text ? JSON.parse(text) : {}) as T;
+}

@@ -1,9 +1,10 @@
 <script lang="ts">
-    import { categories, cities, type Gemach } from '$lib/gemachData';
+    import { cities, type Gemach } from '$lib/gemachData';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
     let gemachim = $derived(data.gemachim);
+    let categories = $derived(data.categories);
 
     let searchQuery = $state('');
     let selectedCategory = $state('');

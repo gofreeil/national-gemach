@@ -7,6 +7,7 @@ export interface StrapiUser {
 	id: number;
 	username: string;
 	email: string;
+	phone?: string | null;
 }
 
 /** קריאת ערך עוגייה מתוך כותרת Cookie גולמית */

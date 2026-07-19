@@ -43,8 +43,9 @@ const providers = [
 					id: String(user.id),
 					name: user.username ?? '',
 					email: user.email ?? emailLc,
+					phone: user.phone ?? '',
 					strapiJwt: jwt
-				} as { id: string; name: string; email: string; strapiJwt: string };
+				} as { id: string; name: string; email: string; phone: string; strapiJwt: string };
 			} catch {
 				return null;
 			}
@@ -64,8 +65,9 @@ const providers = [
 				id: String(me.id),
 				name: me.username ?? '',
 				email: me.email,
+				phone: me.phone ?? '',
 				strapiJwt: jwt
-			} as { id: string; name: string; email: string; strapiJwt: string };
+			} as { id: string; name: string; email: string; phone: string; strapiJwt: string };
 		}
 	})
 ];
@@ -109,6 +111,8 @@ export const { handle, signIn, signOut } = !AUTH_SECRET
 						token.provider = account.provider;
 						if (user.email) token.email = user.email;
 						if (user.name) token.name = user.name;
+						const uPhone = (user as { phone?: string }).phone;
+						if (uPhone) token.phone = uPhone;
 						token.dbUserId = user.id;
 					}
 					if (user && (user as { strapiJwt?: string }).strapiJwt) {
@@ -120,6 +124,7 @@ export const { handle, signIn, signOut } = !AUTH_SECRET
 					if (token.dbUserId) session.user.id = token.dbUserId as string;
 					if (token.email) session.user.email = token.email as string;
 					if (token.name) session.user.name = token.name as string;
+					if (token.phone) (session.user as { phone?: string }).phone = token.phone as string;
 					if (token.provider) (session.user as { provider?: string }).provider = token.provider as string;
 					if (token.strapiJwt) (session.user as { strapiJwt?: string }).strapiJwt = token.strapiJwt as string;
 					return session;

@@ -10,9 +10,26 @@ export interface Gemach {
     contact?: string;
     link?: string;
     notes?: string;
+    address?: string;
+    hours?: string;
+    icon?: string;
+    /** ידני: מיקום בסידור. קטן יותר = מופיע קודם. undefined = בסוף */
+    order?: number;
+    /** מוצמד לראש הרשימה */
+    featured?: boolean;
+    /** מקור הפריט — 'strapi' (חי/נערך בפאנל) או מזהה מקורי של פריט סטטי שיובא */
+    sourceId?: string;
+    /** האם הפריט מנוהל ב-DB (ניתן לעריכה/מחיקה בפאנל) */
+    managed?: boolean;
 }
 
-export const categories = [
+export interface CategoryDef {
+    key: string;
+    label: string;
+    icon: string;
+}
+
+export const categories: CategoryDef[] = [
     { key: 'clothing', label: 'ביגוד', icon: '👕' },
     { key: 'baby', label: 'תינוקות', icon: '🍼' },
     { key: 'books', label: 'ספרים', icon: '📚' },

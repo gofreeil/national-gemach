@@ -44,7 +44,7 @@
 <MobileAdsDrawer />
 
 <div class="min-h-screen flex flex-col bg-[#0f172a]">
-    <Header user={data.user} />
+    <Header user={data.user} adminRole={data.adminRole} />
 
     <div class="layout-container flex-grow">
         <RightAdBanner />
