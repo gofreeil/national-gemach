@@ -4,7 +4,9 @@ import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const session = await locals.auth();
-	const redirectTo = url.searchParams.get('redirect') ?? '/';
+	// רק נתיב פנימי — הגנה מ-open-redirect
+	const raw = url.searchParams.get('redirect') ?? '/';
+	const redirectTo = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
 	if (session?.user) throw redirect(302, redirectTo);
 	return { redirectTo };
 };

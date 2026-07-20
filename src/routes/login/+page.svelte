@@ -8,9 +8,20 @@
 	let loading = $state<'google' | 'facebook' | 'credentials' | null>(null);
 	let err = $state<string | null>(null);
 
+	// מוסיף welcome=back ליעד — מפעיל את מסך "ברוכים השבים" אחרי ההתחברות
+	function withWelcome(dest: string): string {
+		try {
+			const u = new URL(dest, window.location.origin);
+			u.searchParams.set('welcome', 'back');
+			return `${u.pathname}${u.search}${u.hash}`;
+		} catch {
+			return '/?welcome=back';
+		}
+	}
+
 	function oauth(provider: 'google' | 'facebook') {
 		loading = provider;
-		signIn(provider, { callbackUrl: data.redirectTo || '/' });
+		signIn(provider, { callbackUrl: withWelcome(data.redirectTo || '/') });
 	}
 
 	async function credentials(e: Event) {
@@ -27,7 +38,7 @@
 			err = 'אימייל או סיסמה שגויים';
 			loading = null;
 		} else {
-			window.location.href = data.redirectTo || '/';
+			window.location.href = withWelcome(data.redirectTo || '/');
 		}
 	}
 
@@ -40,7 +51,7 @@
 <svelte:head><title>התחברות</title></svelte:head>
 
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
-	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f172a] p-8 shadow-2xl">
+	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#2e1838] p-8 shadow-2xl">
 		<div class="mb-6 text-center">
 			<div class="mb-3 text-4xl">🕊️</div>
 			<h1 class="text-2xl font-black text-white">התחברות</h1>
@@ -49,7 +60,10 @@
 
 		{#if err || data.error}
 			<div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
-				{err ?? 'שגיאה בהתחברות. נסו שוב.'}
+				{err ??
+					(data.error === 'sso_failed'
+						? 'לא הצלחנו לזהות אותך דרך "יוצאים לחירות". נסו שוב, או התחברו עם אימייל וסיסמה.'
+						: 'שגיאה בהתחברות. נסו שוב.')}
 			</div>
 		{/if}
 

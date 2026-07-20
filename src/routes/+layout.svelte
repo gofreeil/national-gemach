@@ -7,6 +7,7 @@
     import AdsSidebar from '$lib/components/AdsSidebar.svelte';
     import RightAdBanner from '$lib/components/RightAdBanner.svelte';
     import MobileAdsDrawer from '$lib/components/MobileAdsDrawer.svelte';
+    import WelcomeScreen from '$lib/components/WelcomeScreen.svelte';
 
     let { children, data } = $props();
 </script>
@@ -37,13 +38,19 @@
     <meta name="twitter:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
     <meta name="twitter:image" content="https://gemach.gofreeil.com/images/logo.png" />
 
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#2a1535" />
 </svelte:head>
 
 <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>
+
+<!-- מסך פתיחה אחרי התחברות — גלובלי, כדי שיופיע בכל יעד נחיתה -->
+{#if data.user}
+    <WelcomeScreen userName={data.user.name ?? ''} />
+{/if}
+
 <MobileAdsDrawer user={data.user} />
 
-<div class="min-h-screen flex flex-col bg-[#0f172a]">
+<div class="site-bg min-h-screen flex flex-col">
     <Header user={data.user} adminRole={data.adminRole} />
 
     <div class="layout-container flex-grow">
@@ -58,6 +65,15 @@
 </div>
 
 <style>
+    /* רקע ורדרד בגוונות לילך — זוהר ורוד ולילך על בסיס שזיף כהה,
+       כהה מספיק כדי לשמור על ניגודיות עם הטקסט הלבן */
+    .site-bg {
+        background:
+            radial-gradient(1200px 600px at 85% -5%, rgba(244, 114, 182, 0.16), transparent 60%),
+            radial-gradient(1000px 700px at 10% 20%, rgba(196, 181, 253, 0.13), transparent 55%),
+            linear-gradient(180deg, #33193c 0%, #2a1535 45%, #1d0e26 100%);
+    }
+
     .layout-container {
         max-width: 1440px;
         margin: 0 auto;

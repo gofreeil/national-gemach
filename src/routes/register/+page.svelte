@@ -13,7 +13,7 @@
 <svelte:head><title>הרשמה</title></svelte:head>
 
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
-	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f172a] p-8 shadow-2xl">
+	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#2e1838] p-8 shadow-2xl">
 		<div class="mb-6 text-center">
 			<div class="mb-3 text-4xl">🕊️</div>
 			<h1 class="text-2xl font-black text-white">הרשמה</h1>
@@ -32,11 +32,20 @@
 				loading = true;
 				return async ({ result, update }) => {
 					if (result.type === 'success') {
-						// נרשם ב-Strapi המשותף — מתחברים אוטומטית
+						// נרשם ב-Strapi המשותף — מתחברים אוטומטית.
+						// welcome=new מפעיל את מסך "ברוכים המצטרפים" עם רשת האתרים.
+						let dest = '/?welcome=new';
+						try {
+							const u = new URL(data.redirectTo || '/', window.location.origin);
+							u.searchParams.set('welcome', 'new');
+							dest = `${u.pathname}${u.search}${u.hash}`;
+						} catch {
+							/* redirectTo לא תקין — נופלים לדף הבית */
+						}
 						await signIn('credentials', {
 							email: email.trim().toLowerCase(),
 							password,
-							callbackUrl: data.redirectTo || '/'
+							callbackUrl: dest
 						});
 					} else {
 						loading = false;
