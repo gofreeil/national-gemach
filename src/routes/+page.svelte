@@ -65,33 +65,6 @@
     </div>
     <h1 class="sr-only">הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</h1>
 
-    <!-- Alternate path: search by city + map (community site) -->
-    <div class="max-w-2xl mx-auto mb-8 px-4">
-        <a
-            href="https://community.gofreeil.com/"
-            class="group flex items-center justify-center gap-3 px-5 py-3 rounded-2xl
-                   bg-gradient-to-r from-amber-600/15 to-orange-600/15
-                   border border-amber-500/30 hover:border-amber-400/60
-                   hover:from-amber-600/25 hover:to-orange-600/25
-                   transition-all"
-            aria-label="עבור לחיפוש לפי עיר ומפה באתר קהילה בשכונה"
-        >
-            <span class="text-2xl" aria-hidden="true">🗺️</span>
-            <div class="text-right">
-                <div class="text-amber-300 font-bold text-sm md:text-base">
-                    מחפש גמ"ח לפי <strong>עיר</strong> או על <strong>מפה</strong>?
-                </div>
-                <div class="text-amber-200/70 text-xs md:text-sm">
-                    עבור לאתר "קהילה בשכונה" →
-                </div>
-            </div>
-            <span class="text-amber-300 text-xl group-hover:-translate-x-1 transition-transform" aria-hidden="true">←</span>
-        </a>
-        <p class="text-gray-500 text-xs mt-2">
-            כאן באתר הארצי - חיפוש לפי <strong class="text-gray-400">שם</strong> ו<strong class="text-gray-400">רשימה</strong>
-        </p>
-    </div>
-
     <!-- Search Bar -->
     <div class="max-w-2xl mx-auto">
         <div class="flex gap-2 mb-4">
@@ -262,7 +235,7 @@
         </div>
 
         <!-- Featured Gemachim -->
-        <h2 class="text-2xl font-black text-white text-center mb-6">גמחים מומלצים</h2>
+        <h2 class="text-2xl font-black text-white text-center mb-6">גמחים חדשים שנוספו</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {#each gemachim.slice(0, 6) as gemach (gemach.id)}
                 <article class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/8 hover:border-white/20 transition-all">
