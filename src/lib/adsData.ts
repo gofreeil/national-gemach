@@ -36,7 +36,7 @@ export const ads: Ad[] = [
         hover: 'כל היתרונות בשכונה שלך!',
         href: "https://community.gofreeil.com/",
         image: "/images/community-neighborhood.png",
-        color: "from-blue-500 to-purple-600",
+        color: "from-blue-500 to-cyan-600",
     },
     {
         id: 2,
@@ -55,7 +55,7 @@ export const ads: Ad[] = [
         cta: "מבקרים את הרשויות, ממצים את זכות התושב",
         href: "https://criticism.gofreeil.com/",
         image: "/images/mevaker-rashuyot.webp",
-        color: "from-blue-700 to-indigo-700",
+        color: "from-blue-700 to-sky-700",
         imageHeight: "120px",
         imageScale: 1.2,
     },
@@ -66,7 +66,7 @@ export const ads: Ad[] = [
         cta: "העם מדרג את הרשויות ועובדי הציבור",
         href: "https://rating.gofreeil.com/",
         image: "/images/public-rating.webp",
-        color: "from-indigo-600 to-blue-600",
+        color: "from-sky-600 to-blue-600",
         imageHeight: "110px",
         imageScale: 0.9,
     },
@@ -78,7 +78,7 @@ export const ads: Ad[] = [
         hover: "הבע דעתך על הסוגיות האקטואליות",
         href: "https://referendum.gofreeil.com/",
         image: "/images/referendum.webp",
-        color: "from-purple-600 to-indigo-700"
+        color: "from-cyan-600 to-sky-700"
     },
     {
         id: 3,
