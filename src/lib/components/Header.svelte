@@ -46,7 +46,7 @@
 
 <header
     class="sticky top-0 z-50 border-b-2 md:border-b-4 border-blue-600 shadow-lg backdrop-blur-lg"
-    style="background: linear-gradient(to bottom, rgba(42,21,53,0.92) 0%, rgba(42,21,53,0.88) 66%, rgba(42,21,53,0.1) 100%);"
+    style="background: linear-gradient(to bottom, rgba(109,60,122,0.92) 0%, rgba(109,60,122,0.88) 66%, rgba(109,60,122,0.1) 100%);"
 >
     <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
 
@@ -55,10 +55,9 @@
             <a href="/" class="flex items-center gap-3 min-w-0 flex-1">
                 <div class="h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-white border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.25)]">
                     <img
-                        src="/images/logo.png"
+                        src="/images/לוגו-הגמח-הארצי.png"
                         alt="הגמח הארצי לוגו"
-                        class="w-full h-full object-cover scale-[1.15]"
-                        style="object-position: center; translate: 0 4%;"
+                        class="w-full h-full object-contain"
                     />
                 </div>
                 <div class="min-w-0">
@@ -110,7 +109,7 @@
                         <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
                     </button>
                     {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-36 rounded-lg bg-[#2a1535] border border-white/10 shadow-xl z-50">
+                        <div class="absolute left-0 mt-2 w-36 rounded-lg bg-[#5b3070] border border-white/10 shadow-xl z-50">
                             {#each languages as lang}
                                 <button
                                     class="flex w-full items-center gap-3 px-3 py-2 text-white hover:bg-white/10 transition-colors"
@@ -132,10 +131,9 @@
             <a href="/" class="brand-link flex items-center gap-4">
                 <div class="brand-logo-frame h-20 w-20 rounded-xl overflow-hidden bg-white shadow-lg border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_10px_15px_-3px_rgba(0,0,0,0.1)]">
                     <img
-                        src="/images/logo.png"
+                        src="/images/לוגו-הגמח-הארצי.png"
                         alt="הגמח הארצי לוגו"
-                        class="brand-logo w-full h-full object-cover scale-[1.15]"
-                        style="object-position: center; translate: 0 4%;"
+                        class="brand-logo w-full h-full object-contain"
                     />
                 </div>
                 <div class="brand-text">
@@ -212,7 +210,7 @@
                         </svg>
                     </button>
                     {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-40 rounded-lg bg-[#2a1535] border border-white/10 shadow-xl z-50">
+                        <div class="absolute left-0 mt-2 w-40 rounded-lg bg-[#5b3070] border border-white/10 shadow-xl z-50">
                             {#each languages as lang}
                                 <button
                                     class="flex w-full items-center gap-3 px-4 py-2 text-white hover:bg-white/10 transition-colors"

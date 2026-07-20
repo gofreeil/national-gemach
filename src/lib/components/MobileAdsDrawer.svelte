@@ -337,7 +337,7 @@
 		left: 0;
 		height: 100%;
 		width: 100%;
-		background: linear-gradient(180deg, #241228 0%, #160a19 100%);
+		background: linear-gradient(180deg, #5b3070 0%, #3f2150 100%);
 		border-left: none;
 		border-right: 1px solid rgba(99, 102, 241, 0.2);
 		display: flex;

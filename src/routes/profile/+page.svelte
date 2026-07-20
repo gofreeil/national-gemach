@@ -7,7 +7,7 @@
 <svelte:head><title>האזור האישי</title></svelte:head>
 
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
-	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#2e1838] p-8 text-center shadow-2xl">
+	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#5e3273] p-8 text-center shadow-2xl">
 		<div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-3xl">
 			👤
 		</div>

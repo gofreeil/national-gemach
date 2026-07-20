@@ -11,12 +11,12 @@
 
     --color-primary: #2563eb;
     --color-primary-light: #60a5fa;
-    --color-bg-dark: #160a19;
+    --color-bg-dark: #3f2150;
 }
 
 :root {
     --header-height: 90px;
-    --bg-deep: #160a19;
+    --bg-deep: #3f2150;
 }
 
 body {

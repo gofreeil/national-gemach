@@ -38,7 +38,7 @@
     <meta name="twitter:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
     <meta name="twitter:image" content="https://gemach.gofreeil.com/images/logo.png" />
 
-    <meta name="theme-color" content="#2a1535" />
+    <meta name="theme-color" content="#6d3c7a" />
 </svelte:head>
 
 <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>
@@ -65,13 +65,16 @@
 </div>
 
 <style>
-    /* רקע ורדרד בגוונות לילך — זוהר ורוד ולילך על בסיס שזיף כהה,
-       כהה מספיק כדי לשמור על ניגודיות עם הטקסט הלבן */
+    /* רקע ורוד בהיר בגוונים מעורבים של לילך — כתמי צבע רכים בגדלים ומיקומים
+       שונים במקום גוון אחיד. נשאר בטווח ביניים כדי שהטקסט הלבן יישאר קריא */
     .site-bg {
         background:
-            radial-gradient(1200px 600px at 85% -5%, rgba(244, 114, 182, 0.16), transparent 60%),
-            radial-gradient(1000px 700px at 10% 20%, rgba(196, 181, 253, 0.13), transparent 55%),
-            linear-gradient(180deg, #33193c 0%, #2a1535 45%, #1d0e26 100%);
+            radial-gradient(1100px 600px at 85% -5%, rgba(249, 168, 212, 0.30), transparent 60%),
+            radial-gradient(900px 650px at 8% 12%, rgba(216, 180, 254, 0.30), transparent 55%),
+            radial-gradient(1000px 750px at 50% 45%, rgba(192, 132, 252, 0.20), transparent 60%),
+            radial-gradient(900px 600px at 92% 70%, rgba(244, 114, 182, 0.24), transparent 55%),
+            radial-gradient(850px 550px at 12% 88%, rgba(167, 139, 250, 0.26), transparent 60%),
+            linear-gradient(170deg, #82458a 0%, #6d3c7a 35%, #5b3070 68%, #48265c 100%);
     }
 
     .layout-container {
