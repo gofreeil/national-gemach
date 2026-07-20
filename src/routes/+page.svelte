@@ -64,13 +64,32 @@
 
 <!-- Hero Section -->
 <section class="text-center py-6 md:py-8 px-4">
-    <div class="mx-auto mb-5 h-40 w-40 md:h-52 md:w-52 rounded-2xl overflow-hidden bg-white shadow-xl border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
-        <img
-            src="/images/logo.png"
-            alt="הגמח הארצי לוגו"
-            class="w-full h-full object-cover scale-[1.15]"
-            style="object-position: center; translate: 0 4%;"
-        />
+    <div class="flex items-center justify-center gap-4 md:gap-6 mb-5">
+        <div class="h-40 w-40 md:h-52 md:w-52 flex-shrink-0 rounded-2xl overflow-hidden bg-white shadow-xl border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+            <img
+                src="/images/logo.png"
+                alt="הגמח הארצי לוגו"
+                class="w-full h-full object-cover scale-[1.15]"
+                style="object-position: center; translate: 0 4%;"
+            />
+        </div>
+
+        <!-- סטטיסטיקות חיות — נגזרות מהנתונים בפועל (לא מוקאפ), צמודות ללוגו.
+             צ'יפים כהים כדי שהמספרים והתוויות ייקראו על רקע הדף הבהיר. -->
+        <div class="flex flex-col gap-2 md:gap-2.5">
+            <div class="rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-2 text-center min-w-[96px]">
+                <div class="text-xl md:text-2xl font-black text-blue-300 leading-tight">{gemachim.length}</div>
+                <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">גמחים רשומים</div>
+            </div>
+            <div class="rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-2 text-center min-w-[96px]">
+                <div class="text-xl md:text-2xl font-black text-purple-300 leading-tight">{cityCount}</div>
+                <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">ערים</div>
+            </div>
+            <div class="rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-2 text-center min-w-[96px]">
+                <div class="text-xl md:text-2xl font-black text-pink-300 leading-tight">{categories.length}</div>
+                <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">קטגוריות</div>
+            </div>
+        </div>
     </div>
     <h1 class="sr-only">הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</h1>
 
@@ -134,24 +153,6 @@
         </div>
     </div>
 </section>
-
-<!-- Stats Bar -->
-<div class="max-w-2xl mx-auto px-4 mb-8">
-    <div class="flex justify-center gap-6 flex-wrap">
-        <div class="text-center">
-            <div class="text-2xl font-black text-blue-400">{gemachim.length}+</div>
-            <div class="text-xs text-gray-400">גמחים רשומים</div>
-        </div>
-        <div class="text-center">
-            <div class="text-2xl font-black text-purple-400">{cityCount}+</div>
-            <div class="text-xs text-gray-400">ערים</div>
-        </div>
-        <div class="text-center">
-            <div class="text-2xl font-black text-pink-400">{categories.length}</div>
-            <div class="text-xs text-gray-400">קטגוריות</div>
-        </div>
-    </div>
-</div>
 
 <!-- Results / Categories -->
 {#if showResults || selectedCategory || selectedCity}

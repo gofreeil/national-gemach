@@ -39,8 +39,7 @@
 </script>
 
 <header
-    class="sticky top-0 z-50 border-b-2 md:border-b-4 border-blue-600 shadow-lg backdrop-blur-lg"
-    style="background: linear-gradient(to bottom, rgba(135,75,144,0.95) 0%, rgba(135,75,144,0.92) 22%, rgba(135,75,144,0.85) 42%, rgba(135,75,144,0.72) 60%, rgba(135,75,144,0.54) 74%, rgba(135,75,144,0.32) 87%, rgba(135,75,144,0.1) 100%);"
+    class="site-header sticky top-0 z-50 shadow-lg backdrop-blur-lg"
 >
     <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
 
@@ -216,6 +215,39 @@
 </header>
 
 <style>
+    /* רקע ההדר: דעיכה חלקה מסגול מלא למעלה עד שקוף לגמרי למטה,
+       כדי שההדר יימזג ברכות אל רקע הדף בלי קו חד.
+       במקום גבול כחול מלא — זוהַר כחול רך ומטושטש שנמוג בקצוות ומטה,
+       כך שהמעבר נראה מדורג ולא כקו צבע פתאומי. */
+    .site-header {
+        background: linear-gradient(
+            to bottom,
+            rgba(135, 75, 144, 0.95) 0%,
+            rgba(135, 75, 144, 0.92) 20%,
+            rgba(135, 75, 144, 0.85) 38%,
+            rgba(135, 75, 144, 0.74) 54%,
+            rgba(135, 75, 144, 0.58) 68%,
+            rgba(135, 75, 144, 0.40) 80%,
+            rgba(135, 75, 144, 0.22) 90%,
+            rgba(135, 75, 144, 0.08) 96%,
+            rgba(135, 75, 144, 0) 100%
+        );
+    }
+    .site-header::after {
+        content: "";
+        position: absolute;
+        inset-inline: 6%;
+        bottom: -5px;
+        height: 12px;
+        background: radial-gradient(
+            ellipse at center,
+            rgba(59, 130, 246, 0.38),
+            rgba(59, 130, 246, 0) 72%
+        );
+        filter: blur(3px);
+        pointer-events: none;
+    }
+
     .brand-logo-frame {
         transition: scale 300ms ease;
     }
