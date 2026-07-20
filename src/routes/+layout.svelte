@@ -69,12 +69,12 @@
        שונים במקום גוון אחיד. נשאר בטווח ביניים כדי שהטקסט הלבן יישאר קריא */
     .site-bg {
         background:
-            radial-gradient(1100px 600px at 85% -5%, rgba(251, 207, 232, 0.42), transparent 60%),
-            radial-gradient(900px 650px at 8% 12%, rgba(221, 189, 255, 0.38), transparent 55%),
-            radial-gradient(1000px 750px at 50% 45%, rgba(216, 180, 254, 0.26), transparent 60%),
-            radial-gradient(900px 600px at 92% 70%, rgba(249, 168, 212, 0.32), transparent 55%),
-            radial-gradient(850px 550px at 12% 88%, rgba(196, 181, 253, 0.30), transparent 60%),
-            linear-gradient(170deg, #9d59a4 0%, #874b90 35%, #713d7c 68%, #5a3067 100%);
+            radial-gradient(1100px 600px at 85% -5%, rgba(251, 207, 232, 0.55), transparent 60%),
+            radial-gradient(900px 650px at 8% 12%, rgba(244, 194, 231, 0.50), transparent 55%),
+            radial-gradient(1000px 750px at 50% 45%, rgba(240, 182, 222, 0.38), transparent 60%),
+            radial-gradient(900px 600px at 92% 70%, rgba(249, 168, 212, 0.45), transparent 55%),
+            radial-gradient(850px 550px at 12% 88%, rgba(233, 172, 222, 0.42), transparent 60%),
+            linear-gradient(170deg, #c47ab5 0%, #b268a6 35%, #a3599a 68%, #90548c 100%);
     }
 
     .layout-container {
