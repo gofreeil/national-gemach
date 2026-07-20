@@ -85,23 +85,23 @@
 
     <!-- קיצורי דרך -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <a href="/admin/gemachim/new" class="card p-5 hover:bg-white/8 transition-colors block">
+        <a href="/admin/gemachim/new" class="card p-5 hover:bg-[#1e3260] transition-colors block">
             <div class="text-2xl mb-2" aria-hidden="true">➕</div>
             <div class="font-bold text-white">הוספת גמ"ח חדש</div>
             <div class="text-xs text-gray-400 mt-1">שם, קטגוריה, עיר, טלפון, תגים ועוד</div>
         </a>
-        <a href="/admin/gemachim" class="card p-5 hover:bg-white/8 transition-colors block">
+        <a href="/admin/gemachim" class="card p-5 hover:bg-[#1e3260] transition-colors block">
             <div class="text-2xl mb-2" aria-hidden="true">🤝</div>
             <div class="font-bold text-white">ניהול גמ"חים</div>
             <div class="text-xs text-gray-400 mt-1">עריכה, סידור, הצמדה ומחיקה</div>
         </a>
-        <a href="/admin/categories" class="card p-5 hover:bg-white/8 transition-colors block">
+        <a href="/admin/categories" class="card p-5 hover:bg-[#1e3260] transition-colors block">
             <div class="text-2xl mb-2" aria-hidden="true">🏷️</div>
             <div class="font-bold text-white">קטגוריות</div>
             <div class="text-xs text-gray-400 mt-1">הוספה, עריכה וסידור קטגוריות</div>
         </a>
         {#if role === 'super_admin'}
-            <a href="/admin/admins" class="card p-5 hover:bg-white/8 transition-colors block">
+            <a href="/admin/admins" class="card p-5 hover:bg-[#1e3260] transition-colors block">
                 <div class="text-2xl mb-2" aria-hidden="true">🔑</div>
                 <div class="font-bold text-white">ניהול אדמינים</div>
                 <div class="text-xs text-gray-400 mt-1">הוספת אדמינים לפי מייל / משתמש / טלפון</div>

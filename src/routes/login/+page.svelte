@@ -51,7 +51,7 @@
 <svelte:head><title>התחברות</title></svelte:head>
 
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
-	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#7a4287] p-8 shadow-2xl">
+	<div class="w-full max-w-md rounded-3xl border border-[#3b5794] bg-[#16264d] p-8 shadow-2xl">
 		<div class="mb-6 text-center">
 			<div class="mb-3 text-4xl">🕊️</div>
 			<h1 class="text-2xl font-black text-white">התחברות</h1>
@@ -80,9 +80,9 @@
 		</p>
 
 		<div class="mb-5 flex items-center gap-3">
-			<div class="h-px flex-1 bg-white/10"></div>
+			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
 			<span class="text-xs text-gray-500">או</span>
-			<div class="h-px flex-1 bg-white/10"></div>
+			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
 		</div>
 
 		<form onsubmit={credentials} class="space-y-4">
@@ -92,7 +92,7 @@
 				bind:value={email}
 				placeholder="אימייל"
 				autocomplete="email"
-				class="w-full rounded-xl border border-white/10 bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+				class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
 			/>
 			<input
 				type="password"
@@ -100,7 +100,7 @@
 				bind:value={password}
 				placeholder="סיסמה"
 				autocomplete="current-password"
-				class="w-full rounded-xl border border-white/10 bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+				class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
 			/>
 			<button
 				type="submit"
@@ -112,9 +112,9 @@
 		</form>
 
 		<div class="my-5 flex items-center gap-3">
-			<div class="h-px flex-1 bg-white/10"></div>
+			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
 			<span class="text-xs text-gray-500">או</span>
-			<div class="h-px flex-1 bg-white/10"></div>
+			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
 		</div>
 
 		<button

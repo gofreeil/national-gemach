@@ -42,7 +42,7 @@
                     {#if ad.hover}
                         <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/cta:block
                                      bg-gray-900 text-white text-xs font-bold rounded-lg px-3 py-1.5
-                                     whitespace-nowrap border border-white/10 shadow-xl pointer-events-none z-50">
+                                     whitespace-nowrap border border-[#3b5794] shadow-xl pointer-events-none z-50">
                             {ad.hover}
                         </span>
                     {/if}

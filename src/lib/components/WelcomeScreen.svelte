@@ -67,7 +67,7 @@
 			type="button"
 			onclick={dismiss}
 			aria-label="סגירה"
-			class="fixed top-4 left-4 z-[1310] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-gray-200 transition-colors hover:bg-white/20 hover:text-white"
+			class="fixed top-4 left-4 z-[1310] flex h-10 w-10 items-center justify-center rounded-full bg-[#1c2f5a] text-gray-200 transition-colors hover:bg-[#2a4379] hover:text-white"
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" focusable="false">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -100,7 +100,7 @@
 								target="_blank"
 								rel="noopener noreferrer"
 								title={site.title}
-								class="group flex flex-col items-center gap-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-400/40 p-2 transition-all hover:-translate-y-0.5"
+								class="group flex flex-col items-center gap-1.5 rounded-xl bg-[#16264d] hover:bg-[#213569] border border-[#3b5794] hover:border-purple-400/40 p-2 transition-all hover:-translate-y-0.5"
 							>
 								<div class="w-full aspect-[4/3] overflow-hidden rounded-lg bg-gradient-to-br {site.color}">
 									<img
@@ -127,7 +127,7 @@
 		</div>
 
 		<!-- פס זמן — מתמלא עד סוף המסך (7 שניות) ואז המסך נסגר -->
-		<div class="fixed bottom-0 left-0 right-0 h-1.5 bg-white/10 z-[1310]">
+		<div class="fixed bottom-0 left-0 right-0 h-1.5 bg-[#1c2f5a] z-[1310]">
 			<div
 				class="h-full {kind === 'new' ? 'bg-purple-400' : 'bg-emerald-400'}"
 				style="width: {fill ? '100%' : '0%'}; transition: width {WELCOME_MS}ms linear;"

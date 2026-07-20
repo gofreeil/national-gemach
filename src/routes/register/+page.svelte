@@ -13,7 +13,7 @@
 <svelte:head><title>הרשמה</title></svelte:head>
 
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
-	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#7a4287] p-8 shadow-2xl">
+	<div class="w-full max-w-md rounded-3xl border border-[#3b5794] bg-[#16264d] p-8 shadow-2xl">
 		<div class="mb-6 text-center">
 			<div class="mb-3 text-4xl">🕊️</div>
 			<h1 class="text-2xl font-black text-white">הרשמה</h1>
@@ -56,11 +56,11 @@
 			class="space-y-4"
 		>
 			<input name="name" bind:value={name} placeholder="שם מלא"
-				class="w-full rounded-xl border border-white/10 bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
+				class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
 			<input name="email" type="email" required bind:value={email} placeholder="אימייל" autocomplete="email"
-				class="w-full rounded-xl border border-white/10 bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
+				class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
 			<input name="password" type="password" required bind:value={password} placeholder="סיסמה (לפחות 6 תווים)" autocomplete="new-password"
-				class="w-full rounded-xl border border-white/10 bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
+				class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
 			<button type="submit" disabled={loading}
 				class="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3.5 font-bold text-white transition hover:from-blue-500 hover:to-purple-500 disabled:opacity-60">
 				{loading ? 'נרשם...' : 'הרשמה'}

@@ -30,7 +30,7 @@
 
 <input type="hidden" {name} value={tags.join('\n')} />
 
-<div class="flex flex-wrap gap-2 rounded-xl border border-white/10 bg-[#1e293b] px-3 py-2.5 focus-within:border-purple-500">
+<div class="flex flex-wrap gap-2 rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-2.5 focus-within:border-purple-500">
     {#each tags as t (t)}
         <span class="inline-flex items-center gap-1 rounded-full bg-blue-900/50 border border-blue-500/30 px-2.5 py-1 text-sm text-blue-200">
             {t}

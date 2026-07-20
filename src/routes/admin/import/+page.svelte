@@ -48,7 +48,7 @@
                 <span>{totalDone} / {data.total} יובאו</span>
                 <span>{pct}%</span>
             </div>
-            <div class="h-3 rounded-full bg-white/10 overflow-hidden">
+            <div class="h-3 rounded-full bg-[#1c2f5a] overflow-hidden">
                 <div class="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-300" style="width: {pct}%"></div>
             </div>
         </div>

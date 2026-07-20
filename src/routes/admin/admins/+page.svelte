@@ -29,11 +29,11 @@
             class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <div>
                 <input name="identifier" required placeholder="מייל / שם משתמש / מספר טלפון"
-                    class="w-full rounded-xl border border-white/10 bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
+                    class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
                 <input name="display" placeholder="שם לתצוגה (לא חובה)"
-                    class="w-full mt-2 rounded-xl border border-white/10 bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
+                    class="w-full mt-2 rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
             </div>
-            <select name="role" class="rounded-xl border border-white/10 bg-[#1e293b] px-3 py-2.5 text-white focus:border-purple-500 focus:outline-none h-fit">
+            <select name="role" class="rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-2.5 text-white focus:border-purple-500 focus:outline-none h-fit">
                 <option value="admin">אדמין</option>
                 <option value="super_admin">סופר-אדמין</option>
             </select>
@@ -53,7 +53,7 @@
         {:else}
             <div class="space-y-2">
                 {#each data.admins as a (a.id)}
-                    <div class="flex flex-wrap items-center gap-2 rounded-xl bg-white/5 px-3 py-2.5">
+                    <div class="flex flex-wrap items-center gap-2 rounded-xl bg-[#16264d] px-3 py-2.5">
                         <span class="text-lg" aria-hidden="true">{a.role === 'super_admin' ? '★' : '👤'}</span>
                         <div class="flex-1 min-w-0">
                             <div class="text-white font-bold truncate" dir="ltr">{a.identifier}</div>
@@ -65,7 +65,7 @@
                         <form method="POST" action="?/setRole" use:enhance>
                             <input type="hidden" name="id" value={a.id} />
                             <select name="role" onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()}
-                                class="rounded-lg border border-white/10 bg-[#1e293b] px-2 py-1.5 text-sm text-white focus:outline-none">
+                                class="rounded-lg border border-[#3b5794] bg-[#1e293b] px-2 py-1.5 text-sm text-white focus:outline-none">
                                 <option value="admin" selected={a.role === 'admin'}>אדמין</option>
                                 <option value="super_admin" selected={a.role === 'super_admin'}>סופר-אדמין</option>
                             </select>

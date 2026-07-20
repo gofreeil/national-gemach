@@ -44,14 +44,14 @@
         </div>
 
         <!-- ניווט -->
-        <nav class="flex flex-wrap gap-2 mb-6 border-b border-white/10 pb-4">
+        <nav class="flex flex-wrap gap-2 mb-6 border-b border-[#3b5794] pb-4">
             {#each nav as item (item.href)}
                 <a
                     href={item.href}
                     class="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-bold transition-all
                         {active(item.href, item.exact, $page.url.pathname)
                             ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                            : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'}"
+                            : 'bg-[#16264d] text-gray-300 hover:bg-[#213569] hover:text-white'}"
                 >
                     <span aria-hidden="true">{item.icon}</span>
                     <span>{item.label}</span>
@@ -68,8 +68,8 @@
 
 <style>
     .admin-content :global(.card) {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.10);
+        background: #16264d;
+        border: 1px solid #3b5794;
         border-radius: 1rem;
     }
 </style>

@@ -40,8 +40,8 @@
     <!-- חיפוש -->
     <form method="GET" class="flex gap-2">
         <input name="q" value={data.q} placeholder="חיפוש לפי שם, עיר, טלפון או תג..."
-            class="flex-1 rounded-xl border border-white/10 bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
-        <button class="rounded-xl bg-white/10 hover:bg-white/20 px-5 py-2.5 text-sm font-bold text-white transition-colors">חפש</button>
+            class="flex-1 rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
+        <button class="rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-5 py-2.5 text-sm font-bold text-white transition-colors">חפש</button>
         {#if data.q}
             <a href="/admin/gemachim" class="rounded-xl bg-red-900/30 border border-red-500/30 text-red-300 px-4 py-2.5 text-sm hover:bg-red-900/50 transition-colors flex items-center">נקה ✕</a>
         {/if}
@@ -68,12 +68,12 @@
                     <div class="flex flex-col gap-1 pt-1">
                         <form method="POST" action="?/moveUp" use:enhance>
                             <input type="hidden" name="id" value={g.id} />
-                            <button class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-gray-300 text-xs disabled:opacity-30"
+                            <button class="w-7 h-7 rounded-lg bg-[#16264d] hover:bg-[#243a6e] text-gray-300 text-xs disabled:opacity-30"
                                 disabled={data.page === 1 && i === 0} aria-label="הזז מעלה">▲</button>
                         </form>
                         <form method="POST" action="?/moveDown" use:enhance>
                             <input type="hidden" name="id" value={g.id} />
-                            <button class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-gray-300 text-xs disabled:opacity-30"
+                            <button class="w-7 h-7 rounded-lg bg-[#16264d] hover:bg-[#243a6e] text-gray-300 text-xs disabled:opacity-30"
                                 disabled={data.page === data.pages && i === data.items.length - 1} aria-label="הזז מטה">▼</button>
                         </form>
                     </div>
@@ -92,7 +92,7 @@
                         </div>
                         {#if g.tags.length}
                             <div class="flex gap-1 mt-1.5 flex-wrap">
-                                {#each g.tags.slice(0, 6) as t (t)}<span class="text-[11px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">{t}</span>{/each}
+                                {#each g.tags.slice(0, 6) as t (t)}<span class="text-[11px] text-gray-500 bg-[#16264d] px-1.5 py-0.5 rounded">{t}</span>{/each}
                                 {#if g.tags.length > 6}<span class="text-[11px] text-gray-600">+{g.tags.length - 6}</span>{/if}
                             </div>
                         {/if}
@@ -103,10 +103,10 @@
                         <form method="POST" action="?/toggleFeature" use:enhance>
                             <input type="hidden" name="id" value={g.id} />
                             <input type="hidden" name="featured" value={g.featured ? 'false' : 'true'} />
-                            <button class="w-8 h-8 rounded-lg {g.featured ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-gray-400 hover:bg-white/15'} transition-colors"
+                            <button class="w-8 h-8 rounded-lg {g.featured ? 'bg-amber-500/20 text-amber-300' : 'bg-[#16264d] text-gray-400 hover:bg-[#243a6e]'} transition-colors"
                                 title={g.featured ? 'בטל הצמדה' : 'הצמד לראש'}>⭐</button>
                         </form>
-                        <a href={`/admin/gemachim/${g.id}`} class="w-8 h-8 rounded-lg bg-white/5 text-gray-300 hover:bg-white/15 transition-colors flex items-center justify-center" title="עריכה">✏️</a>
+                        <a href={`/admin/gemachim/${g.id}`} class="w-8 h-8 rounded-lg bg-[#16264d] text-gray-300 hover:bg-[#243a6e] transition-colors flex items-center justify-center" title="עריכה">✏️</a>
                         <form method="POST" action="?/delete"
                             use:enhance={({ cancel }) => { if (!confirm(`למחוק את "${g.name}"? הפעולה בלתי הפיכה.`)) cancel(); }}>
                             <input type="hidden" name="id" value={g.id} />
@@ -120,9 +120,9 @@
         <!-- עימוד -->
         {#if data.pages > 1}
             <div class="flex items-center justify-center gap-2 pt-2">
-                {#if data.page > 1}<a href={pageHref(data.page - 1)} class="rounded-lg bg-white/5 hover:bg-white/15 px-3 py-1.5 text-sm text-white">→ הקודם</a>{/if}
+                {#if data.page > 1}<a href={pageHref(data.page - 1)} class="rounded-lg bg-[#16264d] hover:bg-[#243a6e] px-3 py-1.5 text-sm text-white">→ הקודם</a>{/if}
                 <span class="text-sm text-gray-400">עמוד {data.page} מתוך {data.pages}</span>
-                {#if data.page < data.pages}<a href={pageHref(data.page + 1)} class="rounded-lg bg-white/5 hover:bg-white/15 px-3 py-1.5 text-sm text-white">הבא ←</a>{/if}
+                {#if data.page < data.pages}<a href={pageHref(data.page + 1)} class="rounded-lg bg-[#16264d] hover:bg-[#243a6e] px-3 py-1.5 text-sm text-white">הבא ←</a>{/if}
             </div>
         {/if}
     {/if}

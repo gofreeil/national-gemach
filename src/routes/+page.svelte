@@ -83,7 +83,7 @@
                 onkeydown={handleKey}
                 placeholder="חפש לפי שם, עניין או עיר..."
                 aria-label="חיפוש גמחים"
-                class="flex-1 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-400 px-4 py-3 text-base focus:outline-none focus:border-blue-400 focus:bg-white/15 transition-all"
+                class="flex-1 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white placeholder-gray-400 px-4 py-3 text-base focus:outline-none focus:border-blue-400 focus:bg-[#243a6e] transition-all"
             />
             <button
                 onclick={doSearch}
@@ -99,7 +99,7 @@
                 bind:value={selectedCategory}
                 onchange={doSearch}
                 aria-label="סנן לפי קטגוריה"
-                class="rounded-xl bg-white/10 border border-white/20 text-white px-4 py-2 text-sm focus:outline-none focus:border-blue-400 cursor-pointer"
+                class="rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white px-4 py-2 text-sm focus:outline-none focus:border-blue-400 cursor-pointer"
             >
                 <option value="">כל הקטגוריות</option>
                 {#each categories as cat}
@@ -115,7 +115,7 @@
                 list="home-cities-list"
                 placeholder="כל הערים — הקלד שם עיר"
                 aria-label="סנן לפי עיר"
-                class="w-48 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-400 px-4 py-2 text-sm focus:outline-none focus:border-blue-400 focus:bg-white/15 transition-all"
+                class="w-48 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white placeholder-gray-400 px-4 py-2 text-sm focus:outline-none focus:border-blue-400 focus:bg-[#243a6e] transition-all"
             />
             <datalist id="home-cities-list">
                 {#each cities as city (city)}
@@ -175,7 +175,7 @@
         {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {#each filteredGemachim() as gemach (gemach.id)}
-                    <article class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/8 hover:border-white/20 transition-all">
+                    <article class="bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
                         <div class="flex items-start gap-3">
                             <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
                                 {#if gemach.category === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}{getCategoryIcon(gemach.category)}{/if}
@@ -234,8 +234,8 @@
             {#each categories as cat}
                 <button
                     onclick={() => { selectedCategory = cat.key; doSearch(); }}
-                    class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10
-                           hover:bg-white/10 hover:border-white/25 hover:scale-105 transition-all cursor-pointer"
+                    class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-[#16264d] border border-[#3b5794]
+                           hover:bg-[#213569] hover:border-[#5474b8] hover:scale-105 transition-all cursor-pointer"
                     aria-label="חפש גמחי {cat.label}"
                 >
                     {#if cat.key === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}<span class="text-3xl" aria-hidden="true">{cat.icon}</span>{/if}
@@ -248,7 +248,7 @@
         </div>
 
         {#snippet gemachCard(gemach: Gemach, pinned: boolean = false)}
-            <article class="bg-white/5 border {pinned ? 'border-amber-500/30' : 'border-white/10'} rounded-2xl p-5 hover:bg-white/8 hover:border-white/20 transition-all">
+            <article class="bg-[#16264d] border {pinned ? 'border-amber-500/30' : 'border-[#3b5794]'} rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
                 <div class="flex items-start gap-3">
                     <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
                         {#if gemach.category === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}{getCategoryIcon(gemach.category)}{/if}

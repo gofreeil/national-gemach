@@ -7,7 +7,7 @@
 <svelte:head><title>האזור האישי</title></svelte:head>
 
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
-	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#7a4287] p-8 text-center shadow-2xl">
+	<div class="w-full max-w-md rounded-3xl border border-[#3b5794] bg-[#16264d] p-8 text-center shadow-2xl">
 		<div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-3xl">
 			👤
 		</div>
@@ -21,7 +21,7 @@
 			<button
 				type="button"
 				onclick={() => signOut({ callbackUrl: '/' })}
-				class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-bold text-gray-300 transition hover:bg-white/10"
+				class="rounded-2xl border border-[#3b5794] bg-[#16264d] px-4 py-3 font-bold text-gray-300 transition hover:bg-[#213569]"
 			>
 				התנתקות
 			</button>

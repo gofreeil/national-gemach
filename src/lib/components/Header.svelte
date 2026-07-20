@@ -77,7 +77,7 @@
                 {#if user}
                     <a
                         href="/profile"
-                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
                         aria-label="האזור האישי שלי"
                         title={user.name || user.email}
                     >
@@ -97,16 +97,16 @@
                 <div class="relative lang-dropdown">
                     <button
                         onclick={() => showLangDropdown = !showLangDropdown}
-                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
                         aria-label="בחר שפה"
                     >
                         <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
                     </button>
                     {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-36 rounded-lg bg-[#713d7c] border border-white/10 shadow-xl z-50">
+                        <div class="absolute left-0 mt-2 w-36 rounded-lg bg-[#1c2f5a] border border-[#3b5794] shadow-xl z-50">
                             {#each languages as lang}
                                 <button
-                                    class="flex w-full items-center gap-3 px-3 py-2 text-white hover:bg-white/10 transition-colors"
+                                    class="flex w-full items-center gap-3 px-3 py-2 text-white hover:bg-[#213569] transition-colors"
                                     onclick={() => changeLang(lang.code)}
                                 >
                                     <span class="fi fi-{lang.flag}" style="font-size:1.1rem"></span>
@@ -159,7 +159,7 @@
                 {#if user}
                     <a
                         href="/profile"
-                        class="flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 text-sm font-bold text-white transition-colors"
+                        class="flex items-center gap-2 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-2 text-sm font-bold text-white transition-colors"
                         title="האזור האישי שלי"
                     >
                         <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-xs">👤</span>
@@ -187,7 +187,7 @@
                 <div class="relative lang-dropdown">
                     <button
                         onclick={() => showLangDropdown = !showLangDropdown}
-                        class="flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 text-white transition-colors"
+                        class="flex items-center gap-2 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-2 text-white transition-colors"
                         aria-label="בחר שפה"
                     >
                         <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
@@ -197,10 +197,10 @@
                         </svg>
                     </button>
                     {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-40 rounded-lg bg-[#713d7c] border border-white/10 shadow-xl z-50">
+                        <div class="absolute left-0 mt-2 w-40 rounded-lg bg-[#1c2f5a] border border-[#3b5794] shadow-xl z-50">
                             {#each languages as lang}
                                 <button
-                                    class="flex w-full items-center gap-3 px-4 py-2 text-white hover:bg-white/10 transition-colors"
+                                    class="flex w-full items-center gap-3 px-4 py-2 text-white hover:bg-[#213569] transition-colors"
                                     onclick={() => changeLang(lang.code)}
                                 >
                                     <span class="fi fi-{lang.flag}" style="font-size:1.2rem"></span>
