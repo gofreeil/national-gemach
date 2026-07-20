@@ -18,7 +18,6 @@
     ];
 
     let showLangDropdown = $state(false);
-    let onlineUsers = $state(1);
 
     function changeLang(code: string) {
         locale.set(code);
@@ -31,22 +30,17 @@
             const saved = localStorage.getItem('lang');
             if (saved) locale.set(saved);
         } catch {}
-        onlineUsers = Math.floor(Math.random() * 20) + 5;
-        const interval = setInterval(() => {
-            onlineUsers = Math.floor(Math.random() * 20) + 5;
-        }, 30000);
         document.addEventListener('click', (e) => {
             if (!(e.target as HTMLElement).closest('.lang-dropdown')) {
                 showLangDropdown = false;
             }
         });
-        return () => clearInterval(interval);
     });
 </script>
 
 <header
     class="sticky top-0 z-50 border-b-2 md:border-b-4 border-blue-600 shadow-lg backdrop-blur-lg"
-    style="background: linear-gradient(to bottom, rgba(109,60,122,0.92) 0%, rgba(109,60,122,0.88) 66%, rgba(109,60,122,0.1) 100%);"
+    style="background: linear-gradient(to bottom, rgba(135,75,144,0.92) 0%, rgba(135,75,144,0.88) 66%, rgba(135,75,144,0.1) 100%);"
 >
     <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
 
@@ -109,7 +103,7 @@
                         <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
                     </button>
                     {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-36 rounded-lg bg-[#5b3070] border border-white/10 shadow-xl z-50">
+                        <div class="absolute left-0 mt-2 w-36 rounded-lg bg-[#713d7c] border border-white/10 shadow-xl z-50">
                             {#each languages as lang}
                                 <button
                                     class="flex w-full items-center gap-3 px-3 py-2 text-white hover:bg-white/10 transition-colors"
@@ -148,13 +142,6 @@
 
             <!-- Right side controls -->
             <div class="flex items-center gap-3">
-                <!-- Online counter -->
-                <div class="flex items-center gap-2 bg-blue-900/30 px-3 py-2 rounded-lg border border-blue-500/30">
-                    <span class="text-green-400 text-lg" aria-hidden="true">●</span>
-                    <span class="text-white text-sm font-bold">{onlineUsers}</span>
-                    <span class="text-gray-300 text-sm">מחוברים</span>
-                </div>
-
                 <!-- פאנל ניהול (מורשים בלבד) -->
                 {#if adminRole}
                     <a
@@ -210,7 +197,7 @@
                         </svg>
                     </button>
                     {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-40 rounded-lg bg-[#5b3070] border border-white/10 shadow-xl z-50">
+                        <div class="absolute left-0 mt-2 w-40 rounded-lg bg-[#713d7c] border border-white/10 shadow-xl z-50">
                             {#each languages as lang}
                                 <button
                                     class="flex w-full items-center gap-3 px-4 py-2 text-white hover:bg-white/10 transition-colors"

@@ -13,7 +13,7 @@
 <svelte:head><title>הרשמה</title></svelte:head>
 
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
-	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#5e3273] p-8 shadow-2xl">
+	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#7a4287] p-8 shadow-2xl">
 		<div class="mb-6 text-center">
 			<div class="mb-3 text-4xl">🕊️</div>
 			<h1 class="text-2xl font-black text-white">הרשמה</h1>

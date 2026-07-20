@@ -28,7 +28,7 @@
 <svelte:head><title>מתחבר…</title><meta name="robots" content="noindex" /></svelte:head>
 
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
-	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#5e3273] p-8 text-center shadow-2xl">
+	<div class="w-full max-w-md rounded-3xl border border-white/10 bg-[#7a4287] p-8 text-center shadow-2xl">
 		{#if phase === 'working'}
 			<div class="mb-4 text-5xl">🕊️</div>
 			<h1 class="mb-2 text-2xl font-black text-white">מזהה אותך...</h1>

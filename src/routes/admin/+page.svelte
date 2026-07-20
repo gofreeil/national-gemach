@@ -2,6 +2,14 @@
     let { data } = $props();
     const s = $derived(data.stats);
     const role = $derived(data.admin.role as 'super_admin' | 'admin');
+
+    const maxVisits = $derived(Math.max(...data.visits.map(v => v.count), 0));
+
+    /** '2026-07' → '7/26' */
+    function fmtMonth(m: string): string {
+        const [y, mo] = m.split('-');
+        return `${Number(mo)}/${y.slice(2)}`;
+    }
 </script>
 
 <div class="space-y-6">
@@ -23,6 +31,34 @@
             <div class="text-3xl font-black text-emerald-400">{s.admins}</div>
             <div class="text-xs text-gray-400 mt-1">אדמינים ב-DB</div>
         </div>
+    </div>
+
+    <!-- גרף כניסות חודשיות -->
+    <div class="card p-5">
+        <h2 class="font-bold text-white">📈 כניסות לאתר לפי חודש</h2>
+        <p class="text-xs text-gray-400 mt-1 mb-4">
+            צפיות עמוד באתר הציבורי (לא כולל פאנל הניהול), 12 החודשים האחרונים
+        </p>
+        {#if maxVisits === 0}
+            <p class="text-sm text-gray-400">
+                עדיין אין נתונים — הספירה מתחילה להצטבר מרגע העלייה לאוויר.
+            </p>
+        {:else}
+            <div class="flex items-stretch gap-1.5">
+                {#each data.visits as v (v.month)}
+                    <div class="flex-1 min-w-0 flex flex-col items-center" title="{fmtMonth(v.month)}: {v.count} כניסות">
+                        <div class="text-[10px] font-bold text-gray-300 mb-1">{v.count || ''}</div>
+                        <div class="w-full h-36 flex items-end">
+                            <div
+                                class="w-full rounded-t-md bg-gradient-to-t from-blue-600 to-purple-400 transition-all"
+                                style="height: {v.count === 0 ? '2px' : Math.max(4, Math.round((v.count / maxVisits) * 100)) + '%'}"
+                            ></div>
+                        </div>
+                        <div class="text-[10px] text-gray-400 mt-1 whitespace-nowrap">{fmtMonth(v.month)}</div>
+                    </div>
+                {/each}
+            </div>
+        {/if}
     </div>
 
     <!-- מצב ייבוא הרשימה הסטטית -->
