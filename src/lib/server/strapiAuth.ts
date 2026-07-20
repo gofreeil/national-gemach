@@ -8,6 +8,41 @@ export interface StrapiUser {
 	username: string;
 	email: string;
 	phone?: string | null;
+	// שדות שם אפשריים — רק אם ה-Strapi המשותף שומר שם אמיתי (לא מובטחים)
+	name?: string;
+	displayName?: string;
+	firstname?: string;
+	lastname?: string;
+}
+
+/**
+ * האם המחרוזת היא מזהה־מכונה של ספק OAuth (google_1164…, facebook_123…) ולא שם אמיתי.
+ * ה-Strapi המשותף יוצר למשתמשי OAuth username בצורת "<provider>_<id>" — אסור להציג אותו.
+ */
+export function isMachineUsername(name: string): boolean {
+	return /^[a-z][a-z0-9]*[_-]\d{5,}$/i.test(name.trim());
+}
+
+/** בוחר את השם האמיתי הטוב ביותר שקיים על רשומת ה-Strapi (username כברירת מחדל) */
+export function bestStrapiName(u: Partial<StrapiUser>): string {
+	const full = [u.firstname, u.lastname].filter(Boolean).join(' ').trim();
+	return (u.name || u.displayName || full || u.username || '').trim();
+}
+
+/**
+ * שם תצוגה ידידותי: שם אמיתי אם קיים; אחרת נגזר מהאימייל (החלק שלפני ה-@).
+ * לעולם לא מחזיר מזהה־מכונה כמו google_1164… .
+ */
+export function friendlyName(rawName: string | null | undefined, email: string | null | undefined): string {
+	const name = (rawName ?? '').trim();
+	if (name && !name.includes('@') && !isMachineUsername(name)) return name;
+	const local = (email ?? '').split('@')[0] ?? '';
+	if (!local) return '';
+	return local
+		.split(/[._-]+/)
+		.filter(Boolean)
+		.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+		.join(' ');
 }
 
 /** קריאת ערך עוגייה מתוך כותרת Cookie גולמית */

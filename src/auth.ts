@@ -7,7 +7,9 @@ import {
 	strapiLogin,
 	getStrapiMe,
 	getOrCreateStrapiJwt,
-	readCookie
+	readCookie,
+	bestStrapiName,
+	friendlyName
 } from '$lib/server/strapiAuth';
 
 const AUTH_SECRET          = process.env.AUTH_SECRET          ?? '';
@@ -41,7 +43,7 @@ const providers = [
 				const { jwt, user } = await strapiLogin(emailLc, credentials.password as string);
 				return {
 					id: String(user.id),
-					name: user.username ?? '',
+					name: bestStrapiName(user),
 					email: user.email ?? emailLc,
 					phone: user.phone ?? '',
 					strapiJwt: jwt
@@ -63,7 +65,7 @@ const providers = [
 			if (!me?.email) return null;
 			return {
 				id: String(me.id),
-				name: me.username ?? '',
+				name: bestStrapiName(me),
 				email: me.email,
 				phone: me.phone ?? '',
 				strapiJwt: jwt
@@ -123,7 +125,11 @@ export const { handle, signIn, signOut } = !AUTH_SECRET
 				session({ session, token }) {
 					if (token.dbUserId) session.user.id = token.dbUserId as string;
 					if (token.email) session.user.email = token.email as string;
-					if (token.name) session.user.name = token.name as string;
+					// שם תצוגה נקי — לעולם לא מזהה־מכונה כמו google_1164… (מנקה גם עוגיות ישנות)
+					session.user.name = friendlyName(
+						token.name as string | undefined,
+						token.email as string | undefined
+					);
 					if (token.phone) (session.user as { phone?: string }).phone = token.phone as string;
 					if (token.provider) (session.user as { provider?: string }).provider = token.provider as string;
 					if (token.strapiJwt) (session.user as { strapiJwt?: string }).strapiJwt = token.strapiJwt as string;
