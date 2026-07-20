@@ -54,8 +54,8 @@
 </script>
 
 <!-- Hero Section -->
-<section class="text-center py-10 md:py-16 px-4">
-    <div class="mx-auto mb-4 h-40 w-40 md:h-52 md:w-52 rounded-2xl overflow-hidden bg-white shadow-xl border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+<section class="text-center py-6 md:py-8 px-4">
+    <div class="mx-auto mb-5 h-40 w-40 md:h-52 md:w-52 rounded-2xl overflow-hidden bg-white shadow-xl border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
         <img
             src="/images/logo.png"
             alt="הגמח הארצי לוגו"
@@ -63,12 +63,7 @@
             style="object-position: center; translate: 0 4%;"
         />
     </div>
-    <h1 class="text-4xl md:text-5xl font-black mb-3 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-        הגמ"ח הארצי
-    </h1>
-    <p class="text-xl md:text-2xl text-gray-300 font-bold mb-6">
-        כל הגמחים בארץ בכף ידך
-    </p>
+    <h1 class="sr-only">הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</h1>
 
     <!-- Alternate path: search by city + map (community site) -->
     <div class="max-w-2xl mx-auto mb-8 px-4">
