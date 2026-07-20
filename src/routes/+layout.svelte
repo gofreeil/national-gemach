@@ -66,15 +66,16 @@
 
 <style>
     /* רקע ורוד בהיר בגוונים מעורבים של לילך — כתמי צבע רכים בגדלים ומיקומים
-       שונים במקום גוון אחיד. נשאר בטווח ביניים כדי שהטקסט הלבן יישאר קריא */
+       שונים במקום גוון אחיד. הבסיס שוטח יחסית והכתמים מרוככים כדי שהמעבר
+       בין האזורים הבהירים לכהים יישאר עדין. טווח ביניים לשמירת קריאוּת הטקסט הלבן */
     .site-bg {
         background:
-            radial-gradient(1100px 600px at 85% -5%, rgba(251, 207, 232, 0.55), transparent 60%),
-            radial-gradient(900px 650px at 8% 12%, rgba(244, 194, 231, 0.50), transparent 55%),
-            radial-gradient(1000px 750px at 50% 45%, rgba(240, 182, 222, 0.38), transparent 60%),
-            radial-gradient(900px 600px at 92% 70%, rgba(249, 168, 212, 0.45), transparent 55%),
-            radial-gradient(850px 550px at 12% 88%, rgba(233, 172, 222, 0.42), transparent 60%),
-            linear-gradient(170deg, #c47ab5 0%, #b268a6 35%, #a3599a 68%, #90548c 100%);
+            radial-gradient(1100px 600px at 85% -5%, rgba(251, 207, 232, 0.48), transparent 60%),
+            radial-gradient(900px 650px at 8% 12%, rgba(244, 194, 231, 0.44), transparent 55%),
+            radial-gradient(1000px 750px at 50% 45%, rgba(240, 182, 222, 0.35), transparent 60%),
+            radial-gradient(900px 600px at 92% 70%, rgba(249, 168, 212, 0.40), transparent 55%),
+            radial-gradient(850px 550px at 12% 88%, rgba(233, 172, 222, 0.38), transparent 60%),
+            linear-gradient(170deg, #cb84bc 0%, #c179b3 35%, #b56ea9 68%, #a763a0 100%);
     }
 
     .layout-container {
