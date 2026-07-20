@@ -40,12 +40,12 @@
 
 <header
     class="sticky top-0 z-50 border-b-2 md:border-b-4 border-blue-600 shadow-lg backdrop-blur-lg"
-    style="background: linear-gradient(to bottom, rgba(135,75,144,0.92) 0%, rgba(135,75,144,0.88) 66%, rgba(135,75,144,0.1) 100%);"
+    style="background: linear-gradient(to bottom, rgba(135,75,144,0.95) 0%, rgba(135,75,144,0.92) 22%, rgba(135,75,144,0.85) 42%, rgba(135,75,144,0.72) 60%, rgba(135,75,144,0.54) 74%, rgba(135,75,144,0.32) 87%, rgba(135,75,144,0.1) 100%);"
 >
     <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
 
         <!-- Mobile -->
-        <div class="md:hidden flex items-center justify-between h-[60px]">
+        <div class="md:hidden flex items-center justify-between h-[56px]">
             <a href="/" class="flex items-center gap-3 min-w-0 flex-1">
                 <div class="h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-white border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.25)]">
                     <img
@@ -120,7 +120,7 @@
         </div>
 
         <!-- Desktop -->
-        <div class="hidden md:flex items-center justify-between py-2">
+        <div class="hidden md:flex items-center justify-between py-1">
             <!-- Logo + Title -->
             <a href="/" class="brand-link flex items-center gap-4">
                 <div class="brand-logo-frame h-20 w-20 rounded-xl overflow-hidden bg-white shadow-lg border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_10px_15px_-3px_rgba(0,0,0,0.1)]">
