@@ -6,6 +6,11 @@
     let gemachim = $derived(data.gemachim);
     let categories = $derived(data.categories);
 
+    /** גמ"חים שהאדמין נעץ (⭐ בפאנל הניהול) */
+    let featuredGemachim = $derived(gemachim.filter(g => g.featured));
+    /** החדשים שנוספו — בלי הנעוצים, כדי לא להציג פעמיים */
+    let newestGemachim = $derived(gemachim.filter(g => !g.featured).slice(0, 6));
+
     let searchQuery = $state('');
     let selectedCategory = $state('');
     let selectedCity = $state('');
@@ -234,38 +239,54 @@
             {/each}
         </div>
 
-        <!-- Featured Gemachim -->
+        {#snippet gemachCard(gemach: Gemach, pinned: boolean = false)}
+            <article class="bg-white/5 border {pinned ? 'border-amber-500/30' : 'border-white/10'} rounded-2xl p-5 hover:bg-white/8 hover:border-white/20 transition-all">
+                <div class="flex items-start gap-3">
+                    <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
+                        {#if gemach.category === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}{getCategoryIcon(gemach.category)}{/if}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-black text-white text-lg leading-tight">
+                            {#if pinned}<span class="text-amber-400 text-sm" aria-hidden="true">⭐</span> {/if}{gemach.name}
+                        </h3>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
+                                {getCategoryLabel(gemach.category)}
+                            </span>
+                            <span class="text-xs text-gray-400">
+                                📍 {gemach.city}{gemach.neighborhood ? ` – ${gemach.neighborhood}` : ''}
+                            </span>
+                        </div>
+                        <p class="text-gray-300 text-sm mt-2 leading-relaxed line-clamp-2">{gemach.description}</p>
+                        {#if gemach.phone}
+                            <a
+                                href="tel:{gemach.phone}"
+                                class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
+                                aria-label="התקשר ל{gemach.name}"
+                            >
+                                📞 {gemach.phone}
+                            </a>
+                        {/if}
+                    </div>
+                </div>
+            </article>
+        {/snippet}
+
+        <!-- Featured Gemachim — נעוצים ע"י האדמין (⭐ בפאנל הניהול) -->
+        {#if featuredGemachim.length > 0}
+            <h2 class="text-2xl font-black text-white text-center mb-6">גמחים מומלצים</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+                {#each featuredGemachim as gemach (gemach.id)}
+                    {@render gemachCard(gemach, true)}
+                {/each}
+            </div>
+        {/if}
+
+        <!-- Newest Gemachim -->
         <h2 class="text-2xl font-black text-white text-center mb-6">גמחים חדשים שנוספו</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {#each gemachim.slice(0, 6) as gemach (gemach.id)}
-                <article class="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/8 hover:border-white/20 transition-all">
-                    <div class="flex items-start gap-3">
-                        <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
-                            {#if gemach.category === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}{getCategoryIcon(gemach.category)}{/if}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <h3 class="font-black text-white text-lg leading-tight">{gemach.name}</h3>
-                            <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
-                                    {getCategoryLabel(gemach.category)}
-                                </span>
-                                <span class="text-xs text-gray-400">
-                                    📍 {gemach.city}{gemach.neighborhood ? ` – ${gemach.neighborhood}` : ''}
-                                </span>
-                            </div>
-                            <p class="text-gray-300 text-sm mt-2 leading-relaxed line-clamp-2">{gemach.description}</p>
-                            {#if gemach.phone}
-                                <a
-                                    href="tel:{gemach.phone}"
-                                    class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
-                                    aria-label="התקשר ל{gemach.name}"
-                                >
-                                    📞 {gemach.phone}
-                                </a>
-                            {/if}
-                        </div>
-                    </div>
-                </article>
+            {#each newestGemachim as gemach (gemach.id)}
+                {@render gemachCard(gemach)}
             {/each}
         </div>
 
