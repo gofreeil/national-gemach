@@ -46,7 +46,7 @@
 
 <header
     class="sticky top-0 z-50 border-b-2 md:border-b-4 border-blue-600 shadow-lg backdrop-blur-lg"
-    style="background: linear-gradient(to bottom, rgba(17,24,39,0.92) 0%, rgba(17,24,39,0.88) 66%, rgba(17,24,39,0.1) 100%);"
+    style="background: linear-gradient(to bottom, rgba(42,21,53,0.92) 0%, rgba(42,21,53,0.88) 66%, rgba(42,21,53,0.1) 100%);"
 >
     <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
 
@@ -110,7 +110,7 @@
                         <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
                     </button>
                     {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-36 rounded-lg bg-[#0f172a] border border-white/10 shadow-xl z-50">
+                        <div class="absolute left-0 mt-2 w-36 rounded-lg bg-[#2a1535] border border-white/10 shadow-xl z-50">
                             {#each languages as lang}
                                 <button
                                     class="flex w-full items-center gap-3 px-3 py-2 text-white hover:bg-white/10 transition-colors"
@@ -212,7 +212,7 @@
                         </svg>
                     </button>
                     {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-40 rounded-lg bg-[#0f172a] border border-white/10 shadow-xl z-50">
+                        <div class="absolute left-0 mt-2 w-40 rounded-lg bg-[#2a1535] border border-white/10 shadow-xl z-50">
                             {#each languages as lang}
                                 <button
                                     class="flex w-full items-center gap-3 px-4 py-2 text-white hover:bg-white/10 transition-colors"
