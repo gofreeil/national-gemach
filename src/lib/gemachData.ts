@@ -43,12 +43,7 @@ export const categories: CategoryDef[] = [
     { key: 'other', label: 'אחר', icon: '📦' },
 ];
 
-export const cities = [
-    'ירושלים', 'תל אביב', 'חיפה', 'באר שבע', 'פתח תקווה',
-    'ראשון לציון', 'אשדוד', 'נתניה', 'בני ברק', 'רמת גן',
-    'רחובות', 'מודיעין', 'אשקלון', 'חולון', 'בת ים',
-    'הרצליה', 'כפר סבא', 'רעננה', 'לוד', 'רמלה',
-];
+export { cities } from './cities';
 
 export const gemachim: Gemach[] = [
     {

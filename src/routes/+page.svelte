@@ -6,6 +6,9 @@
     let gemachim = $derived(data.gemachim);
     let categories = $derived(data.categories);
 
+    /** מספר הערים שבהן יש גמ"חים בפועל (לשורת הסטטיסטיקה) */
+    let cityCount = $derived(new Set(gemachim.map(g => g.city)).size);
+
     /** גמ"חים שהאדמין נעץ (⭐ בפאנל הניהול) */
     let featuredGemachim = $derived(gemachim.filter(g => g.featured));
     /** החדשים שנוספו — בלי הנעוצים, כדי לא להציג פעמיים */
@@ -28,8 +31,9 @@
                 (g.contact?.toLowerCase().includes(q) ?? false) ||
                 (g.notes?.toLowerCase().includes(q) ?? false)
             );
+            const cityQ = selectedCity.trim();
             const matchesCategory = !selectedCategory || g.category === selectedCategory;
-            const matchesCity = !selectedCity || g.city === selectedCity;
+            const matchesCity = !cityQ || g.city.includes(cityQ);
             return matchesQuery && matchesCategory && matchesCity;
         });
     });
@@ -103,17 +107,21 @@
                 {/each}
             </select>
 
-            <select
+            <input
+                type="text"
                 bind:value={selectedCity}
                 onchange={doSearch}
+                onkeydown={handleKey}
+                list="home-cities-list"
+                placeholder="כל הערים — הקלד שם עיר"
                 aria-label="סנן לפי עיר"
-                class="rounded-xl bg-white/10 border border-white/20 text-white px-4 py-2 text-sm focus:outline-none focus:border-blue-400 cursor-pointer"
-            >
-                <option value="">כל הערים</option>
-                {#each cities as city}
-                    <option value={city}>{city}</option>
+                class="w-48 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-400 px-4 py-2 text-sm focus:outline-none focus:border-blue-400 focus:bg-white/15 transition-all"
+            />
+            <datalist id="home-cities-list">
+                {#each cities as city (city)}
+                    <option value={city}></option>
                 {/each}
-            </select>
+            </datalist>
 
             {#if showResults || selectedCategory || selectedCity}
                 <button
@@ -135,7 +143,7 @@
             <div class="text-xs text-gray-400">גמחים רשומים</div>
         </div>
         <div class="text-center">
-            <div class="text-2xl font-black text-purple-400">{cities.length}+</div>
+            <div class="text-2xl font-black text-purple-400">{cityCount}+</div>
             <div class="text-xs text-gray-400">ערים</div>
         </div>
         <div class="text-center">
