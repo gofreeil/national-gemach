@@ -631,3 +631,174 @@
         <p class="text-sm text-gray-300">עיון בכל {gemachim.length} הגמ"חים במאגר, 20 בכל עמוד</p>
     </a>
 </section>
+
+<style>
+    /* ═══ המסילה ═══ */
+    .cat-rail {
+        display: flex;
+        gap: 0.75rem;                   /* חייב להתאים ל-GAP_PX בסקריפט */
+        list-style: none;
+        margin: 0;
+        padding: 0.75rem 0.25rem 1rem;  /* מקום לטבעת הפוקוס (3px+3px) ולהרמת ה-hover (4px) */
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain; /* בלי back-swipe של הדפדפן באייפון */
+        -webkit-overflow-scrolling: touch;
+        scroll-padding-inline: 2rem;    /* תואם בדיוק את רוחב המסכה */
+        /* ה-snap מוגדר כאן ולא כ-utility, כדי שהעקיפה בגרירה תשב באותו מקור בקסקייד.
+           scroll-behavior: smooth לא מוצהר בכוונה — הוא היה הופך כל גרירה למקרטעת. */
+        scroll-snap-type: x proximity;
+        cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        /* דהייה בקצוות במסכה ולא בגרדיאנט צבוע — מאחור יושב הרקע הוורוד,
+           וכל צבע קשיח היה נראה כמריחה */
+        --cat-mask: linear-gradient(
+            to right,
+            transparent 0,
+            #000 var(--f-l, 2rem),
+            #000 calc(100% - var(--f-r, 2rem)),
+            transparent 100%
+        );
+        -webkit-mask-image: var(--cat-mask);
+        mask-image: var(--cat-mask);
+    }
+    .cat-rail::-webkit-scrollbar { display: none; }
+    .cat-rail.is-dragging { cursor: grabbing; scroll-snap-type: none; scroll-behavior: auto; }
+    .cat-rail.is-dragging .cat-tile { transition: none; }
+    @media (hover: none) { .cat-rail { cursor: default; } }
+
+    .cat-item { flex: 0 0 auto; scroll-snap-align: start; }
+    .cat-spacer { flex: 0 0 2rem; }   /* ≥ רוחב המסכה, אחרת האריח האחרון נשאר מעומעם */
+
+    /* ═══ אריח ═══ */
+    .cat-tile {
+        position: relative;
+        width: clamp(7rem, 29vw, 8.5rem);   /* vw ⇒ ההצצה לאריח הבא מובטחת בכל רוחב מסך */
+        min-height: 9.75rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem 0.75rem;
+        border-radius: 1rem;
+        border: 1px solid #3b5794;
+        background: linear-gradient(160deg, #1b2f5e 0%, #132342 55%, #0f1c37 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 26px -20px rgba(0, 0, 0, 0.95);
+        transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        cursor: pointer;
+        text-align: center;
+    }
+    /* אף צאצא לא יבלע pointermove ולא יתחיל drag-image */
+    .cat-tile > * { pointer-events: none; }
+    .cat-tile img { -webkit-user-drag: none; }
+
+    .cat-rail:not(.is-dragging) .cat-tile:hover {
+        transform: translateY(-4px);
+        border-color: #5474b8;
+        background: linear-gradient(160deg, #24407c 0%, #182c54 60%, #12203e 100%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 18px 34px -20px rgba(0, 0, 0, 1);
+    }
+    .cat-tile:active { transform: translateY(-1px) scale(0.985); }   /* משוב מגע — hover לא קיים בנייד */
+
+    .cat-tile.is-lead {
+        border-color: rgba(212, 175, 55, 0.45);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09),
+                    0 0 0 1px rgba(212, 175, 55, 0.14),
+                    0 16px 32px -20px rgba(212, 175, 55, 0.55);
+    }
+    .cat-tile.is-empty { opacity: 0.72; }
+    .cat-rail:not(.is-dragging) .cat-tile.is-empty:hover { opacity: 1; }
+
+    .cat-rank {
+        position: absolute;
+        top: 0.45rem;
+        inset-inline-end: 0.55rem;      /* לוגי ⇒ נוחת בפינה הנכונה ב-RTL */
+        display: grid;
+        place-items: center;
+        width: 1.2rem;
+        height: 1.2rem;
+        border-radius: 999px;
+        font-size: 0.66rem;
+        font-weight: 900;
+        line-height: 1;
+        color: #3a2a06;
+        background: linear-gradient(145deg, #f3d68b, #d4af37);
+        box-shadow: 0 2px 6px -2px rgba(212, 175, 55, 0.8);
+    }
+    .cat-ico { display: grid; place-items: center; min-height: 2.5rem; }
+    .cat-label { font-size: 0.875rem; font-weight: 700; line-height: 1.15; color: #e5e7eb; }
+    .cat-count {
+        font-size: 0.6875rem;
+        color: #9db4e6;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        background: rgba(8, 17, 38, 0.75);
+        box-shadow: inset 0 0 0 1px rgba(59, 87, 148, 0.9);
+    }
+    .cat-tile.is-lead .cat-count { color: #f0d089; box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.35); }
+
+    /* ═══ פקדי ניווט ═══ */
+    .cat-nav {
+        display: inline-grid;
+        grid-auto-flow: column;
+        align-items: center;
+        gap: 0.35rem;
+        place-items: center;
+        min-width: 2.75rem;             /* יעד מגע נדיב בנייד */
+        height: 2.75rem;
+        padding: 0 0.5rem;
+        border-radius: 999px;
+        color: #dbe4fb;
+        background: rgba(22, 38, 77, 0.92);
+        border: 1px solid #3b5794;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 6px 16px -10px rgba(0, 0, 0, 0.9);
+        cursor: pointer;
+        transition: background 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+    }
+    @media (min-width: 768px) { .cat-nav { min-width: 2.25rem; height: 2.25rem; } }
+    .cat-nav--pill { padding: 0 0.85rem 0 0.6rem; color: #f0d089; }
+    .cat-nav:hover { background: #213569; border-color: #5474b8; }
+    /* aria-disabled ולא disabled — כדי לא לחטוף פוקוס ממשתמש מקלדת שהגיע לקצה */
+    .cat-nav[aria-disabled='true'] { opacity: 0.35; cursor: default; }
+    .cat-nav[aria-disabled='true']:hover { background: rgba(22, 38, 77, 0.92); border-color: #3b5794; }
+
+    /* ═══ סקראבר ═══ */
+    .cat-track {
+        position: relative;
+        width: min(22rem, 70%);
+        height: 0.375rem;
+        border-radius: 999px;
+        background: #16264d;
+        box-shadow: inset 0 0 0 1px #3b5794;
+    }
+    .cat-thumb {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border-radius: 999px;
+        width: calc(var(--ratio, 1) * 100%);
+        /* inset-inline-start מודע-כיוון: ב-RTL זה היסט מימין ⇒ p=0 = המובילות */
+        inset-inline-start: calc(var(--p, 0) * (100% - var(--ratio, 1) * 100%));
+        background: linear-gradient(90deg, #d4af37, #7fa0e8);
+        box-shadow: 0 0 10px -2px rgba(127, 160, 232, 0.7);
+    }
+
+    /* ═══ רמז ═══ */
+    .cat-hint-arrow { display: inline-block; }
+    .cat-hint-arrow.is-live { animation: cat-hint 1.6s ease-in-out infinite; }
+    @keyframes cat-hint {
+        0%, 100% { transform: translateX(0); }
+        50%      { transform: translateX(5px); }
+    }
+
+    /* הכלל הגלובלי ב-app.css מאפס רק משכי אנימציה — הוא לא מסיר transform שכבר הוחל */
+    @media (prefers-reduced-motion: reduce) {
+        .cat-hint-arrow, .cat-hint-arrow.is-live { animation: none !important; transform: none !important; }
+        .cat-tile, .cat-tile:hover, .cat-tile:active { transform: none !important; }
+        .cat-rail { scroll-behavior: auto !important; }
+    }
+</style>
