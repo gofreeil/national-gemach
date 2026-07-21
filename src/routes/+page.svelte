@@ -75,17 +75,19 @@
         </div>
 
         <!-- סטטיסטיקות חיות — נגזרות מהנתונים בפועל (לא מוקאפ), צמודות ללוגו.
-             צ'יפים כהים כדי שהמספרים והתוויות ייקראו על רקע הדף הבהיר. -->
-        <div class="flex flex-col gap-2 md:gap-2.5">
-            <div class="rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-2 text-center min-w-[96px]">
+             באנר כהה אחד, שלושת הנתונים זה מתחת לזה, מופרדים בקו קצר שלא נוגע בשוליים. -->
+        <div class="rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-3 min-w-[112px]">
+            <div class="text-center">
                 <div class="text-xl md:text-2xl font-black text-blue-300 leading-tight">{gemachim.length}</div>
                 <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">גמחים רשומים</div>
             </div>
-            <div class="rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-2 text-center min-w-[96px]">
+            <div class="mx-auto my-2 h-px w-3/5 bg-[#3b5794]" aria-hidden="true"></div>
+            <div class="text-center">
                 <div class="text-xl md:text-2xl font-black text-purple-300 leading-tight">{cityCount}</div>
                 <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">ערים</div>
             </div>
-            <div class="rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-2 text-center min-w-[96px]">
+            <div class="mx-auto my-2 h-px w-3/5 bg-[#3b5794]" aria-hidden="true"></div>
+            <div class="text-center">
                 <div class="text-xl md:text-2xl font-black text-pink-300 leading-tight">{categories.length}</div>
                 <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">קטגוריות</div>
             </div>
