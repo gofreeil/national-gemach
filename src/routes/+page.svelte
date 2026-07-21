@@ -242,7 +242,7 @@
         doSearch();
     }
 
-    let filteredGemachim = $derived(() => {
+    let filteredGemachim = $derived.by(() => {
         const q = searchQuery.trim().toLowerCase();
         return gemachim.filter(g => {
             const matchesQuery = !q || (
@@ -385,11 +385,11 @@
     <section class="px-2 md:px-4 pb-8" aria-label="תוצאות חיפוש">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-bold text-white">
-                נמצאו <span class="text-blue-400">{filteredGemachim().length}</span> גמחים
+                נמצאו <span class="text-blue-400">{filteredGemachim.length}</span> גמחים
             </h2>
         </div>
 
-        {#if filteredGemachim().length === 0}
+        {#if filteredGemachim.length === 0}
             <div class="text-center py-16 text-gray-400">
                 <div class="text-5xl mb-4" aria-hidden="true">🔍</div>
                 <p class="text-lg font-bold">לא נמצאו גמחים מתאימים</p>
@@ -400,7 +400,7 @@
             </div>
         {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {#each filteredGemachim() as gemach (gemach.id)}
+                {#each filteredGemachim as gemach (gemach.id)}
                     <article class="bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
                         <div class="flex items-start gap-3">
                             <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
