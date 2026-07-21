@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { getAllGemachim, getImportedSourceIds } from '$lib/server/db';
 import { getCategories, getAdmins } from '$lib/server/adminStore';
+import { hasValidCoords } from '$lib/server/geocode';
 import { getMonthlyVisits } from '$lib/server/visitStats';
 import { staticGemachim } from '$lib/staticGemachim';
 
@@ -14,6 +15,7 @@ export const load: PageServerLoad = async () => {
 	]);
 
 	const remainingStatic = staticGemachim.filter(g => !importedIds.has(g.id)).length;
+	const mapReady = managed.filter(g => hasValidCoords(g.lat, g.lng)).length;
 
 	return {
 		visits,
@@ -24,7 +26,9 @@ export const load: PageServerLoad = async () => {
 			staticRemaining: remainingStatic,
 			staticImported: staticGemachim.length - remainingStatic,
 			categories: categories.length,
-			admins: admins.length
+			admins: admins.length,
+			mapReady,
+			mapMissing: managed.length - mapReady
 		}
 	};
 };

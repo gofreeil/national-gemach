@@ -12,6 +12,9 @@ export interface Gemach {
     notes?: string;
     address?: string;
     hours?: string;
+    /** קואורדינטות למפה של "קהילה בשכונה". נגזרות אוטומטית מהכתובת/עיר בעת שמירה. */
+    lat?: number | null;
+    lng?: number | null;
     icon?: string;
     /** ידני: מיקום בסידור. קטן יותר = מופיע קודם. undefined = בסוף */
     order?: number;

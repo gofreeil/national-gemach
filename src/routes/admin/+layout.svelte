@@ -9,6 +9,7 @@
         { href: '/admin',            label: 'סקירה',       icon: '📊', exact: true },
         { href: '/admin/gemachim',   label: 'גמ"חים',      icon: '🤝', exact: false },
         { href: '/admin/gemachim/new', label: 'הוספת גמ"ח', icon: '➕', exact: true },
+        { href: '/admin/gemachim/complete', label: 'השלמת מפה', icon: '🗺️', exact: true },
         { href: '/admin/categories', label: 'קטגוריות',    icon: '🏷️', exact: false },
         { href: '/admin/import',     label: 'ייבוא נתונים', icon: '📥', exact: false },
         ...(isSuper ? [{ href: '/admin/admins', label: 'ניהול אדמינים', icon: '🔑', exact: false }] : []),

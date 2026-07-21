@@ -83,6 +83,28 @@
         </div>
     {/if}
 
+    <!-- מוכנות למפה של קהילה בשכונה -->
+    {#if s.mapMissing > 0}
+        <div class="card p-5 border-amber-500/30 bg-amber-500/5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-bold text-amber-200">🗺️ {s.mapMissing} גמ"חים עדיין ללא מיקום למפה</h2>
+                    <p class="text-sm text-gray-400 mt-1">
+                        {s.mapReady} מתוך {s.managed} כוללים קואורדינטות ויופיעו על מפת "קהילה בשכונה".
+                        השלם כתובת/עיר לשאר כדי שכל גמ"ח יופיע וייספר גם שם.
+                    </p>
+                </div>
+                <a href="/admin/gemachim/complete" class="rounded-xl bg-amber-600 hover:bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-colors whitespace-nowrap">
+                    להשלמת פרטים ←
+                </a>
+            </div>
+        </div>
+    {:else if s.managed > 0}
+        <div class="card p-5 border-emerald-500/30 bg-emerald-500/5">
+            <h2 class="font-bold text-emerald-200">🗺️ כל {s.managed} הגמ"חים כוללים מיקום ומופיעים על מפת "קהילה בשכונה"</h2>
+        </div>
+    {/if}
+
     <!-- קיצורי דרך -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <a href="/admin/gemachim/new" class="card p-5 hover:bg-[#1e3260] transition-colors block">
@@ -94,6 +116,11 @@
             <div class="text-2xl mb-2" aria-hidden="true">🤝</div>
             <div class="font-bold text-white">ניהול גמ"חים</div>
             <div class="text-xs text-gray-400 mt-1">עריכה, סידור, הצמדה ומחיקה</div>
+        </a>
+        <a href="/admin/gemachim/complete" class="card p-5 hover:bg-[#1e3260] transition-colors block">
+            <div class="text-2xl mb-2" aria-hidden="true">🗺️</div>
+            <div class="font-bold text-white">השלמת פרטים למפה</div>
+            <div class="text-xs text-gray-400 mt-1">כתובת/עיר + גזירת קואורדינטות אוטומטית</div>
         </a>
         <a href="/admin/categories" class="card p-5 hover:bg-[#1e3260] transition-colors block">
             <div class="text-2xl mb-2" aria-hidden="true">🏷️</div>

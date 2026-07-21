@@ -313,3 +313,16 @@
         </div>
     </section>
 {/if}
+
+<!-- מעבר לרשימת כל הגמ"חים (עם עימוד, 20 בכל עמוד) — בסוף דף הבית -->
+<section class="px-4 pb-14 pt-2 text-center">
+    <a
+        href="/gemachim"
+        class="group inline-flex flex-col items-center gap-2 rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-900/40 to-purple-900/40 px-8 py-6 transition-all hover:border-blue-400/60 hover:from-blue-900/60 hover:to-purple-900/60"
+    >
+        <h2 class="text-2xl md:text-3xl font-black text-white group-hover:text-blue-200 transition-colors">
+            לכלל הגמ"חים ←
+        </h2>
+        <p class="text-sm text-gray-300">עיון בכל {gemachim.length} הגמ"חים במאגר, 20 בכל עמוד</p>
+    </a>
+</section>

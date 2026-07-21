@@ -6,6 +6,7 @@
 import { strapiGet, strapiPost, strapiPut, strapiDelete, StrapiContentTypeError } from './strapiClient.js';
 import type { Gemach } from '$lib/gemachData';
 import { categories } from '$lib/gemachData';
+import { resolveGemachCoords, hasValidCoords } from './geocode';
 
 interface StrapiItem {
     id: number;
@@ -20,6 +21,8 @@ interface StrapiItem {
     color: string | null;
     neighborhood: string | null;
     city: string | null;
+    lat: number | null;
+    lng: number | null;
     extra_fields: Record<string, unknown> | null;
     status1: string | null;
     user_id: string | null;
@@ -76,6 +79,8 @@ function mapItemToGemach(item: StrapiItem): Gemach {
         notes:         toStr(extra.notes),
         address:       item.address ?? undefined,
         hours:         toStr(extra.hours),
+        lat:           typeof item.lat === 'number' ? item.lat : null,
+        lng:           typeof item.lng === 'number' ? item.lng : null,
         icon:          item.icon ?? undefined,
         order,
         featured:      extra.featured === true || extra.featured === 'true',
@@ -145,6 +150,8 @@ export interface CreateGemachInput {
     featured?: boolean;
     sourceId?: string;      // מזהה מקורי בעת ייבוא הרשימה הסטטית
     status?: string;        // ברירת מחדל 'active'
+    lat?: number | null;    // פין מפורש (אחרת נגזר מהכתובת/עיר)
+    lng?: number | null;
 }
 
 /** בונה את גוף ה-extra_fields מקלט (משותף ליצירה/עדכון) */
@@ -166,8 +173,22 @@ function buildExtra(input: CreateGemachInput): Record<string, unknown> {
 // (שדה מחרוזת מאונדקס) של "מה כבר יובא" בלי לשלוף את כל ה-extra_fields.
 const SHEET_PREFIX = 'sheet:';
 
-/** יוצר גמ"ח חדש ב-Strapi (מופיע מיד גם בקהילה) */
-export async function createGemach(input: CreateGemachInput): Promise<{ id: string }> {
+/** יוצר גמ"ח חדש ב-Strapi (מופיע מיד גם בקהילה).
+ *  גוזר קואורדינטות (lat/lng) מהכתובת/עיר כדי שהפריט יופיע על מפת הקהילה,
+ *  אלא אם opts.geocode === false (ייבוא אצווה גדול מדלג כדי לא להעמיס על
+ *  Nominatim — ההשלמה נעשית במסך "השלמת פרטים" באצוות מבוקרות). */
+export async function createGemach(
+    input: CreateGemachInput,
+    opts: { geocode?: boolean } = {},
+): Promise<{ id: string }> {
+    let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
+    let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
+    if ((opts.geocode ?? true) && (lat === null || lng === null)) {
+        const c = await resolveGemachCoords(input);
+        lat = c.lat;
+        lng = c.lng;
+    }
+
     const res = await strapiPost<{ data: StrapiItem }>('/api/items', {
         data: {
             label:        input.name,
@@ -180,6 +201,8 @@ export async function createGemach(input: CreateGemachInput): Promise<{ id: stri
             color:        'amber',
             neighborhood: input.neighborhood ?? '',
             city:         input.city,
+            lat,
+            lng,
             extra_fields: buildExtra(input),
             status1:      input.status ?? 'active',
             ...(input.sourceId ? { user_id: SHEET_PREFIX + input.sourceId } : {}),
@@ -190,7 +213,11 @@ export async function createGemach(input: CreateGemachInput): Promise<{ id: stri
 }
 
 /** מעדכן גמ"ח קיים. ממזג את extra_fields כדי לא לדרוס שדות של הקהילה. */
-export async function updateGemach(documentId: string, input: CreateGemachInput): Promise<void> {
+export async function updateGemach(
+    documentId: string,
+    input: CreateGemachInput,
+    opts: { geocode?: boolean } = {},
+): Promise<void> {
     // שולפים את הקיים כדי לשמר extra_fields לא-מנוהלים (logo/images וכו')
     let existingExtra: Record<string, unknown> = {};
     try {
@@ -207,21 +234,35 @@ export async function updateGemach(documentId: string, input: CreateGemachInput)
     if (input.order === undefined) delete mergedExtra.order;
     if (input.tags && input.tags.length === 0) delete mergedExtra.tags;
 
-    await strapiPut(`/api/items/${documentId}`, {
-        data: {
-            label:        input.name,
-            category:     CATEGORY,
-            description:  input.description ?? '',
-            contact:      input.contact     ?? '',
-            phone:        input.phone       ?? '',
-            address:      input.address     ?? '',
-            icon:         input.icon        || '🤝',
-            neighborhood: input.neighborhood ?? '',
-            city:         input.city,
-            extra_fields: mergedExtra,
-            ...(input.status ? { status1: input.status } : {}),
-        },
-    });
+    const data: Record<string, unknown> = {
+        label:        input.name,
+        category:     CATEGORY,
+        description:  input.description ?? '',
+        contact:      input.contact     ?? '',
+        phone:        input.phone       ?? '',
+        address:      input.address     ?? '',
+        icon:         input.icon        || '🤝',
+        neighborhood: input.neighborhood ?? '',
+        city:         input.city,
+        extra_fields: mergedExtra,
+        ...(input.status ? { status1: input.status } : {}),
+    };
+
+    // קואורדינטות: פין מפורש מכובד; אחרת נגזרות מהכתובת/עיר. לא דורסים ערך
+    // קיים בכשל גיאוקודינג (Nominatim לא זמין) — פשוט לא שולחים lat/lng.
+    let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
+    let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
+    if ((opts.geocode ?? true) && (lat === null || lng === null)) {
+        const c = await resolveGemachCoords(input);
+        lat = c.lat;
+        lng = c.lng;
+    }
+    if (lat !== null && lng !== null) {
+        data.lat = lat;
+        data.lng = lng;
+    }
+
+    await strapiPut(`/api/items/${documentId}`, { data });
 }
 
 /** מוחק גמ"ח (נעלם גם מהקהילה) */
@@ -242,6 +283,52 @@ export async function patchGemachOrder(documentId: string, patch: { order?: numb
         if (patch.featured) merged.featured = true; else delete merged.featured;
     }
     await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: merged } });
+}
+
+/**
+ * עדכון ממוקד של שדות המיקום בלבד (למסך "השלמת פרטים"): עיר/שכונה/כתובת +
+ * גזירת קואורדינטות מחדש. PUT חלקי — לא נוגע בשם/תיאור/תגים/סידור.
+ * מחזיר את הקואורדינטות שנגזרו (lat/lng = null אם הגיאוקודינג לא הצליח).
+ */
+export async function patchGemachLocation(
+    documentId: string,
+    loc: { city?: string; neighborhood?: string; address?: string },
+): Promise<{ lat: number | null; lng: number | null }> {
+    const coords = await resolveGemachCoords({
+        address: loc.address,
+        neighborhood: loc.neighborhood,
+        city: loc.city,
+    });
+    const data: Record<string, unknown> = {};
+    if (loc.city !== undefined)         data.city         = loc.city;
+    if (loc.neighborhood !== undefined) data.neighborhood = loc.neighborhood;
+    if (loc.address !== undefined)      data.address      = loc.address;
+    if (coords.lat !== null && coords.lng !== null) {
+        data.lat = coords.lat;
+        data.lng = coords.lng;
+    }
+    await strapiPut(`/api/items/${documentId}`, { data });
+    return coords;
+}
+
+/**
+ * גזירת קואורדינטות בלבד לפריט קיים לפי מזהה (לייבוא-אצווה של מיקומים חסרים).
+ * שולף את הגמ"ח, גוזר lat/lng מהכתובת/עיר, וכותב אותם. מחזיר את התוצאה
+ * (null אם הפריט לא נמצא; lat/lng = null אם אין מספיק מידע/הגיאוקודינג נכשל).
+ */
+export async function geocodeGemachById(
+    documentId: string,
+): Promise<{ lat: number | null; lng: number | null } | null> {
+    const g = await getGemachById(documentId);
+    if (!g) return null;
+    const coords = await resolveGemachCoords({
+        address: g.address,
+        neighborhood: g.neighborhood,
+        city: g.city,
+    });
+    if (coords.lat === null || coords.lng === null) return coords;
+    await strapiPut(`/api/items/${documentId}`, { data: { lat: coords.lat, lng: coords.lng } });
+    return coords;
 }
 
 // ============================================================
@@ -280,7 +367,9 @@ export async function importStaticBatch(
     const failedIds: string[] = [];
     for (const item of items) {
         try {
-            await createGemach(item);
+            // מדלגים על גיאוקודינג באצווה כדי לא להעמיס על Nominatim (מגבלת קצב);
+            // הקואורדינטות מושלמות אחר-כך במסך "השלמת פרטים".
+            await createGemach(item, { geocode: false });
             imported++;
         } catch (e) {
             console.error(`[national-gemach] import failed for ${item.sourceId}:`, e);
