@@ -5,7 +5,7 @@
 // באתר "קהילה בשכונה" (הוא מסנן לפי הקטגוריות שלו בלבד).
 // ============================================================
 
-import { strapiGet, strapiPost, strapiPut, strapiDelete, StrapiContentTypeError } from './strapiClient.js';
+import { strapiGet, strapiGetAll, strapiPost, strapiPut, strapiDelete, StrapiContentTypeError } from './strapiClient.js';
 import type { CategoryDef } from '$lib/gemachData';
 import { categories as defaultCategories } from '$lib/gemachData';
 
@@ -93,12 +93,11 @@ export async function getAdmins(useCache = true): Promise<AdminEntry[]> {
         return rosterCache.data;
     }
     try {
-        const res = await strapiGet<{ data: StrapiItem[] }>('/api/items', {
+        const rows = await strapiGetAll<StrapiItem>('/api/items', {
             'filters[category][$eq]': ADMIN_CATEGORY,
-            'pagination[limit]':      '500',
             'sort':                   'createdAt:asc',
         });
-        const data = (res.data ?? []).map(mapAdmin);
+        const data = rows.map(mapAdmin);
         rosterCache = { at: Date.now(), data };
         return data;
     } catch (e) {
