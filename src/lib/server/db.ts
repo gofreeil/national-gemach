@@ -3,7 +3,7 @@
 // משותף עם אתר "קהילה בשכונה"
 // ============================================================
 
-import { strapiGet, strapiPost, strapiPut, strapiDelete, StrapiContentTypeError } from './strapiClient.js';
+import { strapiGet, strapiGetAll, strapiPost, strapiPut, strapiDelete, StrapiContentTypeError } from './strapiClient.js';
 import type { Gemach } from '$lib/gemachData';
 import { categories } from '$lib/gemachData';
 import { resolveGemachCoords, hasValidCoords } from './geocode';
@@ -98,16 +98,16 @@ function sortManaged(a: Gemach, b: Gemach): number {
     return 0; // נשמר סדר ה-fetch (createdAt:desc)
 }
 
-/** מחזיר את כל הגמ"חים הפעילים מ-Strapi (ממויינים לפי סדר הפאנל) */
+/** מחזיר את כל הגמ"חים הפעילים מ-Strapi (ממויינים לפי סדר הפאנל).
+ *  ללא תקרה — מדפדף עמוד-אחר-עמוד, כך שהמאגר יכול לגדול ללא הגבלה. */
 export async function getAllGemachim(): Promise<Gemach[]> {
     try {
-        const res = await strapiGet<{ data: StrapiItem[] }>('/api/items', {
+        const data = await strapiGetAll<StrapiItem>('/api/items', {
             'filters[category][$eq]': CATEGORY,
             'filters[status1][$eq]':  'active',
             'sort':                   'createdAt:desc',
-            'pagination[limit]':      '2000',
         });
-        return (res.data ?? []).map(mapItemToGemach).sort(sortManaged);
+        return data.map(mapItemToGemach).sort(sortManaged);
     } catch (e) {
         if (e instanceof StrapiContentTypeError) {
             console.warn('[national-gemach] content type not registered, returning []');
@@ -342,13 +342,12 @@ export async function geocodeGemachById(
 export async function getImportedSourceIds(): Promise<Set<string>> {
     const ids = new Set<string>();
     try {
-        const res = await strapiGet<{ data: { user_id: string | null }[] }>('/api/items', {
+        const data = await strapiGetAll<{ user_id: string | null }>('/api/items', {
             'filters[category][$eq]':         CATEGORY,
             'filters[user_id][$startsWith]':  SHEET_PREFIX,
             'fields[0]':                      'user_id',
-            'pagination[limit]':              '5000',
         });
-        for (const item of res.data ?? []) {
+        for (const item of data) {
             if (item.user_id && item.user_id.startsWith(SHEET_PREFIX)) {
                 ids.add(item.user_id.slice(SHEET_PREFIX.length));
             }
