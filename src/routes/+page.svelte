@@ -19,6 +19,206 @@
     let selectedCity = $state('');
     let showResults = $state(false);
 
+    /* ═══════════ מסילת הקטגוריות — דירוג ═══════════ */
+    const OTHER_KEY = 'other';   // "אחר" תמיד אחרון, גם אם צבר הרבה
+    const LEAD_COUNT = 3;        // כמה קטגוריות מקבלות מדליית זהב
+
+    type RailCat = { key: string; label: string; icon: string; count: number; rank: number; lead: boolean };
+
+    /** מונה גמ"חים לקטגוריה במעבר יחיד, במקום filter נפרד לכל אריח */
+    let countByCat = $derived.by(() => {
+        const m = new Map<string, number>();
+        for (const g of gemachim) m.set(g.category, (m.get(g.category) ?? 0) + 1);
+        return m;
+    });
+
+    /** המובילות ראשונות · שובר שוויון יציב לפי הסדר שנקבע בפאנל הניהול */
+    let railCategories = $derived.by((): RailCat[] =>
+        categories
+            .map((cat, i) => ({ cat, i, count: countByCat.get(cat.key) ?? 0 }))
+            .sort((a, b) =>
+                (a.cat.key === OTHER_KEY ? 1 : 0) - (b.cat.key === OTHER_KEY ? 1 : 0) ||
+                b.count - a.count ||
+                a.i - b.i
+            )
+            .map((r, idx) => ({
+                key: r.cat.key,
+                label: r.cat.label,
+                icon: r.cat.icon,
+                count: r.count,
+                rank: idx + 1,
+                lead: idx < LEAD_COUNT && r.count > 0
+            }))
+    );
+
+    /* ═══════════ מסילת הקטגוריות — גרירה וגלילה ═══════════ */
+    const LOCK_PX = 10;          // דד-זון לנעילת ציר הגרירה
+    const TAP_PX = 15;           // מעל זה זו גרירה ולא הקשה
+    const GAP_PX = 12;           // חייב להתאים ל-gap של .cat-rail (0.75rem)
+    const CLICK_GUARD_MS = 120;
+    const CLICK_EXPIRE_MS = 400;
+
+    let railEl = $state<HTMLUListElement | null>(null);
+    let rtl = $state(true);           // ברירת מחדל נכונה כבר ב-SSR (הדף כולו rtl)
+    let dragging = $state(false);
+    let hinted = $state(false);
+    let overflowing = $state(false);
+    let atStart = $state(true);
+    let atEnd = $state(false);
+    let progress = $state(0);         // 0..1
+    let thumbRatio = $state(1);       // clientWidth / scrollWidth
+    let hiddenCount = $state(0);      // כמה קטגוריות עוד מחכות קדימה
+
+    // לא-ריאקטיביים: לא מוצגים, ולכן אין טעם ב-$state
+    let pointerId = -1;
+    let isTouch = false;
+    let axisLock: 'h' | 'v' | null = null;
+    let startX = 0, startY = 0, startScroll = 0, maxMove = 0;
+    let suppressClick = false, dragEndedAt = 0;
+    let rafId = 0, nudged = false, tileStep = 0;
+
+    const prefersReduce = () =>
+        typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /** קריאה יחידה של גאומטריית הגלילה — אדישה לסימן של scrollLeft ב-RTL */
+    function readScroll() {
+        const el = railEl;
+        if (!el) return;
+        const max = el.scrollWidth - el.clientWidth;
+        const pos = Math.min(Math.abs(el.scrollLeft), Math.max(max, 0));
+
+        overflowing = max > 4;
+        atStart = pos <= 2;                       // אפסילון נגד עיגול בזום/hi-dpi
+        atEnd = max <= 4 || pos >= max - 2;
+        progress = max > 0 ? pos / max : 0;
+        thumbRatio = el.scrollWidth > 0 ? Math.min(1, el.clientWidth / el.scrollWidth) : 1;
+
+        // כל האריחים ברוחב זהה, ולכן די במדידת הראשון כדי לדעת כמה עוד מוסתרים
+        const first = el.querySelector<HTMLElement>('[data-tile]');
+        if (first) tileStep = first.getBoundingClientRect().width + GAP_PX;
+        if (tileStep > 0 && !atEnd) {
+            const visible = Math.floor((el.clientWidth + GAP_PX) / tileStep);
+            const passed = Math.round(pos / tileStep);
+            hiddenCount = Math.max(0, railCategories.length - visible - passed);
+        } else {
+            hiddenCount = 0;
+        }
+    }
+
+    /** onscroll יורה בתדר פריים — חנק ב-rAF כדי לא לכתוב 6 ערכי state בכל פריים */
+    function scheduleRead() {
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => { rafId = 0; readScroll(); });
+    }
+
+    $effect(() => {
+        const el = railEl;
+        if (!el) return;
+        rtl = getComputedStyle(el).direction === 'rtl';
+        readScroll();
+        const ro = new ResizeObserver(readScroll);
+        ro.observe(el);
+        return () => { ro.disconnect(); if (rafId) cancelAnimationFrame(rafId); rafId = 0; };
+    });
+
+    /** נדנוד חד-פעמי "אני זזה" — פעם אחת ב-session, ולא כשמבקשים פחות תנועה */
+    $effect(() => {
+        const el = railEl;
+        if (!el || !overflowing || nudged) return;
+        nudged = true;
+        if (prefersReduce()) return;
+        try {
+            if (sessionStorage.getItem('catRailHinted')) return;
+            sessionStorage.setItem('catRailHinted', '1');
+        } catch { return; }                        // Safari במצב פרטי זורק
+        const s = rtl ? -1 : 1;                    // "קדימה" ב-RTL = דלתא שלילית
+        const t1 = setTimeout(() => el.scrollBy({ left: s * 36, behavior: 'smooth' }), 700);
+        const t2 = setTimeout(() => el.scrollBy({ left: -s * 36, behavior: 'smooth' }), 1250);
+        return () => { clearTimeout(t1); clearTimeout(t2); };
+    });
+
+    /* גרירה: עכבר/עט מנוהלים ב-JS; מגע נשאר נטיבי כדי לשמור על מומנטום אמיתי */
+    function onRailPointerDown(e: PointerEvent) {
+        suppressClick = false;
+        if (e.button > 0) return;
+        pointerId = e.pointerId;
+        isTouch = e.pointerType === 'touch';
+        startX = e.clientX; startY = e.clientY;
+        startScroll = railEl ? railEl.scrollLeft : 0;
+        maxMove = 0; axisLock = null; dragging = false;
+        hinted = true;
+    }
+
+    function onRailPointerMove(e: PointerEvent) {
+        if (e.pointerId !== pointerId || !railEl) return;
+        const dx = e.clientX - startX, dy = e.clientY - startY;
+        maxMove = Math.max(maxMove, Math.abs(dx));
+        if (isTouch) return;                       // הדפדפן גולל; אנחנו רק סופרים תזוזה
+
+        if (axisLock === null) {
+            if (Math.abs(dx) < LOCK_PX && Math.abs(dy) < LOCK_PX) return;
+            axisLock = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+            if (axisLock === 'v') { pointerId = -1; return; }   // מחווה אנכית — משחררים לתמיד
+            dragging = true;
+            railEl.setPointerCapture(e.pointerId);
+        }
+        e.preventDefault();
+        railEl.scrollLeft = startScroll - dx;      // דלתא יחסית בלבד ⇒ נכון בכל דפדפן, בשני הכיוונים
+    }
+
+    function endPointer(e: PointerEvent, cancelled: boolean) {
+        if (e.pointerId !== pointerId) return;
+        if (cancelled || maxMove > TAP_PX) { suppressClick = true; dragEndedAt = performance.now(); }
+        if (dragging && railEl?.hasPointerCapture(e.pointerId)) railEl.releasePointerCapture(e.pointerId);
+        dragging = false; axisLock = null; pointerId = -1;
+        readScroll();
+    }
+    function onRailPointerUp(e: PointerEvent) { endPointer(e, false); }
+    function onRailPointerCancel(e: PointerEvent) { endPointer(e, true); }
+
+    /** בולם את ה-click שנורה בסוף גרירה. שלב ה-capture על האב רץ לפני היעד,
+        וגם לפני ה-delegation של Svelte שיושב על שורש האפליקציה בשלב ה-bubble. */
+    function onRailClickCapture(e: MouseEvent) {
+        if (!suppressClick) return;
+        suppressClick = false;
+        if (e.detail === 0) return;                                    // Enter/Space מהמקלדת — לא לבלוע
+        if (performance.now() - dragEndedAt > CLICK_EXPIRE_MS) return; // דגל ישן — לא לבלוע
+        e.stopPropagation();
+        e.preventDefault();
+    }
+
+    /** dir=1 → קדימה ברשימה (חשיפת הבאות) · dir=-1 → חזרה למובילות */
+    function nudge(dir: 1 | -1) {
+        const el = railEl;
+        if (!el) return;
+        hinted = true;
+        const step = Math.max(180, el.clientWidth * 0.8);
+        el.scrollBy({ left: (rtl ? -1 : 1) * dir * step, behavior: prefersReduce() ? 'auto' : 'smooth' });
+    }
+
+    function onRailKeydown(e: KeyboardEvent) {
+        const el = railEl;
+        if (!el || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+        const tiles = Array.from(el.querySelectorAll<HTMLElement>('[data-tile]'));
+        const i = tiles.indexOf(document.activeElement as HTMLElement);
+        if (i === -1) return;
+        const fwd = rtl ? 'ArrowLeft' : 'ArrowRight';                  // ב-RTL שמאלה = הבא
+        const next = e.key === 'Home' ? 0
+                   : e.key === 'End' ? tiles.length - 1
+                   : e.key === fwd ? Math.min(i + 1, tiles.length - 1)
+                   : Math.max(i - 1, 0);
+        if (next === i) return;
+        e.preventDefault();
+        hinted = true;
+        tiles[next].focus();     // הדפדפן גולל פנימה; scroll-padding שומר על טבעת הפוקוס
+    }
+
+    function pick(key: string) {
+        if (performance.now() - dragEndedAt < CLICK_GUARD_MS) return;  // חגורה שנייה מעל onclickcapture
+        selectedCategory = key;
+        doSearch();
+    }
+
     let filteredGemachim = $derived(() => {
         const q = searchQuery.trim().toLowerCase();
         return gemachim.filter(g => {
@@ -230,25 +430,128 @@
     </section>
 
 {:else}
-    <!-- Category Grid (default view) -->
-    <section class="px-2 md:px-4 pb-8" aria-label="קטגוריות גמחים">
-        <h2 class="text-2xl font-black text-white text-center mb-6">חפש לפי קטגוריה</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 max-w-3xl mx-auto mb-10">
-            {#each categories as cat}
+    <!-- מסילת הקטגוריות: המובילות ראשונות, השאר נחשפות בגרירה של השורה.
+         גלישה ולא הסתרה — כל קטגוריה נשארת ב-DOM, בסדר ה-Tab ובעץ הנגישות. -->
+    <section class="px-2 md:px-4 pb-8" aria-labelledby="cat-rail-title">
+      <div class="mx-auto mb-10 max-w-4xl">
+
+        <div class="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
+            <div class="min-w-0">
+                <h2 id="cat-rail-title" class="text-2xl font-black text-white">חפש לפי קטגוריה</h2>
+                <!-- הרקע הוורוד לא נותן ניגודיות לטקסט שירות — לכן גלולה כהה, כמו באנר הסטטיסטיקה -->
+                <p class="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3 py-1 text-[11px] font-semibold text-gray-200 shadow-md">
+                    <span class="text-[#f0d089]">המובילות ביותר ראשונות</span>
+                    <span class="text-gray-500" aria-hidden="true">·</span>
+                    <span>גררו את השורה כדי לגלות עוד</span>
+                    <span class="cat-hint-arrow" class:is-live={!hinted} aria-hidden="true">↔</span>
+                </p>
+            </div>
+
+            <div class="flex shrink-0 items-center gap-2 {overflowing ? '' : 'invisible'}">
                 <button
-                    onclick={() => { selectedCategory = cat.key; doSearch(); }}
-                    class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-[#16264d] border border-[#3b5794]
-                           hover:bg-[#213569] hover:border-[#5474b8] hover:scale-105 transition-all cursor-pointer"
-                    aria-label="חפש גמחי {cat.label}"
+                    type="button"
+                    class="cat-nav"
+                    aria-controls="cat-rail"
+                    aria-disabled={atStart}
+                    aria-label="חזרה לקטגוריות המובילות"
+                    onclick={() => { if (!atStart) nudge(-1); }}
                 >
-                    {#if cat.key === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}<span class="text-3xl" aria-hidden="true">{cat.icon}</span>{/if}
-                    <span class="text-sm font-bold text-gray-200">{cat.label}</span>
-                    <span class="text-xs text-gray-500">
-                        {gemachim.filter(g => g.category === cat.key).length} גמחים
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true" fill="none"
+                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d={rtl ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} />
+                    </svg>
+                </button>
+
+                <!-- הגלולה היא גם המונה של מה שמוסתר וגם דרך הגישה ללא גרירה -->
+                <button
+                    type="button"
+                    class="cat-nav cat-nav--pill"
+                    aria-controls="cat-rail"
+                    aria-disabled={atEnd}
+                    aria-label={atEnd ? 'כל הקטגוריות מוצגות' : `הצג עוד ${hiddenCount} קטגוריות`}
+                    onclick={() => { if (!atEnd) nudge(1); }}
+                >
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true" fill="none"
+                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d={rtl ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} />
+                    </svg>
+                    <span class="text-xs font-black tabular-nums" aria-hidden="true">
+                        {atEnd ? 'הכל מוצג' : `עוד ${hiddenCount}`}
                     </span>
                 </button>
-            {/each}
+            </div>
         </div>
+
+        <p id="cat-rail-help" class="sr-only">
+            רשימת קטגוריות נגללת לרוחב, מסודרת לפי מספר הגמחים. אפשר לגרור אותה,
+            או לעבור בין הקטגוריות עם מקשי החצים ימינה ושמאלה, ומקשי Home ו-End.
+        </p>
+
+        {#snippet catTile(cat: RailCat)}
+            <button
+                type="button"
+                data-tile
+                class="cat-tile"
+                class:is-lead={cat.lead}
+                class:is-empty={cat.count === 0}
+                onclick={() => pick(cat.key)}
+                aria-label="חפש גמחי {cat.label} — {cat.count} גמחים"
+            >
+                {#if cat.lead}<span class="cat-rank" aria-hidden="true">{cat.rank}</span>{/if}
+
+                <span class="cat-ico">
+                    {#if cat.key === 'judaism'}
+                        <img src="/icons/menorah.svg" alt="" draggable="false" class="h-9 w-9 object-contain" />
+                    {:else}
+                        <span class="text-3xl leading-none" aria-hidden="true">{cat.icon}</span>
+                    {/if}
+                </span>
+
+                <span class="cat-label">{cat.label}</span>
+
+                <span class="cat-count" aria-hidden="true">
+                    {#if cat.count > 0}{cat.count} גמחים{:else}בקרוב{/if}
+                </span>
+            </button>
+        {/snippet}
+
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <div
+            role="group"
+            aria-labelledby="cat-rail-title"
+            aria-describedby="cat-rail-help"
+            onkeydown={onRailKeydown}
+        >
+            <ul
+                id="cat-rail"
+                bind:this={railEl}
+                class="cat-rail"
+                class:is-dragging={dragging}
+                style="--f-l:{rtl ? (atEnd ? '0px' : '2rem') : (atStart ? '0px' : '2rem')}; --f-r:{rtl ? (atStart ? '0px' : '2rem') : (atEnd ? '0px' : '2rem')}"
+                onscroll={scheduleRead}
+                onpointerdown={onRailPointerDown}
+                onpointermove={onRailPointerMove}
+                onpointerup={onRailPointerUp}
+                onpointercancel={onRailPointerCancel}
+                onclickcapture={onRailClickCapture}
+                onwheel={() => (hinted = true)}
+            >
+                {#each railCategories as cat (cat.key)}
+                    <li class="cat-item">{@render catTile(cat)}</li>
+                {/each}
+                <!-- מרווח סיום אמיתי: padding-inline-end נבלע בסקרולר flex, והוא חייב
+                     להיות רחב כמו המסכה כדי שהאריח האחרון לא יישאר מעומעם -->
+                <li class="cat-spacer" aria-hidden="true"></li>
+            </ul>
+        </div>
+
+        <!-- סקראבר פרופורציונלי: רוחב הידית מקודד כמה מהרשימה עוד מוסתר -->
+        <div class="mt-2 flex justify-center {overflowing ? '' : 'invisible'}" aria-hidden="true">
+            <div class="cat-track" style="--p:{progress}; --ratio:{thumbRatio}">
+                <span class="cat-thumb"></span>
+            </div>
+        </div>
+      </div>
 
         {#snippet gemachCard(gemach: Gemach, pinned: boolean = false)}
             <article class="bg-[#16264d] border {pinned ? 'border-amber-500/30' : 'border-[#3b5794]'} rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">

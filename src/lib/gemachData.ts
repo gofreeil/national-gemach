@@ -32,6 +32,11 @@ export interface CategoryDef {
     icon: string;
 }
 
+// ברירת המחדל של הקטגוריות. הרשימה נגזרת מהקטגוריות המובילות באינדקסי
+// הגמ"חים הגדולים בארץ (גמ"ח קליק, gindex) — שמחות/אירועים, כספים, שבת
+// וחגים, רכב, אירוח ואבלות הם מהנפוצים ביותר ולכן קיבלו קטגוריה משלהם.
+// ניתן לערוך/להוסיף קטגוריות בפאנל הניהול (/admin/categories) — מה שנשמר שם
+// גובר על הרשימה הזו.
 export const categories: CategoryDef[] = [
     { key: 'clothing', label: 'ביגוד', icon: '👕' },
     { key: 'baby', label: 'תינוקות', icon: '🍼' },
@@ -41,7 +46,16 @@ export const categories: CategoryDef[] = [
     { key: 'food', label: 'מזון', icon: '🥫' },
     { key: 'tools', label: 'כלים', icon: '🔧' },
     { key: 'wedding', label: 'חתונה', icon: '💍' },
+    { key: 'events', label: 'שמחות ואירועים', icon: '🎉' },
+    { key: 'money', label: 'כספים והלוואות', icon: '💰' },
     { key: 'judaism', label: 'יהדות', icon: '🕎' },
+    { key: 'holidays', label: 'שבת וחגים', icon: '🕯️' },
+    { key: 'electronics', label: 'חשמל ומחשבים', icon: '💻' },
+    { key: 'transport', label: 'רכב והסעות', icon: '🚗' },
+    { key: 'hosting', label: 'אירוח ולינה', icon: '🏠' },
+    { key: 'toys', label: 'צעצועים ומשחקים', icon: '🧸' },
+    { key: 'matchmaking', label: 'שידוכים', icon: '💞' },
+    { key: 'mourning', label: 'אבלות וחסד של אמת', icon: '🤍' },
     { key: 'initiatives', label: 'מיזמים חשובים לציבור', icon: '🌟' },
     { key: 'other', label: 'אחר', icon: '📦' },
 ];
