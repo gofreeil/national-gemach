@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { untrack } from 'svelte';
     import { cities, type Gemach } from '$lib/gemachData';
     import type { PageData } from './$types';
 
@@ -76,6 +77,7 @@
     let startX = 0, startY = 0, startScroll = 0, maxMove = 0;
     let suppressClick = false, dragEndedAt = 0;
     let rafId = 0, nudged = false, tileStep = 0;
+    let gapPx = GAP_PX, spacerPx = 32;   // נמדדים מה-DOM; הקבועים הם רק ברירת מחדל ל-SSR
 
     const prefersReduce = () =>
         typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -86,20 +88,30 @@
         if (!el) return;
         const max = el.scrollWidth - el.clientWidth;
         const pos = Math.min(Math.abs(el.scrollLeft), Math.max(max, 0));
+        // משתנה מקומי ולא קריאה חוזרת של atEnd: קריאת $state שנכתב זה עתה הייתה
+        // הופכת את ה-$effect שקורא לפונקציה לתלוי בו, ומרכיבה מחדש את ה-ResizeObserver
+        const isEnd = max <= 4 || pos >= max - 2;
 
         overflowing = max > 4;
         atStart = pos <= 2;                       // אפסילון נגד עיגול בזום/hi-dpi
-        atEnd = max <= 4 || pos >= max - 2;
+        atEnd = isEnd;
         progress = max > 0 ? pos / max : 0;
         thumbRatio = el.scrollWidth > 0 ? Math.min(1, el.clientWidth / el.scrollWidth) : 1;
+        // גלגלת/מקלדת/סרגל — תזוזה אמיתית מכבה את הרמז. הסף גבוה מ-36px של הנדנוד
+        // האוטומטי, כדי שהרמז לא יכבה את עצמו
+        if (pos > 48) hinted = true;
 
-        // כל האריחים ברוחב זהה, ולכן די במדידת הראשון כדי לדעת כמה עוד מוסתרים
+        // כל האריחים ברוחב זהה, ולכן די במדידת הראשון
         const first = el.querySelector<HTMLElement>('[data-tile]');
-        if (first) tileStep = first.getBoundingClientRect().width + GAP_PX;
-        if (tileStep > 0 && !atEnd) {
-            const visible = Math.floor((el.clientWidth + GAP_PX) / tileStep);
-            const passed = Math.round(pos / tileStep);
-            hiddenCount = Math.max(0, railCategories.length - visible - passed);
+        if (first) tileStep = first.getBoundingClientRect().width + gapPx;
+        const spacer = el.querySelector<HTMLElement>('[data-spacer]');
+        if (spacer) spacerPx = spacer.getBoundingClientRect().width;
+
+        // ספירה לפי מרחק הגלילה שנותר, לא לפי אינדקסים: אחרת המונה מגיע ל-0
+        // בזמן שהאריח האחרון עדיין חתוך, והגלולה מציגה "עוד 0"
+        if (tileStep > 0 && !isEnd) {
+            const remaining = max - pos - spacerPx - gapPx;
+            hiddenCount = Math.max(0, Math.ceil(remaining / tileStep));
         } else {
             hiddenCount = 0;
         }
@@ -114,12 +126,17 @@
     $effect(() => {
         const el = railEl;
         if (!el) return;
-        rtl = getComputedStyle(el).direction === 'rtl';
-        readScroll();
+        const cs = getComputedStyle(el);
+        rtl = cs.direction === 'rtl';
+        gapPx = parseFloat(cs.columnGap) || GAP_PX;
+        untrack(readScroll);       // המדידה לא אמורה לחבר את ה-effect לערכים שהיא כותבת
         const ro = new ResizeObserver(readScroll);
         ro.observe(el);
         return () => { ro.disconnect(); if (rafId) cancelAnimationFrame(rafId); rafId = 0; };
     });
+
+    /** הרשימה השתנתה (עריכה בפאנל הניהול) — למדוד מחדש בלי לתלות בכך את ה-effect שלמעלה */
+    $effect(() => { void railCategories.length; untrack(readScroll); });
 
     /** נדנוד חד-פעמי "אני זזה" — פעם אחת ב-session, ולא כשמבקשים פחות תנועה */
     $effect(() => {
@@ -151,6 +168,8 @@
 
     function onRailPointerMove(e: PointerEvent) {
         if (e.pointerId !== pointerId || !railEl) return;
+        // הכפתור שוחרר מחוץ לחלון ולא קיבלנו pointerup — אחרת המסילה נדבקת לסמן
+        if (e.pointerType !== 'touch' && e.buttons === 0) { endPointer(e, true); return; }
         const dx = e.clientX - startX, dy = e.clientY - startY;
         maxMove = Math.max(maxMove, Math.abs(dx));
         if (isTouch) return;                       // הדפדפן גולל; אנחנו רק סופרים תזוזה
@@ -168,13 +187,16 @@
 
     function endPointer(e: PointerEvent, cancelled: boolean) {
         if (e.pointerId !== pointerId) return;
-        if (cancelled || maxMove > TAP_PX) { suppressClick = true; dragEndedAt = performance.now(); }
+        // dragging ולא רק maxMove: גרירת עכבר מתחילה כבר ב-LOCK_PX (10px), ובלעדיו
+        // גרירה של 10—15px הייתה מסתיימת בבחירת קטגוריה
+        if (cancelled || dragging || maxMove > TAP_PX) { suppressClick = true; dragEndedAt = performance.now(); }
         if (dragging && railEl?.hasPointerCapture(e.pointerId)) railEl.releasePointerCapture(e.pointerId);
         dragging = false; axisLock = null; pointerId = -1;
         readScroll();
     }
     function onRailPointerUp(e: PointerEvent) { endPointer(e, false); }
     function onRailPointerCancel(e: PointerEvent) { endPointer(e, true); }
+    function onRailLostCapture(e: PointerEvent) { endPointer(e, true); }
 
     /** בולם את ה-click שנורה בסוף גרירה. שלב ה-capture על האב רץ לפני היעד,
         וגם לפני ה-delegation של Svelte שיושב על שורש האפליקציה בשלב ה-bubble. */
@@ -213,8 +235,9 @@
         tiles[next].focus();     // הדפדפן גולל פנימה; scroll-padding שומר על טבעת הפוקוס
     }
 
-    function pick(key: string) {
-        if (performance.now() - dragEndedAt < CLICK_GUARD_MS) return;  // חגורה שנייה מעל onclickcapture
+    function pick(key: string, e?: MouseEvent) {
+        // חגורה שנייה מעל onclickcapture; Enter/Space מהמקלדת (detail=0) פטורים ממנה
+        if (e?.detail !== 0 && performance.now() - dragEndedAt < CLICK_GUARD_MS) return;
         selectedCategory = key;
         doSearch();
     }
@@ -494,7 +517,7 @@
                 class="cat-tile"
                 class:is-lead={cat.lead}
                 class:is-empty={cat.count === 0}
-                onclick={() => pick(cat.key)}
+                onclick={(e) => pick(cat.key, e)}
                 aria-label="חפש גמחי {cat.label} — {cat.count} גמחים"
             >
                 {#if cat.lead}<span class="cat-rank" aria-hidden="true">{cat.rank}</span>{/if}
@@ -533,15 +556,15 @@
                 onpointermove={onRailPointerMove}
                 onpointerup={onRailPointerUp}
                 onpointercancel={onRailPointerCancel}
+                onlostpointercapture={onRailLostCapture}
                 onclickcapture={onRailClickCapture}
-                onwheel={() => (hinted = true)}
             >
                 {#each railCategories as cat (cat.key)}
                     <li class="cat-item">{@render catTile(cat)}</li>
                 {/each}
                 <!-- מרווח סיום אמיתי: padding-inline-end נבלע בסקרולר flex, והוא חייב
                      להיות רחב כמו המסכה כדי שהאריח האחרון לא יישאר מעומעם -->
-                <li class="cat-spacer" aria-hidden="true"></li>
+                <li class="cat-spacer" data-spacer aria-hidden="true"></li>
             </ul>
         </div>
 
@@ -639,7 +662,7 @@
         gap: 0.75rem;                   /* חייב להתאים ל-GAP_PX בסקריפט */
         list-style: none;
         margin: 0;
-        padding: 0.75rem 0.25rem 1rem;  /* מקום לטבעת הפוקוס (3px+3px) ולהרמת ה-hover (4px) */
+        padding: 0.75rem 0.5rem 1rem;   /* טבעת הפוקוס הגלובלית היא 3px + 3px offset — 4px לא הספיקו */
         overflow-x: auto;
         overflow-y: hidden;
         overscroll-behavior-x: contain; /* בלי back-swipe של הדפדפן באייפון */
@@ -678,6 +701,7 @@
         position: relative;
         width: clamp(7rem, 29vw, 8.5rem);   /* vw ⇒ ההצצה לאריח הבא מובטחת בכל רוחב מסך */
         min-height: 9.75rem;
+        height: 100%;                       /* ה-li נמתח לגובה השורה; בלי זה תחתית האריחים מתפרעת */
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -696,13 +720,18 @@
     .cat-tile > * { pointer-events: none; }
     .cat-tile img { -webkit-user-drag: none; }
 
-    .cat-rail:not(.is-dragging) .cat-tile:hover {
-        transform: translateY(-4px);
-        border-color: #5474b8;
-        background: linear-gradient(160deg, #24407c 0%, #182c54 60%, #12203e 100%);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 18px 34px -20px rgba(0, 0, 0, 1);
+    /* hover רק במכשירים שיש בהם — אחרת הוא נדבק אחרי גרירה במסך מגע */
+    @media (hover: hover) {
+        .cat-rail:not(.is-dragging) .cat-tile:hover {
+            transform: translateY(-4px);
+            border-color: #5474b8;
+            background: linear-gradient(160deg, #24407c 0%, #182c54 60%, #12203e 100%);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 18px 34px -20px rgba(0, 0, 0, 1);
+        }
+        .cat-rail:not(.is-dragging) .cat-tile.is-empty:hover { opacity: 1; }
     }
-    .cat-tile:active { transform: translateY(-1px) scale(0.985); }   /* משוב מגע — hover לא קיים בנייד */
+    /* אותה סגוליות כמו כלל ה-hover ואחריו בסדר המקורות, אחרת ההרמה גוברת על הלחיצה */
+    .cat-rail:not(.is-dragging) .cat-tile:active { transform: translateY(-1px) scale(0.985); }
 
     .cat-tile.is-lead {
         border-color: rgba(212, 175, 55, 0.45);
@@ -711,7 +740,6 @@
                     0 16px 32px -20px rgba(212, 175, 55, 0.55);
     }
     .cat-tile.is-empty { opacity: 0.72; }
-    .cat-rail:not(.is-dragging) .cat-tile.is-empty:hover { opacity: 1; }
 
     .cat-rank {
         position: absolute;
@@ -760,7 +788,8 @@
         transition: background 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
     }
     @media (min-width: 768px) { .cat-nav { min-width: 2.25rem; height: 2.25rem; } }
-    .cat-nav--pill { padding: 0 0.85rem 0 0.6rem; color: #f0d089; }
+    /* לוגי ולא פיזי: ההתחלה היא צד החץ, הסוף הוא צד הטקסט */
+    .cat-nav--pill { padding-block: 0; padding-inline: 0.6rem 0.85rem; color: #f0d089; }
     .cat-nav:hover { background: #213569; border-color: #5474b8; }
     /* aria-disabled ולא disabled — כדי לא לחטוף פוקוס ממשתמש מקלדת שהגיע לקצה */
     .cat-nav[aria-disabled='true'] { opacity: 0.35; cursor: default; }
