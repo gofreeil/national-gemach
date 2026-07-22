@@ -1,6 +1,7 @@
 <script lang="ts">
     import { untrack } from 'svelte';
     import { cities, type Gemach } from '$lib/gemachData';
+    import GemachAvatar from '$lib/components/GemachAvatar.svelte';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -280,9 +281,6 @@
         return categories.find(c => c.key === key)?.label ?? key;
     }
 
-    function getCategoryIcon(key: string) {
-        return categories.find(c => c.key === key)?.icon ?? '📦';
-    }
 </script>
 
 <!-- Hero Section -->
@@ -404,10 +402,12 @@
                     <article class="bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
                         <div class="flex items-start gap-3">
                             <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
-                                {#if gemach.category === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}{getCategoryIcon(gemach.category)}{/if}
+                                <GemachAvatar {gemach} {categories} />
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h3 class="font-black text-white text-lg leading-tight">{gemach.name}</h3>
+                                <h3 class="font-black text-white text-lg leading-tight">
+                                    <a href="/gemach/{gemach.id}" class="hover:text-blue-300 transition-colors">{gemach.name}</a>
+                                </h3>
                                 <div class="flex items-center gap-2 mt-1 flex-wrap">
                                     <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
                                         {getCategoryLabel(gemach.category)}
@@ -443,6 +443,9 @@
                                             🔗 קישור
                                         </a>
                                     {/if}
+                                    <a href="/gemach/{gemach.id}" class="inline-flex items-center gap-1 text-sm font-bold text-gray-300 hover:text-white transition-colors">
+                                        לפרטים ←
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -580,11 +583,12 @@
             <article class="bg-[#16264d] border {pinned ? 'border-amber-500/30' : 'border-[#3b5794]'} rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
                 <div class="flex items-start gap-3">
                     <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
-                        {#if gemach.category === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}{getCategoryIcon(gemach.category)}{/if}
+                        <GemachAvatar {gemach} {categories} />
                     </div>
                     <div class="flex-1 min-w-0">
                         <h3 class="font-black text-white text-lg leading-tight">
-                            {#if pinned}<span class="text-amber-400 text-sm" aria-hidden="true">⭐</span> {/if}{gemach.name}
+                            {#if pinned}<span class="text-amber-400 text-sm" aria-hidden="true">⭐</span> {/if}<a
+                                href="/gemach/{gemach.id}" class="hover:text-blue-300 transition-colors">{gemach.name}</a>
                         </h3>
                         <div class="flex items-center gap-2 mt-1 flex-wrap">
                             <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">

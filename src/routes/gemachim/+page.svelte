@@ -1,5 +1,6 @@
 <script lang="ts">
     import { page as pageStore } from '$app/stores';
+    import GemachAvatar from '$lib/components/GemachAvatar.svelte';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -7,10 +8,6 @@
     function getCategoryLabel(key: string) {
         return data.categories.find(c => c.key === key)?.label ?? key;
     }
-    function getCategoryIcon(key: string) {
-        return data.categories.find(c => c.key === key)?.icon ?? '📦';
-    }
-
     function pageHref(p: number) {
         const u = new URLSearchParams($pageStore.url.searchParams);
         if (p <= 1) u.delete('page'); else u.set('page', String(p));
@@ -61,10 +58,12 @@
                 <article class="bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
                     <div class="flex items-start gap-3">
                         <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
-                            {#if gemach.category === 'judaism'}<img src="/icons/menorah.svg" alt="" class="w-9 h-9 object-contain" />{:else}{gemach.icon || getCategoryIcon(gemach.category)}{/if}
+                            <GemachAvatar {gemach} categories={data.categories} />
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h2 class="font-black text-white text-lg leading-tight">{gemach.name}</h2>
+                            <h2 class="font-black text-white text-lg leading-tight">
+                                <a href="/gemach/{gemach.id}" class="hover:text-blue-300 transition-colors">{gemach.name}</a>
+                            </h2>
                             <div class="flex items-center gap-2 mt-1 flex-wrap">
                                 <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
                                     {getCategoryLabel(gemach.category)}
@@ -87,6 +86,9 @@
                                         🔗 קישור
                                     </a>
                                 {/if}
+                                <a href="/gemach/{gemach.id}" class="inline-flex items-center gap-1 text-sm font-bold text-gray-300 hover:text-white transition-colors">
+                                    לפרטים ←
+                                </a>
                             </div>
                         </div>
                     </div>

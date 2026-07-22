@@ -37,6 +37,7 @@ export const actions: Actions = {
 			contact:      g.contact,
 			link:         g.link,
 			notes:        g.notes,
+			image:        g.image,
 			sourceId:     g.id
 		}));
 

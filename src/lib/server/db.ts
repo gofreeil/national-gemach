@@ -42,6 +42,23 @@ function toStr(v: unknown): string | undefined {
     return s === '' ? undefined : s;
 }
 
+/** התמונה הראשית של הפריט. `logo` הוא השדה שהאתר הארצי כותב; `images[0]` הוא
+ *  הנפילה-אחורה לפריטים שנוצרו ב"קהילה בשכונה" (שם נשמרת גלריה).
+ *  `logo: ''` הוא סימון מפורש של "בלי תמונה" — מכבד ניקוי ידני בפאנל ולכן
+ *  חוסם גם את הנפילה לגלריה (שאותה לא מוחקים, כדי לא לפגוע בקהילה). */
+function pickImage(extra: Record<string, unknown>): string | undefined {
+    if (typeof extra.logo === 'string' && extra.logo.trim() === '') return undefined;
+    const logo = toStr(extra.logo);
+    if (logo) return logo;
+    return pickGallery(extra)[0];
+}
+
+/** גלריית התמונות של הפריט (extra_fields.images) — מנוקה מערכים ריקים/לא-מחרוזות */
+function pickGallery(extra: Record<string, unknown>): string[] {
+    if (!Array.isArray(extra.images)) return [];
+    return extra.images.map(toStr).filter((s): s is string => !!s);
+}
+
 /** ממפה item של Strapi לסכמת Gemach של האתר הארצי */
 function mapItemToGemach(item: StrapiItem): Gemach {
     const extra = (item.extra_fields ?? {}) as Record<string, unknown>;
@@ -82,6 +99,8 @@ function mapItemToGemach(item: StrapiItem): Gemach {
         lat:           typeof item.lat === 'number' ? item.lat : null,
         lng:           typeof item.lng === 'number' ? item.lng : null,
         icon:          item.icon ?? undefined,
+        image:         pickImage(extra),
+        gallery:       pickGallery(extra),
         order,
         featured:      extra.featured === true || extra.featured === 'true',
         sourceId:      toStr(extra.source_id),
@@ -141,6 +160,7 @@ export interface CreateGemachInput {
     description?: string;
     hours?: string;
     icon?: string;
+    image?: string;         // כתובת https או data URI — נשמר ב-extra_fields.logo
     link?: string;
     notes?: string;
     logoBase64?: string;
@@ -160,7 +180,8 @@ function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     if (input.hours)      extra.hours   = input.hours;
     if (input.link)       extra.link    = input.link;
     if (input.notes)      extra.notes   = input.notes;
-    if (input.logoBase64) extra.logo    = input.logoBase64;
+    const logo = input.image || input.logoBase64;
+    if (logo)             extra.logo    = logo;
     if (input.images && input.images.length > 0) extra.images = input.images;
     if (input.tags  && input.tags.length  > 0)   extra.tags   = input.tags;
     if (typeof input.order === 'number' && !isNaN(input.order)) extra.order = input.order;
@@ -231,8 +252,12 @@ export async function updateGemach(
     if (!input.link)     delete mergedExtra.link;
     if (!input.notes)    delete mergedExtra.notes;
     if (!input.featured) delete mergedExtra.featured;
+    // תמונה שרוקנה: מסמנים במחרוזת ריקה (ולא במחיקה) כדי שגם גלריית `images`
+    // של "קהילה בשכונה" לא תחזיר את התמונה מהדלת האחורית.
+    if (!input.image && !input.logoBase64) mergedExtra.logo = '';
     if (input.order === undefined) delete mergedExtra.order;
-    if (input.tags && input.tags.length === 0) delete mergedExtra.tags;
+    if (input.tags   && input.tags.length   === 0) delete mergedExtra.tags;
+    if (input.images && input.images.length === 0) delete mergedExtra.images;
 
     const data: Record<string, unknown> = {
         label:        input.name,

@@ -16,6 +16,10 @@ export interface Gemach {
     lat?: number | null;
     lng?: number | null;
     icon?: string;
+    /** תמונה/לוגו של הגמ"ח — כתובת https או data URI. ריק = נופלים לאימוג'י */
+    image?: string;
+    /** גלריית תמונות לדף הגמ"ח. משותפת עם "קהילה בשכונה" (extra_fields.images) */
+    gallery?: string[];
     /** ידני: מיקום בסידור. קטן יותר = מופיע קודם. undefined = בסוף */
     order?: number;
     /** מוצמד לראש הרשימה */

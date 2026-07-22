@@ -1,6 +1,7 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
     import { page } from '$app/stores';
+    import GemachAvatar from '$lib/components/GemachAvatar.svelte';
 
     let { data } = $props();
 
@@ -14,10 +15,6 @@
     function catLabel(key: string) {
         return data.categories.find(c => c.key === key)?.label ?? key;
     }
-    function catIcon(key: string) {
-        return data.categories.find(c => c.key === key)?.icon ?? '📦';
-    }
-
     function pageHref(p: number) {
         const u = new URLSearchParams($page.url.searchParams);
         u.set('page', String(p));
@@ -78,7 +75,7 @@
                         </form>
                     </div>
 
-                    <div class="text-2xl pt-1 flex-shrink-0" aria-hidden="true">{g.icon || catIcon(g.category)}</div>
+                    <div class="text-2xl pt-1 flex-shrink-0" aria-hidden="true"><GemachAvatar gemach={g} categories={data.categories} /></div>
 
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">

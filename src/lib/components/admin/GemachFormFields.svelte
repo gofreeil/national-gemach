@@ -7,12 +7,22 @@
         categories,
         cities = []
     }: {
-        gemach?: Partial<Gemach> | null;
+        // בשמירה שנכשלה הטופס נזרע מחדש מ-CreateGemachInput, ששם הגלריה נקראת `images`
+        gemach?: (Partial<Gemach> & { images?: string[] }) | null;
         categories: CategoryDef[];
         cities?: string[];
     } = $props();
 
     let tags = $state<string[]>(gemach?.tags ? [...gemach.tags] : []);
+
+    // תצוגה מקדימה חיה של התמונה, כדי לתפוס קישור שבור לפני השמירה
+    let image = $state(gemach?.image ?? '');
+    let imageBroken = $state(false);
+    const imagePreview = $derived(/^(https?:\/\/|data:image\/|\/)/i.test(image.trim()) ? image.trim() : '');
+    $effect(() => { if (imagePreview) imageBroken = false; });   // כתובת חדשה → ניסיון טעינה מחדש
+
+    let images = $state((gemach?.gallery ?? gemach?.images ?? []).join('\n'));
+    const imageList = $derived(images.split('\n').map(s => s.trim()).filter(Boolean));
 </script>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -41,6 +51,51 @@
         <input id="f-icon" name="icon" value={gemach?.icon ?? ''} maxlength="4"
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="🤝" />
+    </div>
+
+    <!-- תמונה -->
+    <div class="md:col-span-2">
+        <label for="f-image" class="block text-sm font-bold text-gray-300 mb-1">תמונה / לוגו (כתובת)</label>
+        <div class="flex items-start gap-3">
+            <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#3b5794] bg-[#1e293b]">
+                {#if imagePreview && !imageBroken}
+                    <img src={imagePreview} alt="" class="h-full w-full object-cover" onerror={() => (imageBroken = true)} />
+                {:else}
+                    <span class="text-xl" aria-hidden="true">{imageBroken ? '⚠️' : (gemach?.icon || '🖼️')}</span>
+                {/if}
+            </div>
+            <div class="flex-1">
+                <input id="f-image" name="image" bind:value={image} dir="ltr"
+                    class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
+                    placeholder="https://example.com/logo.png" />
+                <p class="mt-1 text-xs {imageBroken ? 'text-amber-300' : 'text-gray-500'}">
+                    {#if imageBroken}
+                        התמונה לא נטענה — בדוק את הכתובת. בכרטיס יוצג האימוג'י במקומה.
+                    {:else}
+                        ריק = יוצג האימוג'י של הקטגוריה. אפשר גם data:image/...
+                    {/if}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- גלריית תמונות -->
+    <div class="md:col-span-2">
+        <label for="f-images" class="block text-sm font-bold text-gray-300 mb-1">
+            גלריית תמונות <span class="font-normal text-gray-500">— כתובת אחת בכל שורה</span>
+        </label>
+        <textarea id="f-images" name="images" rows="3" bind:value={images} dir="ltr"
+            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none resize-y text-right"
+            placeholder={'https://example.com/1.jpg\nhttps://example.com/2.jpg'}></textarea>
+        {#if imageList.length > 0}
+            <div class="mt-2 flex flex-wrap gap-2">
+                {#each imageList as url, i (url + i)}
+                    <img src={url} alt="" class="h-16 w-16 rounded-lg border border-[#3b5794] object-cover bg-[#1e293b]"
+                        onerror={(e) => (e.currentTarget as HTMLImageElement).classList.add('opacity-30', 'grayscale')} />
+                {/each}
+            </div>
+            <p class="mt-1 text-xs text-gray-500">{imageList.length} תמונות · תמונה דהויה = הכתובת לא נטענה</p>
+        {/if}
     </div>
 
     <!-- עיר -->

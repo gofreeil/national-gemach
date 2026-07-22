@@ -1,18 +1,12 @@
 import type { PageServerLoad } from './$types';
-import { getAllGemachim } from '$lib/server/db';
 import { getCategories } from '$lib/server/adminStore';
-import { staticGemachim } from '$lib/staticGemachim';
+import { getMergedGemachim } from '$lib/server/gemachSource';
 
 /** 20 גמ"חים בכל עמוד — לפי בקשת המשתמש */
 const PAGE_SIZE = 20;
 
 export const load: PageServerLoad = async ({ url }) => {
-    const [strapiGemachim, categories] = await Promise.all([getAllGemachim(), getCategories()]);
-
-    // אותה לוגיקת מיזוג כמו דף הבית: Strapi + סטטי (בניכוי כפילויות לפי sourceId).
-    const importedIds = new Set(strapiGemachim.map(g => g.sourceId).filter(Boolean));
-    const remainingStatic = staticGemachim.filter(g => !importedIds.has(g.id));
-    const all = [...strapiGemachim, ...remainingStatic];
+    const [all, categories] = await Promise.all([getMergedGemachim(), getCategories()]);
 
     const total = all.length;
     const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
