@@ -15,6 +15,19 @@ function isSafeImageSrc(src: string): boolean {
 }
 
 /**
+ * הודעה קריאה לכשל שמירה. 413 מגיע מ-Strapi כשהרשומה (כולל התמונות שנשמרות
+ * בתוכה כ-data URI) חורגת ממגבלת ה-JSON שלו — בלי זה האדמין רואה "נסה שוב"
+ * ולא מבין שהתמונות הן הבעיה.
+ */
+export function saveErrorMessage(e: unknown, verb: 'יצירת' | 'עדכון'): string {
+	const msg = e instanceof Error ? e.message : String(e);
+	if (msg.includes('413') || /payload too large/i.test(msg)) {
+		return 'הרשומה כבדה מדי לשמירה — הסר תמונה מהגלריה או השתמש בכתובת URL במקום העלאת קובץ.';
+	}
+	return `${verb} הגמ"ח נכשל. נסה שוב.`;
+}
+
+/**
  * מפענח את נתוני טופס הגמ"ח (משותף ליצירה ולעריכה).
  * `input` מוחזר תמיד (לזריעת הטופס מחדש בעת שגיאה); `error` מוגדר אם חסר שדה חובה.
  */
@@ -32,10 +45,11 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		.map(t => t.trim())
 		.filter(Boolean);
 
-	// גלריה: כתובת בכל שורה. כתובות לא-תקינות נשמטות בשקט כדי ששורה אחת
-	// שגויה לא תפיל שמירה של טופס שלם.
-	const images = ((form.get('images') as string) ?? '')
-		.split('\n')
+	// גלריה: שדה `images` חוזר פעם אחת לכל תמונה (hidden input לכל אחת), אבל
+	// מקבלים גם בלוק של כתובת-בכל-שורה. כתובות לא-תקינות נשמטות בשקט כדי
+	// ששורה אחת שגויה לא תפיל שמירה של טופס שלם.
+	const images = form.getAll('images')
+		.flatMap(v => String(v).split('\n'))
 		.map(s => s.trim())
 		.filter(s => s !== '' && isSafeImageSrc(s));
 

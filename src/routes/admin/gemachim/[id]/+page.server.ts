@@ -2,7 +2,7 @@ import { fail, redirect, error } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getGemachById, updateGemach, deleteGemach } from '$lib/server/db';
 import { getCategories } from '$lib/server/adminStore';
-import { parseGemachForm } from '$lib/server/gemachForm';
+import { parseGemachForm, saveErrorMessage } from '$lib/server/gemachForm';
 import { cities } from '$lib/gemachData';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -21,7 +21,7 @@ export const actions: Actions = {
 			await updateGemach(params.id, input);
 		} catch (e) {
 			console.error('[admin] updateGemach failed:', e);
-			return fail(500, { error: 'עדכון הגמ"ח נכשל. נסה שוב.', values: input });
+			return fail(500, { error: saveErrorMessage(e, 'עדכון'), values: input });
 		}
 		throw redirect(303, '/admin/gemachim?flash=updated');
 	},

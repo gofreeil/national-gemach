@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createGemach } from '$lib/server/db';
 import { getCategories } from '$lib/server/adminStore';
-import { parseGemachForm } from '$lib/server/gemachForm';
+import { parseGemachForm, saveErrorMessage } from '$lib/server/gemachForm';
 import { cities } from '$lib/gemachData';
 
 export const load: PageServerLoad = async () => {
@@ -19,7 +19,7 @@ export const actions: Actions = {
 			await createGemach(input);
 		} catch (e) {
 			console.error('[admin] createGemach failed:', e);
-			return fail(500, { error: 'שמירת הגמ"ח נכשלה. ודא שהשרת מחובר ונסה שוב.', values: input });
+			return fail(500, { error: saveErrorMessage(e, 'יצירת'), values: input });
 		}
 		throw redirect(303, '/admin/gemachim?flash=created');
 	}

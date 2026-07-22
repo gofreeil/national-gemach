@@ -89,3 +89,11 @@ select option:checked {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* הדגשת אזור שחרור בגרירת קובץ תמונה (ראה $lib/imageDrop).
+   זהה לכלל שב"קהילה בשכונה" — לשמור מסונכרן. */
+.drag-over {
+    border-color: rgb(251 191 36) !important;   /* amber-400 */
+    background-color: rgba(251, 191, 36, 0.12) !important;
+    color: rgb(252 211 77) !important;          /* amber-300 */
+}

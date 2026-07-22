@@ -1,6 +1,8 @@
 <script lang="ts">
     import type { Gemach, CategoryDef } from '$lib/gemachData';
     import TagEditor from './TagEditor.svelte';
+    import { imageDrop } from '$lib/imageDrop';
+    import { compressImage, dataUriWeightKb, MAX_GALLERY_IMAGES, MAX_TOTAL_IMAGE_KB } from '$lib/imageCompress';
 
     let {
         gemach = null,
@@ -15,14 +17,91 @@
 
     let tags = $state<string[]>(gemach?.tags ? [...gemach.tags] : []);
 
-    // תצוגה מקדימה חיה של התמונה, כדי לתפוס קישור שבור לפני השמירה
+    // ---- תמונות ----
+    // התמונות נשמרות כ-data URI בתוך הרשומה (ולא ב-Media Library), בדיוק כמו
+    // ב"קהילה בשכונה" — כך שתמונה שהועלתה שם נראית כאן ולהפך. ההעלאה מכווצת
+    // בצד הלקוח, ולכן מה שנשלח לשרת כבר בגודל סביר.
+
     let image = $state(gemach?.image ?? '');
     let imageBroken = $state(false);
     const imagePreview = $derived(/^(https?:\/\/|data:image\/|\/)/i.test(image.trim()) ? image.trim() : '');
     $effect(() => { if (imagePreview) imageBroken = false; });   // כתובת חדשה → ניסיון טעינה מחדש
 
-    let images = $state((gemach?.gallery ?? gemach?.images ?? []).join('\n'));
-    const imageList = $derived(images.split('\n').map(s => s.trim()).filter(Boolean));
+    let images = $state<string[]>([...(gemach?.gallery ?? gemach?.images ?? [])]);
+
+    let busy = $state(false);
+    let uploadError = $state('');
+
+    const totalKb = $derived(
+        [image, ...images].reduce((sum, src) => sum + dataUriWeightKb(src), 0)
+    );
+
+    const OVER_BUDGET = `התמונות חורגות מ-${MAX_TOTAL_IMAGE_KB}KB — הסר תמונה או השתמש בכתובת URL במקום העלאה`;
+
+    async function pickLogo(files: File[]) {
+        const file = files.find(f => f.type.startsWith('image/'));
+        if (!file) return;
+        busy = true;
+        uploadError = '';
+        try {
+            const next = await compressImage(file);
+            const rest = images.reduce((s, src) => s + dataUriWeightKb(src), 0);
+            if (rest + dataUriWeightKb(next) > MAX_TOTAL_IMAGE_KB) {
+                uploadError = OVER_BUDGET;
+                return;
+            }
+            image = next;
+        } catch {
+            uploadError = 'קובץ התמונה לא נתמך';
+        } finally {
+            busy = false;
+        }
+    }
+
+    async function addToGallery(files: File[]) {
+        busy = true;
+        uploadError = '';
+        try {
+            const next = [...images];
+            let kb = totalKb;
+            for (const f of files) {
+                if (next.length >= MAX_GALLERY_IMAGES) {
+                    uploadError = `אפשר עד ${MAX_GALLERY_IMAGES} תמונות בגלריה`;
+                    break;
+                }
+                if (!f.type.startsWith('image/')) continue;
+                try {
+                    const src = await compressImage(f);
+                    if (kb + dataUriWeightKb(src) > MAX_TOTAL_IMAGE_KB) {
+                        uploadError = OVER_BUDGET;
+                        break;
+                    }
+                    kb += dataUriWeightKb(src);
+                    next.push(src);
+                } catch {
+                    uploadError = 'אחד הקבצים אינו תמונה תקינה';
+                }
+            }
+            images = next;
+        } finally {
+            busy = false;
+        }
+    }
+
+    /** קבצים שנבחרו ב-<input type="file">; מאפסים כדי שאפשר יהיה לבחור שוב אותו קובץ */
+    function onFilePicked(e: Event, handler: (files: File[]) => void) {
+        const input = e.currentTarget as HTMLInputElement;
+        handler(Array.from(input.files ?? []));
+        input.value = '';
+    }
+
+    function moveImage(from: number, to: number) {
+        if (to < 0 || to >= images.length) return;
+        const next = [...images];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        images = next;
+    }
 </script>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -53,26 +132,46 @@
             placeholder="🤝" />
     </div>
 
-    <!-- תמונה -->
+    <!-- לוגו -->
     <div class="md:col-span-2">
-        <label for="f-image" class="block text-sm font-bold text-gray-300 mb-1">תמונה / לוגו (כתובת)</label>
+        <span class="block text-sm font-bold text-gray-300 mb-1">לוגו / תמונה ראשית</span>
+        <input type="hidden" name="image" value={image} />
         <div class="flex items-start gap-3">
-            <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#3b5794] bg-[#1e293b]">
+            <div class="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#3b5794] bg-[#1e293b]">
                 {#if imagePreview && !imageBroken}
                     <img src={imagePreview} alt="" class="h-full w-full object-cover" onerror={() => (imageBroken = true)} />
                 {:else}
-                    <span class="text-xl" aria-hidden="true">{imageBroken ? '⚠️' : (gemach?.icon || '🖼️')}</span>
+                    <span class="text-2xl" aria-hidden="true">{imageBroken ? '⚠️' : (gemach?.icon || '🖼️')}</span>
                 {/if}
             </div>
-            <div class="flex-1">
-                <input id="f-image" name="image" bind:value={image} dir="ltr"
-                    class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
-                    placeholder="https://example.com/logo.png" />
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                    <label use:imageDrop={pickLogo}
+                        class="cursor-pointer rounded-xl border border-dashed border-[#4c6cb0] bg-[#1e293b] px-4 py-2.5 text-sm font-bold text-blue-300 transition-colors hover:bg-[#243a6e]">
+                        {busy ? '⏳ מעבד...' : '📤 העלה תמונה'}
+                        <input type="file" accept="image/*" class="hidden" disabled={busy}
+                            onchange={(e) => onFilePicked(e, pickLogo)} />
+                    </label>
+                    {#if image}
+                        <button type="button" onclick={() => { image = ''; imageBroken = false; }}
+                            class="rounded-xl bg-[#1c2f5a] px-3 py-2.5 text-sm font-bold text-gray-300 transition-colors hover:bg-red-900/50 hover:text-red-200">
+                            הסר
+                        </button>
+                    {/if}
+                </div>
+                {#if image.startsWith('data:')}
+                    <p class="mt-2 text-sm text-gray-400">קובץ שהועלה · {dataUriWeightKb(image)}KB</p>
+                {:else}
+                    <!-- ללא name — הערך נשלח דרך ה-hidden שלמעלה -->
+                    <input aria-label="כתובת תמונה" bind:value={image} dir="ltr"
+                        class="mt-2 w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
+                        placeholder="או הדבק כתובת: https://example.com/logo.png" />
+                {/if}
                 <p class="mt-1 text-xs {imageBroken ? 'text-amber-300' : 'text-gray-500'}">
                     {#if imageBroken}
                         התמונה לא נטענה — בדוק את הכתובת. בכרטיס יוצג האימוג'י במקומה.
                     {:else}
-                        ריק = יוצג האימוג'י של הקטגוריה. אפשר גם data:image/...
+                        אפשר לגרור קובץ לכאן. ריק = יוצג האימוג'י של הקטגוריה.
                     {/if}
                 </p>
             </div>
@@ -81,21 +180,48 @@
 
     <!-- גלריית תמונות -->
     <div class="md:col-span-2">
-        <label for="f-images" class="block text-sm font-bold text-gray-300 mb-1">
-            גלריית תמונות <span class="font-normal text-gray-500">— כתובת אחת בכל שורה</span>
-        </label>
-        <textarea id="f-images" name="images" rows="3" bind:value={images} dir="ltr"
-            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none resize-y text-right"
-            placeholder={'https://example.com/1.jpg\nhttps://example.com/2.jpg'}></textarea>
-        {#if imageList.length > 0}
-            <div class="mt-2 flex flex-wrap gap-2">
-                {#each imageList as url, i (url + i)}
-                    <img src={url} alt="" class="h-16 w-16 rounded-lg border border-[#3b5794] object-cover bg-[#1e293b]"
+        <span class="block text-sm font-bold text-gray-300 mb-1">
+            גלריית תמונות <span class="font-normal text-gray-500">— עד {MAX_GALLERY_IMAGES}, מוצגות בדף הגמ"ח</span>
+        </span>
+        {#each images as src, i (i)}
+            <input type="hidden" name="images" value={src} />
+        {/each}
+
+        <div class="flex flex-wrap gap-2">
+            {#each images as src, i (i)}
+                <div class="group relative h-24 w-24 overflow-hidden rounded-xl border border-[#3b5794] bg-[#1e293b]">
+                    <img {src} alt="תמונה {i + 1}" class="h-full w-full object-cover"
                         onerror={(e) => (e.currentTarget as HTMLImageElement).classList.add('opacity-30', 'grayscale')} />
-                {/each}
-            </div>
-            <p class="mt-1 text-xs text-gray-500">{imageList.length} תמונות · תמונה דהויה = הכתובת לא נטענה</p>
-        {/if}
+                    <div class="absolute inset-x-0 bottom-0 flex justify-between bg-black/70 px-1 py-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                        <button type="button" onclick={() => moveImage(i, i - 1)} disabled={i === 0}
+                            class="px-1 text-xs text-white disabled:opacity-30" aria-label="הזז ימינה">→</button>
+                        <button type="button" onclick={() => (images = images.filter((_, j) => j !== i))}
+                            class="px-1 text-xs text-red-300 hover:text-red-200" aria-label="מחק תמונה">✕</button>
+                        <button type="button" onclick={() => moveImage(i, i + 1)} disabled={i === images.length - 1}
+                            class="px-1 text-xs text-white disabled:opacity-30" aria-label="הזז שמאלה">←</button>
+                    </div>
+                </div>
+            {/each}
+
+            {#if images.length < MAX_GALLERY_IMAGES}
+                <label use:imageDrop={addToGallery}
+                    class="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[#4c6cb0] bg-[#1e293b] text-blue-300 transition-colors hover:bg-[#243a6e]">
+                    <span class="text-xl" aria-hidden="true">{busy ? '⏳' : '＋'}</span>
+                    <span class="text-xs font-bold">{busy ? 'מעבד' : 'הוסף'}</span>
+                    <input type="file" accept="image/*" multiple class="hidden" disabled={busy}
+                        onchange={(e) => onFilePicked(e, addToGallery)} />
+                </label>
+            {/if}
+        </div>
+
+        <p class="mt-1.5 text-xs {uploadError ? 'text-amber-300' : 'text-gray-500'}">
+            {#if uploadError}
+                {uploadError}
+            {:else}
+                {images.length}/{MAX_GALLERY_IMAGES} · אפשר לגרור קבצים · התמונות מכווצות אוטומטית
+                {#if totalKb > 0} · סה"כ {totalKb}KB מתוך {MAX_TOTAL_IMAGE_KB}KB{/if}
+            {/if}
+        </p>
     </div>
 
     <!-- עיר -->
