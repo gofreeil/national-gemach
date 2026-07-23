@@ -459,14 +459,14 @@
         {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {#each filteredGemachim as gemach (gemach.id)}
-                    <article class="bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
+                    <article class="relative bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
                         <div class="flex items-start gap-3">
                             <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
                                 <GemachAvatar {gemach} {categories} />
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h3 class="font-black text-white text-lg leading-tight">
-                                    <a href="/gemach/{gemach.id}" class="hover:text-blue-300 transition-colors">{gemach.name}</a>
+                                    <a href="/gemach/{gemach.id}" class="after:absolute after:inset-0 after:content-[''] hover:text-blue-300 transition-colors">{gemach.name}</a>
                                 </h3>
                                 <div class="flex items-center gap-2 mt-1 flex-wrap">
                                     <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
@@ -487,7 +487,7 @@
                                     {#if gemach.phone}
                                         <a
                                             href="tel:{gemach.phone}"
-                                            class="inline-flex items-center gap-2 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
+                                            class="relative z-10 inline-flex items-center gap-2 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
                                             aria-label="התקשר ל{gemach.name}"
                                         >
                                             📞 {gemach.phone}
@@ -498,12 +498,12 @@
                                             href={gemach.link}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            class="inline-flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                                            class="relative z-10 inline-flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors"
                                         >
                                             🔗 קישור
                                         </a>
                                     {/if}
-                                    <a href="/gemach/{gemach.id}" class="inline-flex items-center gap-1 text-sm font-bold text-gray-300 hover:text-white transition-colors">
+                                    <a href="/gemach/{gemach.id}" class="relative z-10 inline-flex items-center gap-1 text-sm font-bold text-gray-300 hover:text-white transition-colors">
                                         לפרטים ←
                                     </a>
                                 </div>
@@ -594,7 +594,7 @@
                 <span class="cat-label">{cat.label}</span>
 
                 <span class="cat-count" aria-hidden="true">
-                    {#if cat.count > 0}{cat.count} גמחים{:else}בקרוב{/if}
+                    {cat.count} גמחים
                 </span>
             </button>
         {/snippet}
@@ -650,7 +650,7 @@
       </div>
 
         {#snippet gemachCard(gemach: Gemach, pinned: boolean = false)}
-            <article class="bg-[#16264d] border {pinned ? 'border-amber-500/30' : 'border-[#3b5794]'} rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
+            <article class="relative bg-[#16264d] border {pinned ? 'border-amber-500/30' : 'border-[#3b5794]'} rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
                 <div class="flex items-start gap-3">
                     <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
                         <GemachAvatar {gemach} {categories} />
@@ -658,7 +658,7 @@
                     <div class="flex-1 min-w-0">
                         <h3 class="font-black text-white text-lg leading-tight">
                             {#if pinned}<span class="text-amber-400 text-sm" aria-hidden="true">⭐</span> {/if}<a
-                                href="/gemach/{gemach.id}" class="hover:text-blue-300 transition-colors">{gemach.name}</a>
+                                href="/gemach/{gemach.id}" class="after:absolute after:inset-0 after:content-[''] hover:text-blue-300 transition-colors">{gemach.name}</a>
                         </h3>
                         <div class="flex items-center gap-2 mt-1 flex-wrap">
                             <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
@@ -672,7 +672,7 @@
                         {#if gemach.phone}
                             <a
                                 href="tel:{gemach.phone}"
-                                class="inline-flex items-center gap-2 mt-3 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
+                                class="relative z-10 inline-flex items-center gap-2 mt-3 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
                                 aria-label="התקשר ל{gemach.name}"
                             >
                                 📞 {gemach.phone}
