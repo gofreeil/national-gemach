@@ -61,28 +61,6 @@
         {/if}
     </div>
 
-    <!-- מצב ייבוא הרשימה הסטטית -->
-    {#if s.staticRemaining > 0}
-        <div class="card p-5 border-amber-500/30 bg-amber-500/5">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 class="font-bold text-amber-200">📥 הרשימה הסטטית עדיין לא הועברה במלואה ל-DB</h2>
-                    <p class="text-sm text-gray-400 mt-1">
-                        {s.staticImported} מתוך {s.staticTotal} יובאו · נותרו <b class="text-amber-300">{s.staticRemaining}</b>.
-                        עד לייבוא, הגמ"חים הסטטיים מוצגים באתר אך אינם ניתנים לעריכה/מחיקה בפאנל.
-                    </p>
-                </div>
-                <a href="/admin/import" class="rounded-xl bg-amber-600 hover:bg-amber-500 px-5 py-2.5 text-sm font-bold text-white transition-colors whitespace-nowrap">
-                    למסך הייבוא ←
-                </a>
-            </div>
-        </div>
-    {:else}
-        <div class="card p-5 border-emerald-500/30 bg-emerald-500/5">
-            <h2 class="font-bold text-emerald-200">✅ כל הרשימה הסטטית ({s.staticTotal}) הועברה ל-DB וניתנת לניהול מלא</h2>
-        </div>
-    {/if}
-
     <!-- מוכנות למפה של קהילה בשכונה -->
     {#if s.mapMissing > 0}
         <div class="card p-5 border-amber-500/30 bg-amber-500/5">

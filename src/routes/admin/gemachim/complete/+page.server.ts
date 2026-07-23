@@ -2,13 +2,11 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import {
     getAllGemachim,
-    getImportedSourceIds,
     patchGemachLocation,
     geocodeGemachById,
 } from '$lib/server/db';
 import { getCategories } from '$lib/server/adminStore';
 import { hasValidCoords } from '$lib/server/geocode';
-import { staticGemachim } from '$lib/staticGemachim';
 import { cities } from '$lib/gemachData';
 import type { Gemach } from '$lib/gemachData';
 
@@ -36,10 +34,9 @@ export const load: PageServerLoad = async ({ url }) => {
     const onlyMissing = url.searchParams.get('missing') === '1';
     const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
-    const [all, categories, importedIds] = await Promise.all([
+    const [all, categories] = await Promise.all([
         getAllGemachim(),
         getCategories(),
-        getImportedSourceIds(),
     ]);
 
     const enriched = all.map(g => ({
@@ -75,8 +72,6 @@ export const load: PageServerLoad = async ({ url }) => {
         ready: enriched.filter(g => g._ready).length,
         missingCoords: enriched.filter(g => !g._ready).length,
         missingLocation: enriched.filter(g => !g.address && !g.neighborhood).length,
-        staticTotal: staticGemachim.length,
-        staticRemaining: staticGemachim.filter(g => !importedIds.has(g.id)).length,
     };
 
     return {

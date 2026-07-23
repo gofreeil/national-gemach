@@ -91,17 +91,6 @@
         </div>
     </div>
 
-    <!-- הרשימה הסטטית שטרם יובאה -->
-    {#if data.summary.staticRemaining > 0}
-        <div class="card p-4 border-amber-500/30 bg-amber-500/5 flex flex-wrap items-center justify-between gap-3">
-            <p class="text-sm text-amber-200">
-                ⚠️ {data.summary.staticRemaining} גמ"חים סטטיים עדיין לא יובאו ל-DB — הם לא ניתנים לעריכה כאן
-                ולא מופיעים בקהילה עד לייבוא.
-            </p>
-            <a href="/admin/import" class="rounded-xl bg-amber-600 hover:bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-colors whitespace-nowrap">למסך הייבוא ←</a>
-        </div>
-    {/if}
-
     <!-- גזירת מיקום אוטומטית לכל החסרים -->
     <div class="card p-4 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3">

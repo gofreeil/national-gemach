@@ -49,7 +49,7 @@
             {#if data.managedTotal === 0}
                 <div class="text-4xl mb-3">📭</div>
                 <p class="font-bold">אין עדיין גמ"חים מנוהלים ב-DB.</p>
-                <p class="text-sm mt-1">אפשר <a href="/admin/gemachim/new" class="text-blue-400 hover:underline">להוסיף גמ"ח חדש</a> או <a href="/admin/import" class="text-blue-400 hover:underline">לייבא את הרשימה הסטטית</a>.</p>
+                <p class="text-sm mt-1">אפשר <a href="/admin/gemachim/new" class="text-blue-400 hover:underline">להוסיף גמ"ח חדש</a>.</p>
             {:else}
                 <div class="text-4xl mb-3">🔍</div>
                 <p class="font-bold">לא נמצאו תוצאות לחיפוש.</p>
