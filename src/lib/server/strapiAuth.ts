@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 
 // ה-Strapi המשותף של יוצאים לחירות — רשימת המשתמשים המאוחדת לכל האתרים.
 export const STRAPI_URL = 'https://api.gofreeil.com';
