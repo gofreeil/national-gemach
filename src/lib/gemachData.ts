@@ -28,6 +28,9 @@ export interface Gemach {
     sourceId?: string;
     /** האם הפריט מנוהל ב-DB (ניתן לעריכה/מחיקה בפאנל) */
     managed?: boolean;
+    /** מזהה-הבעלים (user_id ב-Strapi). שרת-בלבד: מאוכלס רק בשליפת פריט בודד
+     *  לעריכה (getGemachById) ולעולם לא ברשימות הציבוריות — כדי לא לחשוף מיילים. */
+    ownerId?: string;
 }
 
 export interface CategoryDef {

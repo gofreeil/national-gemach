@@ -59,8 +59,10 @@ function pickGallery(extra: Record<string, unknown>): string[] {
     return extra.images.map(toStr).filter((s): s is string => !!s);
 }
 
-/** ממפה item של Strapi לסכמת Gemach של האתר הארצי */
-function mapItemToGemach(item: StrapiItem): Gemach {
+/** ממפה item של Strapi לסכמת Gemach של האתר הארצי.
+ *  includeOwner=true חושף את user_id ל-ownerId — רק לשליפת פריט בודד לעריכה,
+ *  לעולם לא ברשימות (user_id עשוי להיות מייל ואסור לדלוף לציבור). */
+function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach {
     const extra = (item.extra_fields ?? {}) as Record<string, unknown>;
     const rawType = (extra.gmach_type ?? '').toString().trim();
 
@@ -105,6 +107,7 @@ function mapItemToGemach(item: StrapiItem): Gemach {
         featured:      extra.featured === true || extra.featured === 'true',
         sourceId:      toStr(extra.source_id),
         managed:       true,
+        ownerId:       includeOwner ? (item.user_id ?? undefined) : undefined,
     };
 }
 
@@ -126,7 +129,9 @@ export async function getAllGemachim(): Promise<Gemach[]> {
             'filters[status1][$eq]':  'active',
             'sort':                   'createdAt:desc',
         });
-        return data.map(mapItemToGemach).sort(sortManaged);
+        // חשוב: לא map(mapItemToGemach) — הוא היה מעביר את ה-index כ-includeOwner
+        // ומדליף user_id (מייל) לרשימה הציבורית. עוטפים כדי לקבל את ברירת המחדל.
+        return data.map((item) => mapItemToGemach(item)).sort(sortManaged);
     } catch (e) {
         if (e instanceof StrapiContentTypeError) {
             console.warn('[national-gemach] content type not registered, returning []');
@@ -137,14 +142,30 @@ export async function getAllGemachim(): Promise<Gemach[]> {
     }
 }
 
-/** מחזיר גמ"ח בודד לפי documentId (לעריכה בפאנל) */
+/** מחזיר גמ"ח בודד לפי documentId (לעריכה בפאנל / ע"י הבעלים). כולל ownerId. */
 export async function getGemachById(documentId: string): Promise<Gemach | null> {
     try {
         const res = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
-        return res.data ? mapItemToGemach(res.data) : null;
+        return res.data ? mapItemToGemach(res.data, true) : null;
     } catch (e) {
         if (e instanceof StrapiContentTypeError) return null;
         console.error('[national-gemach] getGemachById failed:', e);
+        return null;
+    }
+}
+
+/** מזהה-הבעלים (user_id) של פריט בלבד — שליפה קלה (שדה יחיד) לבדיקת הרשאת
+ *  עריכה בדף הציבורי, בלי להביא את כל ה-extra_fields (שעשוי לכלול תמונות כבדות). */
+export async function getGemachOwnerId(documentId: string): Promise<string | null> {
+    try {
+        const res = await strapiGet<{ data: { user_id: string | null } | null }>(
+            `/api/items/${documentId}`,
+            { 'fields[0]': 'user_id' },
+        );
+        return res.data?.user_id ?? null;
+    } catch (e) {
+        if (e instanceof StrapiContentTypeError) return null;
+        console.error('[national-gemach] getGemachOwnerId failed:', e);
         return null;
     }
 }

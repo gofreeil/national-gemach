@@ -1,8 +1,12 @@
 <script lang="ts">
+    import { page } from '$app/stores';
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
+
+    /** חזרה מעריכה מוצלחת (redirect עם ?flash=updated) */
+    const justUpdated = $derived($page.url.searchParams.get('flash') === 'updated');
 
     const gemach = $derived(data.gemach);
     const categoryLabel = $derived(
@@ -74,6 +78,22 @@
         <span class="mx-1.5">›</span>
         <span class="text-gray-300">{gemach.name}</span>
     </nav>
+
+    {#if justUpdated}
+        <div class="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200">
+            ✅ הגמ"ח עודכן בהצלחה
+        </div>
+    {/if}
+
+    {#if data.canEdit}
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <span class="text-sm font-bold text-amber-200">✨ זהו הגמ"ח שלך — אפשר לעדכן את הפרטים</span>
+            <a href="/gemach/{gemach.id}/edit"
+                class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
+                ✏️ ערוך את הגמ"ח
+            </a>
+        </div>
+    {/if}
 
     <!-- כותרת -->
     <header class="bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 md:p-6">

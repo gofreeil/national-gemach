@@ -2,8 +2,10 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getCategories } from '$lib/server/adminStore';
 import { findGemachById, getMergedGemachim } from '$lib/server/gemachSource';
+import { getGemachOwnerId } from '$lib/server/db';
+import { isGemachOwner } from '$lib/server/ownership';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
     const [gemach, categories] = await Promise.all([findGemachById(params.id), getCategories()]);
     if (!gemach) throw error(404, 'הגמ"ח המבוקש לא נמצא במאגר');
 
@@ -15,5 +17,16 @@ export const load: PageServerLoad = async ({ params }) => {
         ...others.filter(g => g.category !== gemach.category && g.city === gemach.city),
     ].slice(0, 6);
 
-    return { gemach, categories, related };
+    // כפתור "ערוך" מוצג רק לבעל הגמ"ח המחובר. רק פריטים מנוהלים (Strapi) הם בעלי
+    // בעלים; לפריט סטטי אין user_id. שולפים את מזהה-הבעלים בנפרד כדי לא לדלוף מייל.
+    let canEdit = false;
+    if (gemach.managed) {
+        const session = await locals.auth();
+        if (session?.user) {
+            const ownerId = await getGemachOwnerId(gemach.id);
+            canEdit = isGemachOwner(session.user, ownerId);
+        }
+    }
+
+    return { gemach, categories, related, canEdit };
 };
