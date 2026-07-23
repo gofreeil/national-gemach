@@ -5,7 +5,12 @@
 
 import { env } from '$env/dynamic/private';
 
-const STRAPI_URL   = env.STRAPI_URL   ?? 'http://localhost:1337';
+// כתובת ה-Strapi המשותף — מקובעת לדומיין החי, זהה ל-strapiAuth ולכל מערכת gofreeil.
+// למה לא env.STRAPI_URL: משתנה-הסביבה בפריסה נותר מיושן (דומיין Railway ישן שהוחלף),
+// הצביע לשרת מת והחזיר 404 "Application not found" בכל כתיבה (הוספת גמ"ח/אדמין) —
+// בעוד ההתחברות עבדה כי הדומיין ב-strapiAuth קשיח. הקיבוע מבטיח שהפריטים והאימות
+// פונים לאותו שרת חי, בלי תלות בהגדרת env שעלולה להישאר תקועה על ערך ישן.
+const STRAPI_URL   = 'https://api.gofreeil.com';
 const STRAPI_TOKEN = env.STRAPI_TOKEN ?? '';
 
 const RETRY_ATTEMPTS = 3;
