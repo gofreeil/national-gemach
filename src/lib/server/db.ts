@@ -221,7 +221,7 @@ const SHEET_PREFIX = 'sheet:';
  *  Nominatim — ההשלמה נעשית במסך "השלמת פרטים" באצוות מבוקרות). */
 export async function createGemach(
     input: CreateGemachInput,
-    opts: { geocode?: boolean } = {},
+    opts: { geocode?: boolean; ownerId?: string } = {},
 ): Promise<{ id: string }> {
     let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
     let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
@@ -230,6 +230,11 @@ export async function createGemach(
         lat = c.lat;
         lng = c.lng;
     }
+
+    // בעלות: פריט מיובא מהרשימה הסטטית → sheet:<id>; פריט שנוצר ע"י משתמש מחובר
+    // → opts.ownerId (בפורמט credentials_<email> של "קהילה בשכונה", כך שהגמ"ח
+    // ניתן לעריכה ע"י אותו משתמש בשני האתרים). יצירת-אדמין ללא ownerId → בלי user_id.
+    const userId = input.sourceId ? SHEET_PREFIX + input.sourceId : opts.ownerId;
 
     const res = await strapiPost<{ data: StrapiItem }>('/api/items', {
         data: {
@@ -247,7 +252,7 @@ export async function createGemach(
             lng,
             extra_fields: buildExtra(input),
             status1:      input.status ?? 'active',
-            ...(input.sourceId ? { user_id: SHEET_PREFIX + input.sourceId } : {}),
+            ...(userId ? { user_id: userId } : {}),
             publishedAt:  new Date().toISOString(),
         },
     });

@@ -29,6 +29,16 @@
     /** מפתחות קטגוריה שתמונת הנושא שלהן נכשלה בטעינה — נופלים חזרה לאימוג'י */
     let brokenImg = $state(new Set<string>());
 
+    /** זום-פנימה פר-קטגוריה: חלק מתמונות הנושא מגיעות עם מסגרת לבנה/קרם אפויה
+     *  בקצוות (כלים, ספרים, ובמידה קלה חשמל). הגדלה מעבר לריבוע + חיתוך-מרכז
+     *  (overflow:hidden) מעלימה אותה לגמרי. השאר מקבלות זום עדין בלבד. */
+    const CAT_ZOOM: Record<string, number> = {
+        tools: 1.28,
+        books: 1.24,          // judaica_books.webp — מסגרת קרם בקצוות
+        electronics: 1.14,
+    };
+    const zoomFor = (key: string) => CAT_ZOOM[key] ?? 1.06;
+
     /* ═══════════ מסילת הקטגוריות — מיון ═══════════ */
     const OTHER_KEY = 'other';   // "אחר" תמיד אחרון, גם אם צבר הרבה
 
@@ -612,16 +622,19 @@
 
                 <span class="cat-ico">
                     {#if cat.image && !brokenImg.has(cat.key)}
-                        <!-- תמונת נושא מ"קהילה בשכונה" (דף למסירה); קישור שבור → חזרה לאימוג'י -->
-                        <img
-                            src={cat.image}
-                            alt=""
-                            draggable="false"
-                            loading="lazy"
-                            decoding="async"
-                            onerror={() => (brokenImg = new Set(brokenImg).add(cat.key))}
-                            class="cat-photo"
-                        />
+                        <!-- תמונת נושא מ"קהילה בשכונה" (דף למסירה); זום-פנימה (‎--z) חותך
+                             מסגרת לבנה אפויה בקצוות. קישור שבור → חזרה לאימוג'י -->
+                        <span class="cat-photo">
+                            <img
+                                src={cat.image}
+                                alt=""
+                                draggable="false"
+                                loading="lazy"
+                                decoding="async"
+                                style="--z:{zoomFor(cat.key)}"
+                                onerror={() => (brokenImg = new Set(brokenImg).add(cat.key))}
+                            />
+                        </span>
                     {:else if cat.key === 'judaism'}
                         <img src="/icons/menorah.svg" alt="" draggable="false" class="h-9 w-9 object-contain" />
                     {:else}
@@ -862,15 +875,25 @@
         background: linear-gradient(145deg, #f3d68b, #d4af37);
         box-shadow: 0 2px 6px -2px rgba(212, 175, 55, 0.8);
     }
-    .cat-ico { display: grid; place-items: center; min-height: 3.5rem; }
-    /* תמונת נושא במקום האימוג'י — תמונה מלאה קטנה, נחתכת למרכז הנושא */
+    .cat-ico { display: grid; place-items: center; width: 100%; min-height: 3.5rem; }
+    /* תמונת נושא במקום האימוג'י — גדולה, ממלאת כמעט את כל רוחב האריח.
+       overflow:hidden חותך את הזום-פנימה (‎--z) שמעלים מסגרות לבנות אפויות בקצוות. */
     .cat-photo {
-        width: 3.5rem;
-        height: 3.5rem;
-        border-radius: 0.85rem;
+        width: 5.75rem;
+        max-width: 100%;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        border-radius: 1rem;
+        background: #0f1c3d;
+        box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+    .cat-photo img {
+        width: 100%;
+        height: 100%;
+        display: block;
         object-fit: cover;
-        border: 1px solid #3b5794;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 18px -10px rgba(0, 0, 0, 0.95);
+        object-position: center;
+        transform: scale(var(--z, 1.06));
     }
     .cat-label { font-size: 0.875rem; font-weight: 700; line-height: 1.15; color: #e5e7eb; }
 

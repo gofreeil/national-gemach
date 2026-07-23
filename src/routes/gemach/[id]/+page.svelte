@@ -1,12 +1,16 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
+    import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
 
     /** חזרה מעריכה מוצלחת (redirect עם ?flash=updated) */
     const justUpdated = $derived($page.url.searchParams.get('flash') === 'updated');
+
+    /** גמ"ח שזה עתה נוצר (redirect עם ?flash=created) — מציג אישור וקישור לאתר המקביל */
+    const justCreated = $derived($page.url.searchParams.get('flash') === 'created');
 
     const gemach = $derived(data.gemach);
     const categoryLabel = $derived(
@@ -70,18 +74,32 @@
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape') lightbox = null; }} />
 
 <article class="px-3 md:px-4 py-6 max-w-3xl mx-auto">
-    <!-- פירורי לחם -->
-    <nav class="mb-4 text-sm text-gray-400" aria-label="ניווט">
-        <a href="/" class="hover:text-white transition-colors">דף הבית</a>
-        <span class="mx-1.5">›</span>
-        <a href="/gemachim" class="hover:text-white transition-colors">כל הגמ"חים</a>
-        <span class="mx-1.5">›</span>
-        <span class="text-gray-300">{gemach.name}</span>
-    </nav>
+    <!-- ניווט עליון: כפתור חזרה + פירורי לחם, בגלולה כהה לקריאוּת על הרקע הוורוד -->
+    <Breadcrumbs
+        fallback="/gemachim"
+        crumbs={[
+            { label: 'דף הבית', href: '/' },
+            { label: 'כל הגמ"חים', href: '/gemachim' },
+            { label: gemach.name }
+        ]}
+    />
 
     {#if justUpdated}
         <div class="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200">
             ✅ הגמ"ח עודכן בהצלחה
+        </div>
+    {/if}
+
+    {#if justCreated}
+        <div class="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-4">
+            <p class="text-sm font-black text-emerald-200">✅ הגמ"ח נוצר ופורסם בהצלחה!</p>
+            <p class="mt-1 text-sm leading-relaxed text-emerald-100/80">
+                הוא מופיע עכשיו גם באתר המקביל <span class="font-bold">קהילה בשכונה</span> — אותו גמ"ח, שתי רשתות.
+            </p>
+            <a href="https://community.gofreeil.com/?item={gemach.id}" target="_blank" rel="noopener noreferrer"
+                class="mt-3 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
+                🕊️ צפה בגמ"ח שלך על מפת השכונה בקהילה בשכונה
+            </a>
         </div>
     {/if}
 

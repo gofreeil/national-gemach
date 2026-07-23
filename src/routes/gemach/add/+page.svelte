@@ -7,27 +7,30 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let saving = $state(false);
 
-	// אם השמירה נכשלה — נזרע מהערכים שהוזנו; אחרת מהגמ"ח שב-DB
-	const initial = $derived(form?.values ?? data.gemach);
+	// אם השמירה נכשלה — נזרע מהערכים שהוזנו; אחרת טופס ריק
+	const initial = $derived(form?.values ?? null);
 </script>
 
 <svelte:head>
-	<title>עריכת {data.gemach.name} – הגמ"ח הארצי</title>
+	<title>הוספת גמ"ח – הגמ"ח הארצי</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
 <div class="px-3 md:px-4 py-6 max-w-3xl mx-auto" dir="rtl">
 	<Breadcrumbs
-		fallback="/gemach/{data.gemach.id}"
+		fallback="/"
 		crumbs={[
 			{ label: 'דף הבית', href: '/' },
-			{ label: data.gemach.name, href: `/gemach/${data.gemach.id}` },
-			{ label: 'עריכה' }
+			{ label: 'הוספת גמ"ח' }
 		]}
 	/>
 
 	<div class="mb-4">
-		<h1 class="text-2xl font-black text-white">✏️ עריכת הגמ"ח שלי</h1>
+		<h1 class="text-2xl font-black text-white">➕ הוספת גמ"ח חדש</h1>
+		<p class="mt-1 text-sm text-gray-400">
+			פרסום אחד — שתי רשתות: הגמ"ח יופיע במאגר הארצי וגם באתר
+			<span class="font-bold text-emerald-300">קהילה בשכונה</span>.
+		</p>
 	</div>
 
 	{#if form?.error}
@@ -36,7 +39,7 @@
 
 	<form
 		method="POST"
-		action="?/update"
+		action="?/create"
 		use:enhance={() => { saving = true; return async ({ update }) => { await update(); saving = false; }; }}
 		class="rounded-2xl border border-[#3b5794] bg-[#16264d] p-5 md:p-6"
 	>
@@ -48,10 +51,10 @@
 				disabled={saving}
 				class="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 font-bold text-white transition hover:opacity-90 disabled:opacity-60"
 			>
-				{saving ? 'שומר...' : 'שמור שינויים'}
+				{saving ? 'מפרסם...' : 'פרסם גמ"ח'}
 			</button>
 			<a
-				href="/gemach/{data.gemach.id}"
+				href="/"
 				class="rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-6 py-3 font-bold text-white transition-colors"
 			>
 				ביטול
