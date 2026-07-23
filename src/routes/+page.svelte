@@ -61,6 +61,7 @@
     const CLICK_EXPIRE_MS = 400;
 
     let railEl = $state<HTMLUListElement | null>(null);
+    let trackEl = $state<HTMLDivElement | null>(null);
     let rtl = $state(true);           // ברירת מחדל נכונה כבר ב-SSR (הדף כולו rtl)
     let dragging = $state(false);
     let hinted = $state(false);
@@ -70,9 +71,11 @@
     let progress = $state(0);         // 0..1
     let thumbRatio = $state(1);       // clientWidth / scrollWidth
     let hiddenCount = $state(0);      // כמה קטגוריות עוד מחכות קדימה
+    let scrubbing = $state(false);    // גרירת ידית הסקראבר פעילה
 
     // לא-ריאקטיביים: לא מוצגים, ולכן אין טעם ב-$state
     let pointerId = -1;
+    let thumbPointerId = -1, thumbGrab = 0;   // ידית הסקראבר: מזהה מצביע + היסט האחיזה בתוך הידית
     let isTouch = false;
     let axisLock: 'h' | 'v' | null = null;
     let startX = 0, startY = 0, startScroll = 0, maxMove = 0;
@@ -217,6 +220,63 @@
         hinted = true;
         const step = Math.max(180, el.clientWidth * 0.8);
         el.scrollBy({ left: (rtl ? -1 : 1) * dir * step, behavior: prefersReduce() ? 'auto' : 'smooth' });
+    }
+
+    /* ── ידית הסקראבר: גרירה פרופורציונלית שמזיזה את המסילה ──────────────
+       ptrInline נמדד מקצה ה-inline-start (מימין ב-RTL) — בדיוק כמו שממקם
+       ה-CSS את הידית — ולכן אותו מיפוי עובד זהה בשני הכיוונים. scrollLeft
+       חיובי ב-LTR ושלילי ב-RTL, כמוסכמת הדפדפנים המודרנית שבה משתמש nudge. */
+    function scrubTo(clientX: number) {
+        const el = railEl, track = trackEl;
+        if (!el || !track) return;
+        const rect = track.getBoundingClientRect();
+        const trackW = rect.width;
+        const max = el.scrollWidth - el.clientWidth;
+        if (trackW <= 0 || max <= 0) return;
+        const thumbW = Math.min(trackW, (el.clientWidth / el.scrollWidth) * trackW);
+        const travel = trackW - thumbW;
+        if (travel <= 0) return;
+        const ptrInline = rtl ? rect.right - clientX : clientX - rect.left;
+        const start = Math.max(0, Math.min(travel, ptrInline - thumbGrab));
+        el.scrollLeft = (rtl ? -1 : 1) * (start / travel) * max;
+        readScroll();     // עדכון מיידי של --p/--ratio כדי שהידית תדבק לאצבע
+    }
+
+    function onThumbPointerDown(e: PointerEvent) {
+        if (e.button > 0) return;
+        const el = railEl, track = trackEl;
+        if (!el || !track) return;
+        const rect = track.getBoundingClientRect();
+        const trackW = rect.width;
+        if (trackW <= 0 || el.scrollWidth - el.clientWidth <= 0) return;
+        const thumbW = Math.min(trackW, (el.clientWidth / el.scrollWidth) * trackW);
+        const travel = trackW - thumbW;
+        if (travel <= 0) return;
+        const ptrInline = rtl ? rect.right - e.clientX : e.clientX - rect.left;
+        const thumbStart = Math.max(0, Math.min(1, progress)) * travel;
+        // לחיצה על הידית → אחיזה יחסית (בלי קפיצה); לחיצה על המסילה → מרכוז הידית תחת המצביע
+        thumbGrab = ptrInline >= thumbStart && ptrInline <= thumbStart + thumbW
+            ? ptrInline - thumbStart
+            : thumbW / 2;
+        thumbPointerId = e.pointerId;
+        scrubbing = true;
+        hinted = true;
+        track.setPointerCapture(e.pointerId);
+        e.preventDefault();
+        scrubTo(e.clientX);
+    }
+
+    function onThumbPointerMove(e: PointerEvent) {
+        if (e.pointerId !== thumbPointerId) return;
+        e.preventDefault();
+        scrubTo(e.clientX);
+    }
+
+    function endThumb(e: PointerEvent) {
+        if (e.pointerId !== thumbPointerId) return;
+        if (trackEl?.hasPointerCapture(e.pointerId)) trackEl.releasePointerCapture(e.pointerId);
+        thumbPointerId = -1;
+        scrubbing = false;
     }
 
     function onRailKeydown(e: KeyboardEvent) {
@@ -569,9 +629,21 @@
             </ul>
         </div>
 
-        <!-- סקראבר פרופורציונלי: רוחב הידית מקודד כמה מהרשימה עוד מוסתר -->
+        <!-- סקראבר פרופורציונלי ונגרר: רוחב הידית מקודד כמה מהרשימה מוסתר,
+             וגרירתה שמאלה/ימינה מזיזה את הקטגוריות (לחיצה על המסילה = קפיצה). -->
         <div class="mt-2 flex justify-center {overflowing ? '' : 'invisible'}" aria-hidden="true">
-            <div class="cat-track" style="--p:{progress}; --ratio:{thumbRatio}">
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+                bind:this={trackEl}
+                class="cat-track"
+                class:is-scrubbing={scrubbing}
+                style="--p:{progress}; --ratio:{thumbRatio}"
+                onpointerdown={onThumbPointerDown}
+                onpointermove={onThumbPointerMove}
+                onpointerup={endThumb}
+                onpointercancel={endThumb}
+                onlostpointercapture={endThumb}
+            >
                 <span class="cat-thumb"></span>
             </div>
         </div>
@@ -805,6 +877,14 @@
         border-radius: 999px;
         background: #16264d;
         box-shadow: inset 0 0 0 1px #3b5794;
+        cursor: pointer;
+        touch-action: none;            /* גרירת-מגע מזיזה את המסילה, לא גוללת את הדף */
+    }
+    /* אזור-מגע גבוה יותר בלי לעבות את הפס הדק — קל לתפוס גם באצבע */
+    .cat-track::before {
+        content: '';
+        position: absolute;
+        inset: -0.7rem 0;
     }
     .cat-thumb {
         position: absolute;
@@ -816,7 +896,10 @@
         inset-inline-start: calc(var(--p, 0) * (100% - var(--ratio, 1) * 100%));
         background: linear-gradient(90deg, #d4af37, #7fa0e8);
         box-shadow: 0 0 10px -2px rgba(127, 160, 232, 0.7);
+        cursor: grab;
     }
+    .cat-track.is-scrubbing { cursor: grabbing; }
+    .cat-track.is-scrubbing .cat-thumb { cursor: grabbing; filter: brightness(1.12); }
 
     /* ═══ רמז ═══ */
     .cat-hint-arrow { display: inline-block; }
