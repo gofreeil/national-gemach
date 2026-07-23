@@ -2,9 +2,17 @@
     import { page } from '$app/stores';
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
     import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+    import { adsReady, runInterstitial, gatedNav } from '$lib/adGate';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
+
+    /** חשיפת הטלפון מאחורי פרסומת. כשהפיצ'ר כבוי — חשוף מלכתחילה (התנהגות רגילה);
+     *  כשדלוק — מוסתר עד שלוחצים "גלה טלפון", ואז מוצגת פרסומת 5 שניות ואז נחשף. */
+    let phoneRevealed = $state(!adsReady());
+    function revealPhone() {
+        runInterstitial().then(() => (phoneRevealed = true));
+    }
 
     /** חזרה מעריכה מוצלחת (redirect עם ?flash=updated) */
     const justUpdated = $derived($page.url.searchParams.get('flash') === 'updated');
@@ -144,14 +152,22 @@
         <!-- פעולות -->
         <div class="flex flex-wrap gap-2 mt-5">
             {#if gemach.phone}
-                <a href="tel:{gemach.phone}"
-                    class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2.5 font-bold text-white transition-colors">
-                    📞 התקשר
-                </a>
-                <a href="https://wa.me/{waPhone}" target="_blank" rel="noopener noreferrer"
-                    class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2.5 font-bold text-white transition-colors">
-                    💬 וואטסאפ
-                </a>
+                {#if phoneRevealed}
+                    <a href="tel:{gemach.phone}"
+                        class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2.5 font-bold text-white transition-colors">
+                        📞 התקשר
+                    </a>
+                    <a href="https://wa.me/{waPhone}" target="_blank" rel="noopener noreferrer"
+                        class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2.5 font-bold text-white transition-colors">
+                        💬 וואטסאפ
+                    </a>
+                {:else}
+                    <!-- הטלפון מוסתר עד לצפייה בפרסומת קצרה -->
+                    <button type="button" onclick={revealPhone}
+                        class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2.5 font-bold text-white transition-colors">
+                        📞 גלה טלפון
+                    </button>
+                {/if}
             {/if}
             {#if fullAddress}
                 <a href="https://waze.com/ul?q={encodeURIComponent(fullAddress)}" target="_blank" rel="noopener noreferrer"
@@ -192,7 +208,19 @@
                 <div><dt class="text-gray-400">איש קשר</dt><dd class="text-white font-bold">{gemach.contact}</dd></div>
             {/if}
             {#if gemach.phone}
-                <div><dt class="text-gray-400">טלפון</dt><dd class="text-white font-bold" dir="ltr">{gemach.phone}</dd></div>
+                <div>
+                    <dt class="text-gray-400">טלפון</dt>
+                    {#if phoneRevealed}
+                        <dd class="text-white font-bold" dir="ltr">{gemach.phone}</dd>
+                    {:else}
+                        <dd>
+                            <button type="button" onclick={revealPhone}
+                                class="inline-flex items-center gap-1.5 font-bold text-green-400 hover:text-green-300 transition-colors">
+                                📞 גלה טלפון
+                            </button>
+                        </dd>
+                    {/if}
+                </div>
             {/if}
             {#if gemach.hours}
                 <div><dt class="text-gray-400">שעות פעילות</dt><dd class="text-white font-bold">{gemach.hours}</dd></div>
@@ -217,7 +245,7 @@
             <h2 class="font-black text-white mb-3 px-1">גמ"חים נוספים</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {#each data.related as g (g.id)}
-                    <a href="/gemach/{g.id}"
+                    <a href="/gemach/{g.id}" onclick={(e) => gatedNav(e, `/gemach/${g.id}`)}
                         class="flex items-start gap-3 bg-[#16264d] border border-[#3b5794] rounded-xl p-4 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
                         <div class="flex-shrink-0 text-2xl"><GemachAvatar gemach={g} categories={data.categories} /></div>
                         <div class="min-w-0">

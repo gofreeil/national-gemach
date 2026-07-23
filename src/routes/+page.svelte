@@ -2,6 +2,7 @@
     import { untrack } from 'svelte';
     import { cities, type Gemach } from '$lib/gemachData';
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
+    import { gatedNav } from '$lib/adGate';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -506,7 +507,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h3 class="font-black text-white text-lg leading-tight">
-                                    <a href="/gemach/{gemach.id}" class="after:absolute after:inset-0 after:content-[''] hover:text-blue-300 transition-colors">{gemach.name}</a>
+                                    <a href="/gemach/{gemach.id}" onclick={(e) => gatedNav(e, `/gemach/${gemach.id}`)} class="after:absolute after:inset-0 after:content-[''] hover:text-blue-300 transition-colors">{gemach.name}</a>
                                 </h3>
                                 <div class="flex items-center gap-2 mt-1 flex-wrap">
                                     <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
@@ -543,7 +544,7 @@
                                             🔗 קישור
                                         </a>
                                     {/if}
-                                    <a href="/gemach/{gemach.id}" class="relative z-10 inline-flex items-center gap-1 text-sm font-bold text-gray-300 hover:text-white transition-colors">
+                                    <a href="/gemach/{gemach.id}" onclick={(e) => gatedNav(e, `/gemach/${gemach.id}`)} class="relative z-10 inline-flex items-center gap-1 text-sm font-bold text-gray-300 hover:text-white transition-colors">
                                         לפרטים ←
                                     </a>
                                 </div>
@@ -709,7 +710,7 @@
                     <div class="flex-1 min-w-0">
                         <h3 class="font-black text-white text-lg leading-tight">
                             {#if pinned}<span class="text-amber-400 text-sm" aria-hidden="true">⭐</span> {/if}<a
-                                href="/gemach/{gemach.id}" class="after:absolute after:inset-0 after:content-[''] hover:text-blue-300 transition-colors">{gemach.name}</a>
+                                href="/gemach/{gemach.id}" onclick={(e) => gatedNav(e, `/gemach/${gemach.id}`)} class="after:absolute after:inset-0 after:content-[''] hover:text-blue-300 transition-colors">{gemach.name}</a>
                         </h3>
                         <div class="flex items-center gap-2 mt-1 flex-wrap">
                             <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">

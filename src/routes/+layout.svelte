@@ -8,6 +8,7 @@
     import RightAdBanner from '$lib/components/RightAdBanner.svelte';
     import MobileAdsDrawer from '$lib/components/MobileAdsDrawer.svelte';
     import WelcomeScreen from '$lib/components/WelcomeScreen.svelte';
+    import AdInterstitial from '$lib/components/AdInterstitial.svelte';
 
     let { children, data } = $props();
 </script>
@@ -49,6 +50,9 @@
 {/if}
 
 <MobileAdsDrawer user={data.user} />
+
+<!-- שכבת פרסומת-הביניים (5 שניות בקליק על גמ"ח / "גלה טלפון"). כבויה עד שיעלו פרסומות. -->
+<AdInterstitial />
 
 <div class="site-bg min-h-screen flex flex-col">
     <Header user={data.user} adminRole={data.adminRole} />
