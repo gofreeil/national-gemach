@@ -373,32 +373,17 @@
     </div>
     <h1 class="sr-only">הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</h1>
 
-    <!-- Search Bar -->
+    <!-- Search Bar — כל הפקדים בשורה אחת: קטגוריה · עיר · חיפוש חופשי · כפתור.
+         items-stretch מיישר את כולם לאותו גובה; החיפוש החופשי (flex-1 min-w-0)
+         בולע את הרוחב הפנוי ומתכווץ בנייד כדי שהשורה תישאר אחת. -->
     <div class="max-w-2xl mx-auto">
-        <div class="flex gap-2 mb-4">
-            <input
-                type="search"
-                bind:value={searchQuery}
-                onkeydown={handleKey}
-                placeholder="חפש לפי שם, עניין או עיר..."
-                aria-label="חיפוש גמחים"
-                class="flex-1 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white placeholder-gray-400 px-4 py-3 text-base focus:outline-none focus:border-blue-400 focus:bg-[#243a6e] transition-all"
-            />
-            <button
-                onclick={doSearch}
-                class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:opacity-90 active:scale-95 transition-all shadow-lg"
-            >
-                חפש 🔍
-            </button>
-        </div>
-
-        <!-- Filters Row -->
-        <div class="flex gap-3 flex-wrap justify-center">
+        <div class="flex flex-wrap items-stretch gap-2">
+            <!-- קטגוריה -->
             <select
                 bind:value={selectedCategory}
                 onchange={doSearch}
                 aria-label="סנן לפי קטגוריה"
-                class="rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white px-4 py-2 text-sm focus:outline-none focus:border-blue-400 cursor-pointer"
+                class="shrink-0 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white px-3 py-3 text-sm focus:outline-none focus:border-blue-400 cursor-pointer transition-all"
             >
                 <option value="">כל הקטגוריות</option>
                 {#each categories as cat}
@@ -406,15 +391,16 @@
                 {/each}
             </select>
 
+            <!-- עיר -->
             <input
                 type="text"
                 bind:value={selectedCity}
                 onchange={doSearch}
                 onkeydown={handleKey}
                 list="home-cities-list"
-                placeholder="כל הערים — הקלד שם עיר"
+                placeholder="כל הערים"
                 aria-label="סנן לפי עיר"
-                class="w-48 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white placeholder-gray-400 px-4 py-2 text-sm focus:outline-none focus:border-blue-400 focus:bg-[#243a6e] transition-all"
+                class="w-24 sm:w-40 shrink-0 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white placeholder-gray-400 px-3 py-3 text-sm focus:outline-none focus:border-blue-400 focus:bg-[#243a6e] transition-all"
             />
             <datalist id="home-cities-list">
                 {#each cities as city (city)}
@@ -422,15 +408,36 @@
                 {/each}
             </datalist>
 
-            {#if showResults || selectedCategory || selectedCity}
+            <!-- חיפוש חופשי -->
+            <input
+                type="search"
+                bind:value={searchQuery}
+                onkeydown={handleKey}
+                placeholder="חפש לפי שם, עניין או עיר..."
+                aria-label="חיפוש גמחים"
+                class="flex-1 min-w-0 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white placeholder-gray-400 px-4 py-3 text-base focus:outline-none focus:border-blue-400 focus:bg-[#243a6e] transition-all"
+            />
+
+            <!-- כפתור: אייקן בלבד בנייד, טקסט מלא במסכים רחבים -->
+            <button
+                onclick={doSearch}
+                aria-label="חפש"
+                class="shrink-0 px-4 sm:px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:opacity-90 active:scale-95 transition-all shadow-lg"
+            >
+                <span class="hidden sm:inline">חפש </span>🔍
+            </button>
+        </div>
+
+        {#if showResults || selectedCategory || selectedCity}
+            <div class="mt-3 flex justify-center">
                 <button
                     onclick={clearFilters}
                     class="rounded-xl bg-red-900/40 border border-red-500/30 text-red-300 px-4 py-2 text-sm hover:bg-red-900/60 transition-colors"
                 >
                     נקה הכל ✕
                 </button>
-            {/if}
-        </div>
+            </div>
+        {/if}
     </div>
 </section>
 
