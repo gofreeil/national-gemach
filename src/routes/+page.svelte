@@ -382,68 +382,83 @@
     </div>
     <h1 class="sr-only">הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</h1>
 
-    <!-- Search Bar — כל הפקדים בשורה אחת: קטגוריה · עיר · חיפוש חופשי · כפתור.
-         items-stretch מיישר את כולם לאותו גובה; החיפוש החופשי (flex-1 min-w-0)
-         בולע את הרוחב הפנוי ומתכווץ בנייד כדי שהשורה תישאר אחת. -->
+    <!-- Search Bar — עיצוב "רגוע ומלוכד": שדה חיפוש-גיבור אחד רחב עם כפתור מוטמע בקצה,
+         ומתחתיו שני מסננים שקטים (קטגוריה · עיר) שמתעוררים במגע ומאירים בזהב כשהם פעילים.
+         חוט זהב דק בקצה הגיבור קושר ללוגו מעל ולמובילי-הקטגוריות מתחת. הכול RTL בתכונות לוגיות. -->
     <div class="max-w-2xl mx-auto">
-        <div class="flex flex-wrap items-stretch gap-2">
-            <!-- קטגוריה -->
-            <select
-                bind:value={selectedCategory}
-                onchange={doSearch}
-                aria-label="סנן לפי קטגוריה"
-                class="shrink-0 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white px-3 py-3 text-sm focus:outline-none focus:border-blue-400 cursor-pointer transition-all"
-            >
-                <option value="">כל הקטגוריות</option>
-                {#each categories as cat}
-                    <option value={cat.key}>{cat.icon} {cat.label}</option>
-                {/each}
-            </select>
-
-            <!-- עיר -->
-            <input
-                type="text"
-                bind:value={selectedCity}
-                onchange={doSearch}
-                onkeydown={handleKey}
-                list="home-cities-list"
-                placeholder="כל הערים"
-                aria-label="סנן לפי עיר"
-                class="w-24 sm:w-40 shrink-0 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white placeholder-gray-400 px-3 py-3 text-sm focus:outline-none focus:border-blue-400 focus:bg-[#243a6e] transition-all"
-            />
-            <datalist id="home-cities-list">
-                {#each cities as city (city)}
-                    <option value={city}></option>
-                {/each}
-            </datalist>
-
-            <!-- חיפוש חופשי -->
+        <!-- שדה החיפוש הראשי (הגיבור): שדה אחד רחב, כפתור גרדיאנט מוטמע בקצה — נקרא כאובייקט אחד -->
+        <div class="hero-search group relative flex items-center gap-2 rounded-2xl bg-[#16264d] border border-[#3b5794] ps-3.5 pe-2 py-2 shadow-lg shadow-black/25 transition-all duration-200 focus-within:border-blue-400 focus-within:bg-[#1b2f5e] focus-within:shadow-blue-500/20">
+            <!-- זכוכית מגדלת מובילה (קצה פנימי = ימין ב-RTL) -->
+            <span class="hero-icon pointer-events-none shrink-0 transition-colors" aria-hidden="true">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+            </span>
             <input
                 type="search"
                 bind:value={searchQuery}
                 onkeydown={handleKey}
                 placeholder="חפש לפי שם, עניין או עיר..."
                 aria-label="חיפוש גמחים"
-                class="flex-1 min-w-0 rounded-xl bg-[#1c2f5a] border border-[#4c6cb0] text-white placeholder-gray-400 px-4 py-3 text-base focus:outline-none focus:border-blue-400 focus:bg-[#243a6e] transition-all"
+                class="hero-input flex-1 min-w-0 bg-transparent border-0 outline-none text-white placeholder-gray-400 text-base sm:text-lg py-2.5"
             />
-
-            <!-- כפתור: אייקן בלבד בנייד, טקסט מלא במסכים רחבים -->
+            <!-- כפתור מוטמע בתוך המעטפת -->
             <button
                 onclick={doSearch}
                 aria-label="חפש"
-                class="shrink-0 px-4 sm:px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:opacity-90 active:scale-95 transition-all shadow-lg"
-            >
-                <span class="hidden sm:inline">חפש </span>🔍
-            </button>
+                class="shrink-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold px-5 sm:px-6 py-2.5 shadow-md hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#16264d] transition-all"
+            >חפש</button>
+        </div>
+
+        <!-- שני מסננים שקטים: קטגוריה + עיר — חולקים שורה, מתעוררים במגע; זהב = מסנן פעיל -->
+        <div class="mt-3 flex items-stretch gap-2.5">
+            <!-- קטגוריה -->
+            <div class="filter group relative flex-1 min-w-0" class:is-active={selectedCategory}>
+                <span class="filter-icon pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 transition-colors" aria-hidden="true">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+                </span>
+                <select
+                    bind:value={selectedCategory}
+                    onchange={doSearch}
+                    aria-label="סנן לפי קטגוריה"
+                    class="qc-select w-full appearance-none cursor-pointer rounded-xl bg-[#1c2f5a]/70 border border-[#3b5794]/70 text-white/90 text-base sm:text-sm ps-9 pe-9 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
+                >
+                    <option value="">כל הקטגוריות</option>
+                    {#each categories as cat}
+                        <option value={cat.key}>{cat.icon} {cat.label}</option>
+                    {/each}
+                </select>
+            </div>
+
+            <!-- עיר -->
+            <div class="filter group relative flex-1 min-w-0" class:is-active={selectedCity}>
+                <span class="filter-icon pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 transition-colors" aria-hidden="true">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+                </span>
+                <input
+                    type="text"
+                    bind:value={selectedCity}
+                    onchange={doSearch}
+                    onkeydown={handleKey}
+                    list="home-cities-list"
+                    placeholder="כל הערים"
+                    aria-label="סנן לפי עיר"
+                    class="w-full rounded-xl bg-[#1c2f5a]/70 border border-[#3b5794]/70 text-white/90 placeholder-white/50 text-base sm:text-sm ps-9 pe-3 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
+                />
+                <datalist id="home-cities-list">
+                    {#each cities as city (city)}
+                        <option value={city}></option>
+                    {/each}
+                </datalist>
+            </div>
         </div>
 
         {#if showResults || selectedCategory || selectedCity}
             <div class="mt-3 flex justify-center">
                 <button
                     onclick={clearFilters}
-                    class="rounded-xl bg-red-900/40 border border-red-500/30 text-red-300 px-4 py-2 text-sm hover:bg-red-900/60 transition-colors"
+                    class="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 text-white/85 px-5 py-2.5 min-h-[44px] text-sm hover:bg-white/15 hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 transition-all"
                 >
-                    נקה הכל ✕
+                    נקה הכל
+                    <span aria-hidden="true">✕</span>
                 </button>
             </div>
         {/if}
@@ -930,5 +945,68 @@
         .cat-hint-arrow, .cat-hint-arrow.is-live { animation: none !important; transform: none !important; }
         .cat-tile, .cat-tile:hover, .cat-tile:active { transform: none !important; }
         .cat-rail { scroll-behavior: auto !important; }
+    }
+
+    /* ═══ שדה הגיבור: חוט זהב דק-כשׂערה בקצה העליון — קושר לגבול הזהב של הלוגו מעל
+       ולמובילי הקטגוריות בזהב שברֵיל שמתחת. לחישה, לא מילוי. ═══ */
+    .hero-search::before {
+        content: '';
+        position: absolute;
+        top: -1px;
+        inset-inline: 22%;
+        height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.85), transparent);
+        pointer-events: none;
+    }
+    /* זכוכית מגדלת — פֶּריווינקל רגוע ⇒ כחול בפוקוס */
+    .hero-icon { color: #9fb4e0; }
+    .hero-search:focus-within .hero-icon { color: #93c5fd; }
+    /* מסתירים את כפתור ה-×/הקישוט המובנים של type=search — הניקוי מרוכז ב"נקה הכל" */
+    .hero-input::-webkit-search-cancel-button,
+    .hero-input::-webkit-search-decoration {
+        -webkit-appearance: none;
+        appearance: none;
+        display: none;
+    }
+
+    /* ═══ מסננים שקטים: אייקון מוביל אחיד (white/55 ⇒ כחול בפוקוס ⇒ זהב כשפעיל) ═══ */
+    .filter-icon { color: rgba(255, 255, 255, 0.55); }
+    .filter:focus-within .filter-icon { color: #93c5fd; }
+    .filter.is-active .filter-icon { color: #D4AF37; }
+
+    /* מסנן פעיל — הדגשת זהב מרוסנת (גבול בלבד, בלי להאפיל על מובילי-הזהב במסילה) */
+    .filter.is-active .qc-select,
+    .filter.is-active input {
+        border-color: rgba(212, 175, 55, 0.75);
+        background-color: #243a6e;
+        color: #fff;
+        box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.28);
+    }
+
+    /* ═══ <select> נייטיב שמתמזג במעטפת: מסתירים את החץ המובנה ומציירים חץ SVG מותאם
+       בקצה הפנימי. RTL: background-position:left = inline-end (הצד השמאלי הפיזי);
+       ps-9/pe-9 שומרים שהערך לא ייתקל באייקון המוביל (ימין) או בחץ (שמאל). ═══ */
+    .qc-select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c9d4ef' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: left 0.9rem center;
+        background-size: 0.72rem;
+    }
+    .qc-select::-ms-expand { display: none; }
+    /* בפוקוס/פעיל — חץ בהיר יותר / זהב להתאמה לסביבה */
+    .filter:focus-within .qc-select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23dbe6ff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    }
+    .filter.is-active .qc-select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23D4AF37' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .hero-search,
+        .hero-icon,
+        .filter-icon,
+        .qc-select,
+        .filter input { transition: none; }
     }
 </style>
