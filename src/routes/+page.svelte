@@ -29,13 +29,15 @@
     /** מפתחות קטגוריה שתמונת הנושא שלהן נכשלה בטעינה — נופלים חזרה לאימוג'י */
     let brokenImg = $state(new Set<string>());
 
-    /** זום-פנימה פר-קטגוריה: חלק מתמונות הנושא מגיעות עם מסגרת לבנה/קרם אפויה
-     *  בקצוות (כלים, ספרים, ובמידה קלה חשמל). הגדלה מעבר לריבוע + חיתוך-מרכז
-     *  (overflow:hidden) מעלימה אותה לגמרי. השאר מקבלות זום עדין בלבד. */
+    /** זום-פנימה פר-קטגוריה: תמונות הקולאז' 341×341 (ביגוד, כלים, ספרים, חשמל)
+     *  מגיעות עם מסגרת קרם אפויה ולא-אחידה בקצוות. הגדלה מעבר לריבוע + חיתוך-מרכז
+     *  (overflow:hidden) מעלימה אותה לגמרי. הערכים אומתו חזותית (ffmpeg crop).
+     *  שאר התמונות (תינוקות/ריהוט/צעצועים/אחר) מלאות ומקבלות זום עדין בלבד. */
     const CAT_ZOOM: Record<string, number> = {
+        clothing: 1.20,       // clothing.webp — מסגרת קרם בקצוות
         tools: 1.28,
-        books: 1.24,          // judaica_books.webp — מסגרת קרם בקצוות
-        electronics: 1.14,
+        books: 1.24,          // judaica_books.webp — מסגרת קרם
+        electronics: 1.20,    // מסגרת קרם דקה בקצה הימני
     };
     const zoomFor = (key: string) => CAT_ZOOM[key] ?? 1.06;
 
@@ -559,49 +561,8 @@
     <section class="px-2 md:px-4 pb-8" aria-labelledby="cat-rail-title">
       <div class="mx-auto mb-10 max-w-4xl">
 
-        <div class="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
-            <div class="min-w-0">
-                <h2 id="cat-rail-title" class="text-2xl font-black text-white">חפש לפי קטגוריה</h2>
-                <!-- הרקע הוורוד לא נותן ניגודיות לטקסט שירות — לכן גלולה כהה, כמו באנר הסטטיסטיקה -->
-                <p class="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3 py-1 text-[11px] font-semibold text-gray-200 shadow-md">
-                    <span>גררו את השורה כדי לגלות עוד</span>
-                    <span class="cat-hint-arrow" class:is-live={!hinted} aria-hidden="true">↔</span>
-                </p>
-            </div>
-
-            <div class="flex shrink-0 items-center gap-2 {overflowing ? '' : 'invisible'}">
-                <button
-                    type="button"
-                    class="cat-nav"
-                    aria-controls="cat-rail"
-                    aria-disabled={atStart}
-                    aria-label="חזרה לקטגוריות המובילות"
-                    onclick={() => { if (!atStart) nudge(-1); }}
-                >
-                    <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true" fill="none"
-                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d={rtl ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} />
-                    </svg>
-                </button>
-
-                <!-- הגלולה היא גם המונה של מה שמוסתר וגם דרך הגישה ללא גרירה -->
-                <button
-                    type="button"
-                    class="cat-nav cat-nav--pill"
-                    aria-controls="cat-rail"
-                    aria-disabled={atEnd}
-                    aria-label={atEnd ? 'כל הקטגוריות מוצגות' : `הצג עוד ${hiddenCount} קטגוריות`}
-                    onclick={() => { if (!atEnd) nudge(1); }}
-                >
-                    <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true" fill="none"
-                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d={rtl ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} />
-                    </svg>
-                    <span class="text-xs font-black tabular-nums" aria-hidden="true">
-                        {atEnd ? 'הכל מוצג' : `עוד ${hiddenCount}`}
-                    </span>
-                </button>
-            </div>
+        <div class="mb-3 px-1">
+            <h2 id="cat-rail-title" class="text-2xl font-black text-white">סינון מהיר</h2>
         </div>
 
         <p id="cat-rail-help" class="sr-only">
@@ -676,22 +637,65 @@
             </ul>
         </div>
 
-        <!-- סקראבר פרופורציונלי ונגרר: רוחב הידית מקודד כמה מהרשימה מוסתר,
-             וגרירתה שמאלה/ימינה מזיזה את הקטגוריות (לחיצה על המסילה = קפיצה). -->
-        <div class="mt-2 flex justify-center {overflowing ? '' : 'invisible'}" aria-hidden="true">
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div
-                bind:this={trackEl}
-                class="cat-track"
-                class:is-scrubbing={scrubbing}
-                style="--p:{progress}; --ratio:{thumbRatio}"
-                onpointerdown={onThumbPointerDown}
-                onpointermove={onThumbPointerMove}
-                onpointerup={endThumb}
-                onpointercancel={endThumb}
-                onlostpointercapture={endThumb}
-            >
-                <span class="cat-thumb"></span>
+        <!-- בקרי החשיפה מרוכזים מתחת למסילה, צמודים לאלמנט שהם מזיזים:
+             רמז (בלי מסגרת, לא ככפתור) מעל שורת חץ ← סקראבר נגרר → חץ+מונה.
+             רוחב ידית הסקראבר מקודד כמה מהרשימה מוסתר; לחיצה על המסילה = קפיצה. -->
+        <div class="mt-3 flex flex-col items-center gap-2 {overflowing ? '' : 'invisible'}">
+            <!-- בלי גלולה/מסגרת כדי שלא ייראה ככפתור; צל-טקסט מרים את הלבן מהרקע הוורוד -->
+            <p class="cat-hint-label inline-flex items-center gap-1.5 text-sm font-bold text-white" aria-hidden="true">
+                <span>גררו את השורה כדי לגלות עוד</span>
+                <span class="cat-hint-arrow" class:is-live={!hinted}>↔</span>
+            </p>
+
+            <!-- החיצים הם צעדנים, והסקראבר הנגרר ביניהם — כולם על שורה אחת -->
+            <div class="cat-controls flex w-full max-w-md items-center justify-center gap-2">
+                <button
+                    type="button"
+                    class="cat-nav"
+                    aria-controls="cat-rail"
+                    aria-disabled={atStart}
+                    aria-label="חזרה לקטגוריות המובילות"
+                    onclick={() => { if (!atStart) nudge(-1); }}
+                >
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true" fill="none"
+                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d={rtl ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} />
+                    </svg>
+                </button>
+
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                    bind:this={trackEl}
+                    class="cat-track"
+                    class:is-scrubbing={scrubbing}
+                    style="--p:{progress}; --ratio:{thumbRatio}"
+                    aria-hidden="true"
+                    onpointerdown={onThumbPointerDown}
+                    onpointermove={onThumbPointerMove}
+                    onpointerup={endThumb}
+                    onpointercancel={endThumb}
+                    onlostpointercapture={endThumb}
+                >
+                    <span class="cat-thumb"></span>
+                </div>
+
+                <!-- הגלולה היא גם המונה של מה שמוסתר וגם דרך הגישה ללא גרירה -->
+                <button
+                    type="button"
+                    class="cat-nav cat-nav--pill"
+                    aria-controls="cat-rail"
+                    aria-disabled={atEnd}
+                    aria-label={atEnd ? 'כל הקטגוריות מוצגות' : `הצג עוד ${hiddenCount} קטגוריות`}
+                    onclick={() => { if (!atEnd) nudge(1); }}
+                >
+                    <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true" fill="none"
+                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d={rtl ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} />
+                    </svg>
+                    <span class="text-xs font-black tabular-nums" aria-hidden="true">
+                        {atEnd ? 'הכל מוצג' : `עוד ${hiddenCount}`}
+                    </span>
+                </button>
             </div>
         </div>
       </div>
@@ -956,6 +960,12 @@
     .cat-track.is-scrubbing .cat-thumb { cursor: grabbing; filter: brightness(1.12); }
 
     /* ═══ רמז ═══ */
+    .cat-hint-label {
+        /* בלי גלולה/מסגרת — צל דק מרים את הטקסט הלבן מהרקע הוורוד ושומר על קריאוּת */
+        text-shadow: 0 1px 4px rgba(11, 18, 38, 0.55);
+    }
+    /* בשורת הבקרים הסקראבר נמתח בין שני החיצים במקום רוחב קבוע */
+    .cat-controls .cat-track { flex: 1 1 auto; width: auto; min-width: 0; }
     .cat-hint-arrow { display: inline-block; }
     .cat-hint-arrow.is-live { animation: cat-hint 1.6s ease-in-out infinite; }
     @keyframes cat-hint {
