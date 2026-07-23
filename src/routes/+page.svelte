@@ -466,8 +466,6 @@
                 <h2 id="cat-rail-title" class="text-2xl font-black text-white">חפש לפי קטגוריה</h2>
                 <!-- הרקע הוורוד לא נותן ניגודיות לטקסט שירות — לכן גלולה כהה, כמו באנר הסטטיסטיקה -->
                 <p class="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3 py-1 text-[11px] font-semibold text-gray-200 shadow-md">
-                    <span class="text-[#f0d089]">המובילות ביותר ראשונות</span>
-                    <span class="text-gray-500" aria-hidden="true">·</span>
                     <span>גררו את השורה כדי לגלות עוד</span>
                     <span class="cat-hint-arrow" class:is-live={!hinted} aria-hidden="true">↔</span>
                 </p>
