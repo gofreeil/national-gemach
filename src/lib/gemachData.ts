@@ -37,6 +37,9 @@ export interface CategoryDef {
     key: string;
     label: string;
     icon: string;
+    /** תמונת נושא לאריח הקטגוריה (webp מתוך /images/categories). ריק = נופלים לאימוג'י.
+     *  התמונות יובאו מ"קהילה בשכונה" (דף "למסירה") — משותפות בין האתרים לפי נושא. */
+    image?: string;
 }
 
 // ברירת המחדל של הקטגוריות. הרשימה נגזרת מהקטגוריות המובילות באינדקסי
@@ -44,27 +47,32 @@ export interface CategoryDef {
 // וחגים, רכב, אירוח ואבלות הם מהנפוצים ביותר ולכן קיבלו קטגוריה משלהם.
 // ניתן לערוך/להוסיף קטגוריות בפאנל הניהול (/admin/categories) — מה שנשמר שם
 // גובר על הרשימה הזו.
+// תמונות נושא לקטגוריות תואמות — יובאו מ"קהילה בשכונה" (דף "למסירה") ומוצגות
+// באריחים במקום האימוג'י. קטגוריות בלי תמונה תואמת (רפואי, מזון, חתונה וכו')
+// נשארות עם אימוג'י; 'judaism' שומר על אייקון המנורה הייעודי שלו.
+const CAT_IMG = (name: string) => `/images/categories/${name}.webp`;
+
 export const categories: CategoryDef[] = [
-    { key: 'clothing', label: 'ביגוד', icon: '👕' },
-    { key: 'baby', label: 'תינוקות', icon: '🍼' },
-    { key: 'books', label: 'ספרים', icon: '📚' },
-    { key: 'furniture', label: 'ריהוט', icon: '🪑' },
+    { key: 'clothing', label: 'ביגוד', icon: '👕', image: CAT_IMG('clothing') },
+    { key: 'baby', label: 'תינוקות', icon: '🍼', image: CAT_IMG('baby') },
+    { key: 'books', label: 'ספרים', icon: '📚', image: CAT_IMG('judaica_books') },
+    { key: 'furniture', label: 'ריהוט', icon: '🪑', image: CAT_IMG('furniture') },
     { key: 'medical', label: 'ציוד רפואי', icon: '🏥' },
     { key: 'food', label: 'מזון', icon: '🥫' },
-    { key: 'tools', label: 'כלים', icon: '🔧' },
+    { key: 'tools', label: 'כלים', icon: '🔧', image: CAT_IMG('tools') },
     { key: 'wedding', label: 'חתונה', icon: '💍' },
     { key: 'events', label: 'שמחות ואירועים', icon: '🎉' },
     { key: 'money', label: 'כספים והלוואות', icon: '💰' },
     { key: 'judaism', label: 'יהדות', icon: '🕎' },
     { key: 'holidays', label: 'שבת וחגים', icon: '🕯️' },
-    { key: 'electronics', label: 'חשמל ומחשבים', icon: '💻' },
+    { key: 'electronics', label: 'חשמל ומחשבים', icon: '💻', image: CAT_IMG('electronics') },
     { key: 'transport', label: 'רכב והסעות', icon: '🚗' },
     { key: 'hosting', label: 'אירוח ולינה', icon: '🏠' },
-    { key: 'toys', label: 'צעצועים ומשחקים', icon: '🧸' },
+    { key: 'toys', label: 'צעצועים ומשחקים', icon: '🧸', image: CAT_IMG('kids') },
     { key: 'matchmaking', label: 'שידוכים', icon: '💞' },
     { key: 'mourning', label: 'אבלות וחסד של אמת', icon: '🤍' },
     { key: 'initiatives', label: 'מיזמים חשובים לציבור', icon: '🌟' },
-    { key: 'other', label: 'אחר', icon: '📦' },
+    { key: 'other', label: 'אחר', icon: '📦', image: CAT_IMG('other') },
 ];
 
 export { cities } from './cities';

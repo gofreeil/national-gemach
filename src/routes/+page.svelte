@@ -13,18 +13,26 @@
 
     /** גמ"חים שהאדמין נעץ (⭐ בפאנל הניהול) */
     let featuredGemachim = $derived(gemachim.filter(g => g.featured));
-    /** החדשים שנוספו — בלי הנעוצים, כדי לא להציג פעמיים */
-    let newestGemachim = $derived(gemachim.filter(g => !g.featured).slice(0, 6));
+    /** החדשים שנוספו — בלי הנעוצים. פריטים עם טלפון קודם, כדי שדף הבית לא יוביל
+     *  בפריטים חלקיים (מיון יציב → סדר החדש-קודם נשמר בתוך כל קבוצה). */
+    let newestGemachim = $derived(
+        gemachim.filter(g => !g.featured)
+            .sort((a, b) => (b.phone ? 1 : 0) - (a.phone ? 1 : 0))
+            .slice(0, 6)
+    );
 
     let searchQuery = $state('');
     let selectedCategory = $state('');
     let selectedCity = $state('');
     let showResults = $state(false);
 
+    /** מפתחות קטגוריה שתמונת הנושא שלהן נכשלה בטעינה — נופלים חזרה לאימוג'י */
+    let brokenImg = $state(new Set<string>());
+
     /* ═══════════ מסילת הקטגוריות — מיון ═══════════ */
     const OTHER_KEY = 'other';   // "אחר" תמיד אחרון, גם אם צבר הרבה
 
-    type RailCat = { key: string; label: string; icon: string; count: number };
+    type RailCat = { key: string; label: string; icon: string; image?: string; count: number };
 
     /** מונה גמ"חים לקטגוריה במעבר יחיד, במקום filter נפרד לכל אריח */
     let countByCat = $derived.by(() => {
@@ -46,6 +54,7 @@
                 key: r.cat.key,
                 label: r.cat.label,
                 icon: r.cat.icon,
+                image: r.cat.image,
                 count: r.count
             }))
     );
@@ -587,7 +596,18 @@
                 <span class="cat-count-badge" aria-hidden="true">{cat.count}</span>
 
                 <span class="cat-ico">
-                    {#if cat.key === 'judaism'}
+                    {#if cat.image && !brokenImg.has(cat.key)}
+                        <!-- תמונת נושא מ"קהילה בשכונה" (דף למסירה); קישור שבור → חזרה לאימוג'י -->
+                        <img
+                            src={cat.image}
+                            alt=""
+                            draggable="false"
+                            loading="lazy"
+                            decoding="async"
+                            onerror={() => (brokenImg = new Set(brokenImg).add(cat.key))}
+                            class="cat-photo"
+                        />
+                    {:else if cat.key === 'judaism'}
                         <img src="/icons/menorah.svg" alt="" draggable="false" class="h-9 w-9 object-contain" />
                     {:else}
                         <span class="text-3xl leading-none" aria-hidden="true">{cat.icon}</span>
@@ -706,7 +726,7 @@
             <h3 class="text-xl font-black text-white mb-2">יש לך גמח?</h3>
             <p class="text-gray-300 text-sm mb-4">הוסף אותו למאגר הארצי ועזור לאנשים למצוא אותך בקלות</p>
             <a
-                href="https://community.gofreeil.com/gmachim/add"
+                href="/gemach/add"
                 class="inline-block px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:opacity-90 transition-opacity shadow-lg"
             >
                 הוסף גמח חינם
@@ -827,7 +847,16 @@
         background: linear-gradient(145deg, #f3d68b, #d4af37);
         box-shadow: 0 2px 6px -2px rgba(212, 175, 55, 0.8);
     }
-    .cat-ico { display: grid; place-items: center; min-height: 2.5rem; }
+    .cat-ico { display: grid; place-items: center; min-height: 3.5rem; }
+    /* תמונת נושא במקום האימוג'י — תמונה מלאה קטנה, נחתכת למרכז הנושא */
+    .cat-photo {
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 0.85rem;
+        object-fit: cover;
+        border: 1px solid #3b5794;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 18px -10px rgba(0, 0, 0, 0.95);
+    }
     .cat-label { font-size: 0.875rem; font-weight: 700; line-height: 1.15; color: #e5e7eb; }
 
     /* ═══ פקדי ניווט ═══ */

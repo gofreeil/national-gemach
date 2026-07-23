@@ -205,11 +205,21 @@ export async function getCategories(): Promise<CategoryDef[]> {
     const cfg = await loadConfig();
     const stored = cfg.categories;
     if (Array.isArray(stored) && stored.length > 0) {
+        // גיבוי תמונת-נושא לפי מפתח: קונפיג שנשמר לפני שהתמונות נוספו לא יכיל image,
+        // ובכל זאת נציג את תמונת ברירת המחדל (אם קיימת לאותו מפתח).
+        const imageByKey = new Map(defaultCategories.map(c => [c.key, c.image]));
         return (stored as unknown[])
             .filter(c => c && typeof c === 'object' && 'key' in (c as object))
             .map(c => {
                 const o = c as Record<string, unknown>;
-                return { key: String(o.key), label: String(o.label ?? o.key), icon: String(o.icon ?? '📦') };
+                const key = String(o.key);
+                const image = (typeof o.image === 'string' && o.image) ? o.image : imageByKey.get(key);
+                return {
+                    key,
+                    label: String(o.label ?? o.key),
+                    icon: String(o.icon ?? '📦'),
+                    ...(image ? { image } : {}),
+                };
             });
     }
     return defaultCategories;
