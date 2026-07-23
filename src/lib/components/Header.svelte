@@ -259,10 +259,10 @@
         transition: scale 300ms ease, opacity 300ms ease;
     }
     .brand-link:hover .brand-logo-frame {
-        scale: 1.1;
+        scale: 1.06;
     }
     .brand-link:hover .brand-logo {
-        scale: 1.75;
+        scale: 1.2;
     }
     .brand-link:hover .brand-text {
         scale: 1.08;

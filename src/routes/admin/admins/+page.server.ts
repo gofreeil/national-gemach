@@ -1,14 +1,13 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getAdminContext, requireSuperAdmin, getBootstrapAdmins } from '$lib/server/admin';
+import { getAdminContext, requireSuperAdmin } from '$lib/server/admin';
 import { getAdmins, addAdmin, removeAdmin, setAdminRole, type AdminRole } from '$lib/server/adminStore';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { role } = await getAdminContext(locals);
 	requireSuperAdmin(role);
 	return {
-		admins: await getAdmins(false),
-		bootstrap: getBootstrapAdmins()
+		admins: await getAdmins(false)
 	};
 };
 
@@ -31,7 +30,8 @@ export const actions: Actions = {
 			await addAdmin(identifier, newRole, display || undefined);
 		} catch (e) {
 			console.error('[admin] addAdmin failed:', e);
-			return fail(500, { error: 'הוספת האדמין נכשלה. נסה שוב.' });
+			const detail = e instanceof Error ? e.message : String(e);
+			return fail(500, { error: `הוספת האדמין נכשלה. פרטי השגיאה: ${detail}` });
 		}
 		throw redirect(303, '/admin/admins?flash=added');
 	},

@@ -37,11 +37,6 @@ function parseEnvList(raw: string | undefined): string[] {
 const ENV_SUPER = parseEnvList(env.NG_SUPER_ADMINS ?? 'yahavanter@gmail.com');
 const ENV_ADMIN = parseEnvList(env.NG_ADMINS);
 
-/** רשימות ה-bootstrap מהסביבה — לתצוגה בלבד (לא ניתנות לעריכה מהפאנל) */
-export function getBootstrapAdmins(): { superAdmins: string[]; admins: string[] } {
-	return { superAdmins: [...ENV_SUPER], admins: [...ENV_ADMIN] };
-}
-
 /** בונה את קבוצת המזהים המנורמלים של המשתמש הנוכחי */
 function userIdentifiers(user: SessionUserLike): Set<string> {
     const set = new Set<string>();

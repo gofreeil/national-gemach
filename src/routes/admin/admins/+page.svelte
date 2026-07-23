@@ -20,7 +20,7 @@
     <h2 class="text-xl font-black text-white">🔑 ניהול אדמינים</h2>
 
     {#if flash && flashText[flash]}<div class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-200">{flashText[flash]}</div>{/if}
-    {#if form?.error}<div class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{form.error}</div>{/if}
+    {#if form?.error}<div class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-200 break-words">{form.error}</div>{/if}
 
     <!-- הוספה -->
     <div class="card p-5">
@@ -29,9 +29,9 @@
             class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <div>
                 <input name="identifier" required placeholder="מייל / שם משתמש / מספר טלפון"
-                    class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
+                    class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none" />
                 <input name="display" placeholder="שם לתצוגה (לא חובה)"
-                    class="w-full mt-2 rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
+                    class="w-full mt-2 rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none" />
             </div>
             <select name="role" class="rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-2.5 text-white focus:border-purple-500 focus:outline-none h-fit">
                 <option value="admin">אדמין</option>
@@ -42,7 +42,7 @@
                 {saving ? '...' : 'הוסף'}
             </button>
         </form>
-        <p class="text-xs text-gray-500 mt-2">הסוג (מייל/משתמש/טלפון) מזוהה אוטומטית. הזיהוי בהתחברות משווה מול המייל, שם המשתמש או הטלפון של המשתמש.</p>
+        <p class="text-xs text-gray-400 mt-2">הסוג (מייל/משתמש/טלפון) מזוהה אוטומטית. הזיהוי בהתחברות משווה מול המייל, שם המשתמש או הטלפון של המשתמש.</p>
     </div>
 
     <!-- רשימת אדמינים ב-DB -->
@@ -57,7 +57,7 @@
                         <span class="text-lg" aria-hidden="true">{a.role === 'super_admin' ? '★' : '👤'}</span>
                         <div class="flex-1 min-w-0">
                             <div class="text-white font-bold truncate" dir="ltr">{a.identifier}</div>
-                            <div class="text-xs text-gray-500">
+                            <div class="text-xs text-gray-400">
                                 {typeLabel[a.type] ?? a.type}
                                 {#if a.label} · {a.label}{/if}
                             </div>
@@ -78,28 +78,5 @@
                 {/each}
             </div>
         {/if}
-    </div>
-
-    <!-- bootstrap מהסביבה -->
-    <div class="card p-5">
-        <h3 class="font-bold text-white mb-1">🔒 מוגדרים בסביבה (ENV)</h3>
-        <p class="text-xs text-gray-500 mb-3">קבועים מתוך משתני הסביבה בשרת — תמיד פעילים, לא ניתנים לעריכה מכאן. מבטיחים גישה גם כשה-DB ריק.</p>
-        {#if data.bootstrap.superAdmins.length}
-            <div class="mb-2">
-                <span class="text-xs text-amber-300 font-bold">סופר-אדמין:</span>
-                <div class="flex flex-wrap gap-1.5 mt-1">
-                    {#each data.bootstrap.superAdmins as v (v)}<span class="text-xs bg-amber-500/10 border border-amber-500/20 text-amber-200 px-2 py-0.5 rounded" dir="ltr">{v}</span>{/each}
-                </div>
-            </div>
-        {/if}
-        {#if data.bootstrap.admins.length}
-            <div>
-                <span class="text-xs text-emerald-300 font-bold">אדמין:</span>
-                <div class="flex flex-wrap gap-1.5 mt-1">
-                    {#each data.bootstrap.admins as v (v)}<span class="text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 px-2 py-0.5 rounded" dir="ltr">{v}</span>{/each}
-                </div>
-            </div>
-        {/if}
-        <p class="text-xs text-gray-500 mt-3">להוספה/שינוי: משתני הסביבה <code class="text-gray-400">NG_SUPER_ADMINS</code> / <code class="text-gray-400">NG_ADMINS</code> (מופרדים בפסיק).</p>
     </div>
 </div>
