@@ -21,11 +21,10 @@
     let selectedCity = $state('');
     let showResults = $state(false);
 
-    /* ═══════════ מסילת הקטגוריות — דירוג ═══════════ */
+    /* ═══════════ מסילת הקטגוריות — מיון ═══════════ */
     const OTHER_KEY = 'other';   // "אחר" תמיד אחרון, גם אם צבר הרבה
-    const LEAD_COUNT = 3;        // כמה קטגוריות מקבלות מדליית זהב
 
-    type RailCat = { key: string; label: string; icon: string; count: number; rank: number; lead: boolean };
+    type RailCat = { key: string; label: string; icon: string; count: number };
 
     /** מונה גמ"חים לקטגוריה במעבר יחיד, במקום filter נפרד לכל אריח */
     let countByCat = $derived.by(() => {
@@ -43,13 +42,11 @@
                 b.count - a.count ||
                 a.i - b.i
             )
-            .map((r, idx) => ({
+            .map((r) => ({
                 key: r.cat.key,
                 label: r.cat.label,
                 icon: r.cat.icon,
-                count: r.count,
-                rank: idx + 1,
-                lead: idx < LEAD_COUNT && r.count > 0
+                count: r.count
             }))
     );
 
@@ -576,12 +573,11 @@
                 type="button"
                 data-tile
                 class="cat-tile"
-                class:is-lead={cat.lead}
                 class:is-empty={cat.count === 0}
                 onclick={(e) => pick(cat.key, e)}
                 aria-label="חפש גמחי {cat.label} — {cat.count} גמחים"
             >
-                {#if cat.lead}<span class="cat-rank" aria-hidden="true">{cat.rank}</span>{/if}
+                <span class="cat-count-badge" aria-hidden="true">{cat.count}</span>
 
                 <span class="cat-ico">
                     {#if cat.key === 'judaism'}
@@ -592,10 +588,6 @@
                 </span>
 
                 <span class="cat-label">{cat.label}</span>
-
-                <span class="cat-count" aria-hidden="true">
-                    {cat.count} גמחים
-                </span>
             </button>
         {/snippet}
 
@@ -807,41 +799,29 @@
     /* אותה סגוליות כמו כלל ה-hover ואחריו בסדר המקורות, אחרת ההרמה גוברת על הלחיצה */
     .cat-rail:not(.is-dragging) .cat-tile:active { transform: translateY(-1px) scale(0.985); }
 
-    .cat-tile.is-lead {
-        border-color: rgba(212, 175, 55, 0.45);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09),
-                    0 0 0 1px rgba(212, 175, 55, 0.14),
-                    0 16px 32px -20px rgba(212, 175, 55, 0.55);
-    }
     .cat-tile.is-empty { opacity: 0.72; }
 
-    .cat-rank {
+    /* תג הכמות בפינה — כמה גמחים בקטגוריה. גלולה שמתרחבת לפי מספר הספרות */
+    .cat-count-badge {
         position: absolute;
         top: 0.45rem;
         inset-inline-end: 0.55rem;      /* לוגי ⇒ נוחת בפינה הנכונה ב-RTL */
         display: grid;
         place-items: center;
-        width: 1.2rem;
-        height: 1.2rem;
+        min-width: 1.35rem;
+        height: 1.35rem;
+        padding: 0 0.4rem;
         border-radius: 999px;
-        font-size: 0.66rem;
+        font-size: 0.72rem;
         font-weight: 900;
         line-height: 1;
+        font-variant-numeric: tabular-nums;
         color: #3a2a06;
         background: linear-gradient(145deg, #f3d68b, #d4af37);
         box-shadow: 0 2px 6px -2px rgba(212, 175, 55, 0.8);
     }
     .cat-ico { display: grid; place-items: center; min-height: 2.5rem; }
     .cat-label { font-size: 0.875rem; font-weight: 700; line-height: 1.15; color: #e5e7eb; }
-    .cat-count {
-        font-size: 0.6875rem;
-        color: #9db4e6;
-        padding: 0.1rem 0.5rem;
-        border-radius: 999px;
-        background: rgba(8, 17, 38, 0.75);
-        box-shadow: inset 0 0 0 1px rgba(59, 87, 148, 0.9);
-    }
-    .cat-tile.is-lead .cat-count { color: #f0d089; box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.35); }
 
     /* ═══ פקדי ניווט ═══ */
     .cat-nav {
