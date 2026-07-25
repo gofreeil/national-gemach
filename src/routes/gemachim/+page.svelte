@@ -41,11 +41,12 @@
     <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
         <div>
             <h1 class="text-2xl md:text-3xl font-black text-white">כל הגמ"חים</h1>
-            <p class="text-sm text-gray-300 mt-1">
+            <!-- גלולה כהה — טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
+            <p class="mt-2 inline-block rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3 py-1 text-xs font-semibold text-gray-100 shadow-md">
                 {data.total} גמ"חים במאגר · עמוד {data.page} מתוך {data.pages}
             </p>
         </div>
-        <a href="/" class="text-sm text-gray-300 hover:text-white transition-colors">→ חזרה לדף הבית</a>
+        <a href="/" class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 shadow-md hover:bg-[#2a4379] hover:text-white transition-colors">→ חזרה לדף הבית</a>
     </div>
 
     {#if data.items.length === 0}
@@ -105,7 +106,7 @@
                 {/if}
                 {#each pageNumbers as n}
                     {#if n === '…'}
-                        <span class="px-2 py-2 text-sm text-gray-400">…</span>
+                        <span class="px-2 py-2 text-sm font-bold text-gray-100">…</span>
                     {:else if n === data.page}
                         <span class="min-w-[2.25rem] text-center rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 text-sm font-black text-white shadow-lg" aria-current="page">{n}</span>
                     {:else}

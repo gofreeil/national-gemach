@@ -29,7 +29,8 @@
                 <span class="text-3xl" aria-hidden="true">🛠️</span>
                 <div>
                     <h1 class="text-2xl font-black text-white">פאנל ניהול</h1>
-                    <p class="text-xs text-gray-400">
+                    <!-- גלולה כהה — טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
+                    <p class="mt-1 inline-block rounded-full border border-[#3b5794] bg-[#1c2f5a] px-2.5 py-0.5 text-xs font-semibold text-gray-100 shadow-md">
                         {data.admin.user.name || data.admin.user.email}
                         <span class="mx-1">·</span>
                         {#if isSuper}
@@ -40,7 +41,7 @@
                     </p>
                 </div>
             </div>
-            <a href="/" class="text-sm text-gray-400 hover:text-white transition-colors">← חזרה לאתר</a>
+            <a href="/" class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 shadow-md hover:bg-[#2a4379] hover:text-white transition-colors">← חזרה לאתר</a>
         </div>
 
         <!-- ניווט -->

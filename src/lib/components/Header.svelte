@@ -57,7 +57,7 @@
                     <h1 class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight">
                         הגמ"ח הארצי
                     </h1>
-                    <p class="text-xs text-gray-400 leading-tight">כל הגמחים בארץ בכף ידך</p>
+                    <p class="text-xs text-gray-100 leading-tight">כל הגמחים בארץ בכף ידך</p>
                 </div>
             </a>
             <div class="flex items-center gap-2">
@@ -133,7 +133,7 @@
                     <h1 class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent">
                         הגמ"ח הארצי
                     </h1>
-                    <p class="text-gray-300 text-base font-bold">
+                    <p class="text-gray-100 text-base font-bold">
                         כל הגמחים בארץ בכף ידך
                     </p>
                 </div>

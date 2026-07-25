@@ -27,7 +27,8 @@
 
 	<div class="mb-4">
 		<h1 class="text-2xl font-black text-white">➕ הוספת גמ"ח חדש</h1>
-		<p class="mt-1 text-sm text-gray-400">
+		<!-- הרקע הוורוד לא נותן ניגודיות לטקסט אפור — לכן גלולה כהה (הדפוס הקבוע באתר) -->
+		<p class="mt-2 inline-block rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-semibold text-gray-100 shadow-md">
 			פרסום אחד — שתי רשתות: הגמ"ח יופיע במאגר הארצי וגם באתר
 			<span class="font-bold text-emerald-300">קהילה בשכונה</span>.
 		</p>

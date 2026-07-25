@@ -259,7 +259,8 @@
     {/if}
 
     <div class="mt-6 text-center">
-        <a href="/gemachim" class="text-sm text-gray-300 hover:text-white transition-colors">→ חזרה לכל הגמ"חים</a>
+        <!-- גלולה כהה — טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
+        <a href="/gemachim" class="inline-block rounded-full border border-[#3b5794] bg-[#1c2f5a] px-4 py-2 text-sm font-bold text-gray-100 shadow-md hover:bg-[#2a4379] hover:text-white transition-colors">→ חזרה לכל הגמ"חים</a>
     </div>
 </article>
 

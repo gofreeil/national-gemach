@@ -489,9 +489,10 @@
         </div>
 
         {#if filteredGemachim.length === 0}
-            <div class="text-center py-16 text-gray-400">
+            <!-- קופסה כהה: טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
+            <div class="mx-auto max-w-md rounded-2xl border border-[#3b5794] bg-[#16264d] px-6 py-12 text-center text-gray-300 shadow-lg">
                 <div class="text-5xl mb-4" aria-hidden="true">🔍</div>
-                <p class="text-lg font-bold">לא נמצאו גמחים מתאימים</p>
+                <p class="text-lg font-bold text-white">לא נמצאו גמחים מתאימים</p>
                 <p class="text-sm mt-2">נסה לחפש במילים אחרות או לשנות את הפילטרים</p>
                 <button onclick={clearFilters} class="mt-4 px-6 py-2 rounded-xl bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 transition-colors">
                     נקה חיפוש
