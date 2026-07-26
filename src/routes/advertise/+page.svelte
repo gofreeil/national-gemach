@@ -2,6 +2,9 @@
     // דף "פרסמו אצלנו" מקומי — אליו מופנים מתעניינים מהמודעות עצמן
     // (טור הדסקטופ ופרסומת-הביניים בנייד) ומהפוטר, במקום לאתר קהילה בשכונה.
     const email = 'freedomhasbegun@gmail.com';
+    // הבילדר המשותף של התנועה — שם מעצבים את הפרסומת, משלמים, והמודעה
+    // עוברת אישור מנהל לפני שהיא עולה.
+    const builderUrl = 'https://community.gofreeil.com/about/advertise/builder';
     const mailto =
         `mailto:${email}` +
         `?subject=${encodeURIComponent('פרסום בגמ"ח הארצי')}` +
@@ -38,7 +41,7 @@
 
 <svelte:head>
     <title>פרסמו אצלנו | הגמ"ח הארצי</title>
-    <meta name="description" content="פרסום באתר הגמ&quot;ח הארצי — טור פרסומות בדסקטופ ופרסומת מסך-מלא בנייד. צרו קשר ונחזור אליכם עם הצעה." />
+    <meta name="description" content="פרסום באתר הגמ&quot;ח הארצי — טור פרסומות בדסקטופ ופרסומת מסך-מלא בנייד. מעצבים את הפרסומת ישירות באתר, משלמים, והמודעה עולה מיד אחרי אישור מנהל." />
 </svelte:head>
 
 <div class="mx-auto max-w-3xl px-4 py-8 md:py-12" dir="rtl">
@@ -81,23 +84,28 @@
         <ol class="text-right max-w-md mx-auto space-y-4 mb-8">
             <li class="flex items-start gap-3">
                 <span class="w-7 h-7 rounded-full bg-amber-400 text-black text-sm font-black flex items-center justify-center flex-shrink-0">1</span>
-                <span class="text-gray-200 text-sm md:text-base leading-relaxed">שולחים לנו פנייה במייל עם פרטי העסק והמיקום המבוקש.</span>
+                <span class="text-gray-200 text-sm md:text-base leading-relaxed">מעצבים את הפרסומת שלכם ישירות באתר.</span>
             </li>
             <li class="flex items-start gap-3">
                 <span class="w-7 h-7 rounded-full bg-amber-400 text-black text-sm font-black flex items-center justify-center flex-shrink-0">2</span>
-                <span class="text-gray-200 text-sm md:text-base leading-relaxed">חוזרים אליכם עם הצעת מחיר והנחיות פשוטות לחומרי המודעה.</span>
+                <span class="text-gray-200 text-sm md:text-base leading-relaxed">משלמים.</span>
             </li>
             <li class="flex items-start gap-3">
                 <span class="w-7 h-7 rounded-full bg-amber-400 text-black text-sm font-black flex items-center justify-center flex-shrink-0">3</span>
-                <span class="text-gray-200 text-sm md:text-base leading-relaxed">המודעה עולה לאוויר — ואתם מתחילים לקבל פניות.</span>
+                <span class="text-gray-200 text-sm md:text-base leading-relaxed">הפרסומת עוברת אישור מנהל — ומיד עולה לאוויר.</span>
             </li>
         </ol>
         <a
-            href={mailto}
+            href={builderUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             class="inline-block rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 px-8 py-4 font-black text-white text-lg shadow-xl transition hover:opacity-90 hover:scale-[1.02]"
         >
-            ✉️ שלחו פנייה במייל
+            🎨 לעיצוב הפרסומת
         </a>
-        <p class="mt-4 text-xs text-gray-400" dir="ltr">{email}</p>
+        <p class="mt-4 text-xs text-gray-400">
+            שאלות? כתבו לנו:
+            <a href={mailto} class="underline hover:text-white transition-colors" dir="ltr">{email}</a>
+        </p>
     </div>
 </div>
