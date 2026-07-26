@@ -7,31 +7,45 @@
 // שניהם מציגים פרסומת ל-5 שניות עם מחוון "התוכן נטען…" וספירה-
 // לאחור, ורק בסיומה ממשיכים לפעולה (ניווט / חשיפת הטלפון).
 //
-// ▶ מתג ראשי: ADS_ENABLED — כבוי (false) עד שנעלה קריאייטיבים.
-//   כל עוד הוא false, כל הלוגיקה מדולגת וההתנהגות זהה לקודם
-//   (קליק על גמ"ח = ניווט רגיל; הטלפון מוצג ישירות).
-//   כשמעלים פרסומות: הפוך ל-true (ובמידת הצורך החלף את
-//   interstitialAds בקריאייטיבים ייעודיים).
+// הקריאייטיבים הם אותן מודעות של טור הפרסום הימני בדסקטופ
+// (rightAdsData) — מקור-אמת אחד לשני המקומות. הפרסומת מוצגת רק
+// במסכים שבהם הטור הימני אינו נראה (מתחת ל-xl/1280px) — בדסקטופ
+// רחב המודעות ממילא על המסך כל הזמן.
 // ============================================================
 
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
-import { ads as networkAds, type Ad } from './adsData';
+import type { Ad } from './adsData';
+import { rightAds } from './rightAdsData';
 
-/** מתג ראשי — הפוך ל-true אחרי שהעלינו פרסומות. */
-export const ADS_ENABLED = false;
+/** מתג ראשי — כיבוי חירום של כל מנגנון פרסומת-הביניים. */
+export const ADS_ENABLED = true;
 
 /** משך הפרסומת בשניות (הספירה-לאחור). */
 export const INTERSTITIAL_SECONDS = 5;
 
-/** מאגר הקריאייטיבים לפרסומת-הביניים. כרגע ממחזר את פרסומות רשת
- *  gofreeil הקיימות; אפשר להחליף/להוסיף כאן קריאייטיבים ייעודיים. */
-export const interstitialAds: Ad[] = networkAds;
+/** מאגר הקריאייטיבים לפרסומת-הביניים — נגזר אוטומטית ממודעות
+ *  הטור הימני, כך שהחלפת משבצת ב-rightAdsData מתעדכנת גם כאן.
+ *  image ריק ⇒ AdInterstitial מציג 📢 במקום תמונה. */
+export const interstitialAds: Ad[] = rightAds.map((r, i) => ({
+    id: i + 1,
+    title: r.text,
+    description: r.description,
+    cta: 'לפרטים',
+    href: r.href,
+    image: '',
+    color: r.interstitialColor,
+}));
 
-/** האם הפיצ'ר פעיל בפועל: המתג דלוק ויש לפחות פרסומת אחת להציג. */
+/** הטור הימני מוסתר מתחת ל-xl (1280px) — שם הפרסומת עוברת למסך-מלא. */
+function rightColumnHidden(): boolean {
+    return browser && window.matchMedia('(max-width: 1279.98px)').matches;
+}
+
+/** האם הפיצ'ר פעיל בפועל: המתג דלוק, יש מה להציג, והטור הימני לא נראה. */
 export function adsReady(): boolean {
-    return ADS_ENABLED && interstitialAds.length > 0;
+    return ADS_ENABLED && interstitialAds.length > 0 && rightColumnHidden();
 }
 
 export interface InterstitialState {

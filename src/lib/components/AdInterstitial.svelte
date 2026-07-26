@@ -36,6 +36,9 @@
                 {#if ad.image}
                     <img class="ad-int-img" src={ad.image} alt={ad.title} draggable="false"
                          style={`${ad.imageHeight ? `max-height:${ad.imageHeight};` : ''}${ad.imageScale ? `transform:scale(${ad.imageScale});` : ''}`} />
+                {:else}
+                    <!-- משבצת פנויה (בלי קריאייטיב) — 📢 כמו בטור הדסקטופ -->
+                    <div class="ad-int-emoji" aria-hidden="true">📢</div>
                 {/if}
                 <h3 class="ad-int-title">{ad.title}</h3>
                 <p class="ad-int-desc">{ad.description}</p>
@@ -53,6 +56,11 @@
                     <div class="ad-int-bar-fill" style="width:{pct}%"></div>
                 </div>
             </div>
+
+            <!-- הפניית מתעניינים לדף הפרסום המקומי — נפתח בלשונית חדשה כדי לא לעצור את הספירה -->
+            <a href="/advertise" target="_blank" rel="noopener" class="ad-int-advertise">
+                רוצים לפרסם כאן? ←
+            </a>
         </div>
     </div>
 {/if}
@@ -121,6 +129,7 @@
         border-radius: 0.75rem;
         -webkit-user-drag: none;
     }
+    .ad-int-emoji { font-size: 3rem; line-height: 1; }
     .ad-int-title { font-size: 1.25rem; font-weight: 900; line-height: 1.2; }
     .ad-int-desc { font-size: 0.9rem; line-height: 1.4; opacity: 0.95; }
     .ad-int-cta {
@@ -178,6 +187,17 @@
         /* התקדמות חלקה בין פריימי ה-rAF */
         transition: width 0.12s linear;
     }
+
+    .ad-int-advertise {
+        display: block;
+        margin-top: 0.8rem;
+        text-align: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #9db4e4;
+        text-decoration: none;
+    }
+    .ad-int-advertise:hover { color: #d4af37; text-decoration: underline; }
 
     @keyframes ad-int-spin { to { transform: rotate(360deg); } }
     @keyframes ad-int-fade { from { opacity: 0; } to { opacity: 1; } }

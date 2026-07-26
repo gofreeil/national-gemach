@@ -72,7 +72,7 @@
                 >{tFn("contact_us")}</a
                 >
                 <span class="text-gray-600 font-black" aria-hidden="true">|</span>
-                <a href="https://community.gofreeil.com/about/advertise" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">פרסם אצלנו</a>
+                <a href="/advertise" class="hover:text-white transition-colors">פרסם אצלנו</a>
             </nav>
 
             <!-- Left: Copyright -->
