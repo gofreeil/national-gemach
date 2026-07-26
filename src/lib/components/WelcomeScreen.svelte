@@ -3,13 +3,14 @@
 	 * מסך פתיחה מלא אחרי התחברות — גלובלי (מוצג ב-+layout), כדי שיופיע בכל
 	 * יעד נחיתה. מקור-אמת: פרמטר `welcome` ב-URL שנשתל בזרימות ההרשמה /
 	 * ההתחברות / ה-SSO (אותו דפוס כמו באתר קהילה בשכונה):
-	 *   welcome=1 | welcome=new  → "ברוכים המצטרפים" (התחברות ראשונה + רשת האתרים)
+	 *   welcome=1 | welcome=new  → "ברוכים המצטרפים"
 	 *   welcome=back             → "ברוכים השבים"
+	 * בשני המצבים מוצגת רשת הלוגואים של כל האתרים.
 	 */
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
-	import { ads } from '$lib/adsData';
+	import { networkSites } from '$lib/networkSites';
 
 	let { userName = '' }: { userName?: string } = $props();
 
@@ -92,38 +93,39 @@
 					<p class="text-purple-200 text-sm md:text-base font-bold tracking-wide mb-4">
 						יוצאים לחירות מוכיחים שעולם חדש הוא אפשרי
 					</p>
-					<!-- לוגואים של כל האתרים ברשת — flex-wrap עם מרכוז כדי שהשורה
-					     האחרונה (חלקית) תתמרכז ולא תישאר צמודה לצד עם חלל ריק -->
-					<div class="flex flex-wrap justify-center gap-2.5">
-						{#each ads as site (site.id)}
-							<a
-								href={site.href}
-								target="_blank"
-								rel="noopener noreferrer"
-								title={site.title}
-								class="group flex flex-col items-center gap-1.5 rounded-xl bg-[#16264d] hover:bg-[#213569] border border-[#3b5794] hover:border-purple-400/40 p-2 transition-all hover:-translate-y-0.5 grow-0 basis-[calc(33.333%-0.47rem)] sm:basis-[calc(25%-0.52rem)] md:basis-[calc(20%-0.55rem)]"
-							>
-								<div class="w-full aspect-[4/3] overflow-hidden rounded-lg bg-gradient-to-br {site.color}">
-									<img
-										src={site.image}
-										alt={site.title}
-										loading="lazy"
-										class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-									/>
-								</div>
-								<span class="text-[11px] leading-tight font-semibold text-gray-200 line-clamp-2 text-center">{site.title}</span>
-							</a>
-						{/each}
-					</div>
 				{:else}
 					<div class="text-6xl mb-4">👋</div>
 					<h2 class="text-white font-black text-2xl mb-3">
 						ברוכים השבים, {userName.trim() || 'משתמש'}!
 					</h2>
-					<p class="text-gray-200 text-base leading-relaxed max-w-xl mx-auto">
+					<p class="text-gray-200 text-base leading-relaxed max-w-xl mx-auto mb-5">
 						סייע לנו לקדם את החברה שלנו ליותר סולידרית, אחראית וחופשיה!
 					</p>
 				{/if}
+				<!-- לוגואים של כל האתרים ברשת (הרשימה הקנונית המלאה, כולל האתר
+				     הנוכחי) — מוצגים בשני המצבים (מצטרפים + שבים). flex-wrap עם
+				     מרכוז כדי שהשורה האחרונה (חלקית) תתמרכז ולא תישאר צמודה לצד -->
+				<div class="flex flex-wrap justify-center gap-2.5">
+					{#each networkSites as site (site.id)}
+						<a
+							href={site.href}
+							target="_blank"
+							rel="noopener noreferrer"
+							title={site.title}
+							class="group flex flex-col items-center gap-1.5 rounded-xl bg-[#16264d] hover:bg-[#213569] border border-[#3b5794] {kind === 'new' ? 'hover:border-purple-400/40' : 'hover:border-emerald-400/40'} p-2 transition-all hover:-translate-y-0.5 grow-0 basis-[calc(33.333%-0.47rem)] sm:basis-[calc(25%-0.52rem)] md:basis-[calc(20%-0.55rem)]"
+						>
+							<div class="w-full aspect-[4/3] overflow-hidden rounded-lg bg-gradient-to-br {site.color}">
+								<img
+									src={site.image}
+									alt={site.title}
+									loading="lazy"
+									class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+								/>
+							</div>
+							<span class="text-[11px] leading-tight font-semibold text-gray-200 line-clamp-2 text-center">{site.title}</span>
+						</a>
+					{/each}
+				</div>
 			</div>
 		</div>
 
