@@ -509,6 +509,30 @@
         accessChecked = true;
     }
 
+    // ===== קוד גישה בשער =====
+    // פקודה מאחורי הקלעים: הקוד עצמו לא כתוב בשום מקום באתר — מי שמקבל
+    // אותו מהמנהלים (או מכיר את התנועה) נכנס מיד, והמודעה שלו ממשיכה
+    // לאישור האדמין כאילו שילם.
+    let gateCode = $state("");
+    let gateCodeError = $state(false);
+    /** @param {SubmitEvent} e */
+    function tryGateCode(e) {
+        e.preventDefault();
+        const normalized = gateCode.trim().replace(/\s+/g, " ");
+        if (normalized === "יוצאים לחירות") {
+            const nowIso = new Date().toISOString();
+            try {
+                localStorage.setItem(PAID_KEY, "1");
+                localStorage.setItem(PAID_AT_KEY, nowIso);
+            } catch {}
+            paidAt = new Date(nowIso);
+            gateCodeError = false;
+            checkAccess();
+        } else {
+            gateCodeError = true;
+        }
+    }
+
     // ===== שמירה אוטומטית =====
     onMount(() => {
         if (!browser) return;
@@ -694,7 +718,7 @@
 </script>
 
 <svelte:head>
-    <title>בניית הפרסומת שלי | רכישות קבוצתיות יוצאים לחירות</title>
+    <title>בניית הפרסומת שלי | הגמ"ח הארצי</title>
 </svelte:head>
 
 {#if accessChecked && !accessGranted}
@@ -703,8 +727,7 @@
         <div class="gate-icon">🔒</div>
         <h1>בונה הפרסומות פתוח למפרסמים</h1>
         <p>
-            כדי לבנות ולהעלות פרסומת יש להסדיר קודם את התשלום בדף הפרסום.
-            <br />יש לכם קוד פטור? הזינו אותו בשדה ההנחה בדף הפרסום.
+            כדי לבנות ולהעלות פרסומת יש להסדיר קודם את התשלום.
         </p>
         <div class="gate-actions">
             <a href="/advertise" class="b-btn amber">לדף הפרסום והתשלום</a>
@@ -715,6 +738,20 @@
                 class="b-btn green"
             >שילמתי - צרו איתי קשר</a>
         </div>
+        <!-- שדה קוד — בלי לרמוז מהו הקוד; מי שיודע אותו נכנס מיד -->
+        <form class="gate-code" onsubmit={tryGateCode}>
+            <input
+                type="text"
+                bind:value={gateCode}
+                placeholder="יש לכם קוד? הזינו אותו כאן"
+                class="gate-code-input"
+                aria-label="קוד גישה"
+            />
+            <button type="submit" class="b-btn amber">אישור</button>
+        </form>
+        {#if gateCodeError}
+            <div class="gate-code-error">הקוד לא זוהה — בדקו את האיות ונסו שוב</div>
+        {/if}
     </div>
 {:else if !accessChecked}
     <div style="min-height: 40vh;" aria-hidden="true"></div>
@@ -1374,11 +1411,43 @@
 
 <style>
     /* ============== שערה ============== */
+    /* קופסה כהה — הרקע באתר ורוד בהיר וטקסט אפור ישירות עליו אינו קריא */
     .gate {
         max-width: 36rem;
-        margin: 0 auto;
-        padding: 3rem 1rem 5rem;
+        margin: 2rem auto 3rem;
+        padding: 2.5rem 1.5rem;
         text-align: center;
+        background: #16264d;
+        border: 1px solid #3b5794;
+        border-radius: 1.25rem;
+    }
+    .gate-code {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        align-items: stretch;
+        margin-top: 1.25rem;
+        flex-wrap: wrap;
+    }
+    .gate-code-input {
+        padding: 0.7rem 1rem;
+        border-radius: 0.75rem;
+        border: 1px solid #3b5794;
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+        font-family: inherit;
+        font-size: 0.95rem;
+        width: min(100%, 260px);
+        outline: none;
+        text-align: center;
+    }
+    .gate-code-input::placeholder { color: #9ca3af; }
+    .gate-code-input:focus { border-color: #fbbf24; }
+    .gate .gate-code-error {
+        color: #fca5a5;
+        font-size: 0.85rem;
+        font-weight: 700;
+        margin-top: 0.6rem;
     }
     .gate-icon { font-size: 3.75rem; margin-bottom: 1rem; }
     .gate h1 {
