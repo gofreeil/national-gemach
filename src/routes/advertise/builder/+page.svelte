@@ -502,36 +502,13 @@
     // בשלב 6 (טקסט בריחוף) מציגים אוטומטית את הצד האחורי של הפרסומת
     const showHover = $derived(hoverPreview || activeStep === "hover");
 
-    // ===== שערת גישה =====
+    // ===== גישה =====
+    // הלוגיקה: קודם מעצבים את הפרסומת, עניין התשלום מגיע רק בשלב
+    // השליחה (בדף הנחיתה) — לכן הבונה פתוח לכולם, בלי שער תשלום.
     function checkAccess() {
         if (!browser) return;
-        const paid = localStorage.getItem(PAID_KEY) === "1";
-        accessGranted = isAdmin || paid;
+        accessGranted = true;
         accessChecked = true;
-    }
-
-    // ===== קוד גישה בשער =====
-    // פקודה מאחורי הקלעים: הקוד עצמו לא כתוב בשום מקום באתר — מי שמקבל
-    // אותו מהמנהלים (או מכיר את התנועה) נכנס מיד, והמודעה שלו ממשיכה
-    // לאישור האדמין כאילו שילם.
-    let gateCode = $state("");
-    let gateCodeError = $state(false);
-    /** @param {SubmitEvent} e */
-    function tryGateCode(e) {
-        e.preventDefault();
-        const normalized = gateCode.trim().replace(/\s+/g, " ");
-        if (normalized === "יוצאים לחירות") {
-            const nowIso = new Date().toISOString();
-            try {
-                localStorage.setItem(PAID_KEY, "1");
-                localStorage.setItem(PAID_AT_KEY, nowIso);
-            } catch {}
-            paidAt = new Date(nowIso);
-            gateCodeError = false;
-            checkAccess();
-        } else {
-            gateCodeError = true;
-        }
     }
 
     // ===== שמירה אוטומטית =====
@@ -722,39 +699,7 @@
     <title>בניית הפרסומת שלי | הגמ"ח הארצי</title>
 </svelte:head>
 
-{#if accessChecked && !accessGranted}
-    <!-- ===== שערה - נדרש תשלום ===== -->
-    <div class="gate" dir="rtl">
-        <div class="gate-icon">🔒</div>
-        <h1>בונה הפרסומות פתוח למפרסמים</h1>
-        <p>
-            כדי לבנות ולהעלות פרסומת יש להסדיר קודם את התשלום.
-        </p>
-        <div class="gate-actions">
-            <a href="/advertise" class="b-btn amber">לדף הפרסום והתשלום</a>
-            <a
-                href={"https://wa.me/972508750632?text=" + encodeURIComponent("שלום, שילמתי על פרסום באתר הגמ\"ח הארצי ואני צריך גישה לבונה הפרסומות")}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="b-btn green"
-            >שילמתי - צרו איתי קשר</a>
-        </div>
-        <!-- שדה קוד — בלי לרמוז מהו הקוד; מי שיודע אותו נכנס מיד -->
-        <form class="gate-code" onsubmit={tryGateCode}>
-            <input
-                type="text"
-                bind:value={gateCode}
-                placeholder="יש לכם קוד? הזינו אותו כאן"
-                class="gate-code-input"
-                aria-label="קוד גישה"
-            />
-            <button type="submit" class="b-btn amber">אישור</button>
-        </form>
-        {#if gateCodeError}
-            <div class="gate-code-error">הקוד לא זוהה — בדקו את האיות ונסו שוב</div>
-        {/if}
-    </div>
-{:else if !accessChecked}
+{#if !accessChecked}
     <div style="min-height: 40vh;" aria-hidden="true"></div>
 {:else}
     <div class="ad-builder" dir="rtl">
@@ -1411,82 +1356,6 @@
 {/if}
 
 <style>
-    /* ============== שערה ============== */
-    /* קופסה כהה — הרקע באתר ורוד בהיר וטקסט אפור ישירות עליו אינו קריא */
-    .gate {
-        max-width: 36rem;
-        margin: 2rem auto 3rem;
-        padding: 2.5rem 1.5rem;
-        text-align: center;
-        background: #16264d;
-        border: 1px solid #3b5794;
-        border-radius: 1.25rem;
-    }
-    .gate-code {
-        display: flex;
-        gap: 0.5rem;
-        justify-content: center;
-        align-items: stretch;
-        margin-top: 1.25rem;
-        flex-wrap: wrap;
-    }
-    .gate-code-input {
-        padding: 0.7rem 1rem;
-        border-radius: 0.75rem;
-        border: 1px solid #3b5794;
-        background: rgba(255, 255, 255, 0.06);
-        color: #fff;
-        font-family: inherit;
-        font-size: 0.95rem;
-        width: min(100%, 260px);
-        outline: none;
-        text-align: center;
-    }
-    .gate-code-input::placeholder { color: #9ca3af; }
-    .gate-code-input:focus { border-color: #fbbf24; }
-    .gate .gate-code-error {
-        color: #fca5a5;
-        font-size: 0.85rem;
-        font-weight: 700;
-        margin-top: 0.6rem;
-    }
-    .gate-icon { font-size: 3.75rem; margin-bottom: 1rem; }
-    .gate h1 {
-        font-size: 1.75rem;
-        font-weight: 900;
-        color: #fbbf24;
-        margin: 0 0 0.75rem;
-    }
-    .gate p {
-        color: #d1d5db;
-        font-size: 1.05rem;
-        line-height: 1.6;
-        margin: 0 0 1.5rem;
-    }
-    .gate-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        justify-content: center;
-    }
-    @media (min-width: 640px) {
-        .gate-actions { flex-direction: row; }
-    }
-    .b-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.75rem 1.5rem;
-        border-radius: 0.75rem;
-        font-weight: 900;
-        text-decoration: none;
-        transition: all 0.2s;
-    }
-    .b-btn.amber { background: #f59e0b; color: #000; }
-    .b-btn.amber:hover { background: #fbbf24; }
-    .b-btn.green { background: #16a34a; color: #fff; }
-    .b-btn.green:hover { background: #22c55e; }
-
     /* ============== מבנה כללי ============== */
     .ad-builder {
         max-width: 64rem;

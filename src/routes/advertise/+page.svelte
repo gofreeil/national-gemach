@@ -46,8 +46,12 @@
 
 <div class="mx-auto max-w-3xl px-4 py-8 md:py-12" dir="rtl">
 
-    <!-- כותרת — בתוך קופסה כהה (אין טקסט אפור ישירות על הרקע הוורוד) -->
-    <div class="rounded-3xl border border-[#3b5794] bg-[#16264d] p-6 md:p-10 text-center shadow-2xl mb-6">
+    <!-- באנר אחד — כל התוכן בקופסה כהה אחת, ההפרדה בקווים פנימיים
+         (אין טקסט אפור ישירות על הרקע הוורוד) -->
+    <div class="rounded-3xl border border-[#3b5794] bg-[#16264d] shadow-2xl overflow-hidden">
+
+    <!-- כותרת -->
+    <div class="p-6 md:p-10 text-center">
         <div class="text-5xl mb-4">📢</div>
         <h1 class="text-3xl md:text-4xl font-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-clip-text text-transparent mb-3">
             פרסמו בגמ"ח הארצי
@@ -59,10 +63,10 @@
         </p>
     </div>
 
-    <!-- שני מיקומי הפרסום -->
-    <div class="grid md:grid-cols-2 gap-4 mb-6">
-        {#each placements as p (p.title)}
-            <div class="rounded-3xl border border-[#3b5794] bg-[#16264d] p-6 shadow-xl flex flex-col">
+    <!-- שני מיקומי הפרסום — באותו באנר, מופרדים בקו פנימי -->
+    <div class="grid md:grid-cols-2 border-t border-[#3b5794]">
+        {#each placements as p, i (p.title)}
+            <div class="p-6 flex flex-col {i === 1 ? 'border-t md:border-t-0 md:border-r border-[#3b5794]' : ''}">
                 <div class="text-4xl mb-3">{p.icon}</div>
                 <h2 class="text-xl font-black text-white mb-1">{p.title}</h2>
                 <p class="text-sm text-amber-300 font-bold mb-4">{p.where}</p>
@@ -79,7 +83,7 @@
     </div>
 
     <!-- איך מפרסמים -->
-    <div class="rounded-3xl border border-[#3b5794] bg-[#16264d] p-6 md:p-8 text-center shadow-2xl">
+    <div class="border-t border-[#3b5794] p-6 md:p-8 text-center">
         <h2 class="text-2xl font-black text-white mb-6">איך מפרסמים?</h2>
         <ol class="text-right max-w-md mx-auto space-y-4 mb-8">
             <li class="flex items-start gap-3">
@@ -106,4 +110,6 @@
             <a href={mailto} class="underline hover:text-white transition-colors" dir="ltr">{email}</a>
         </p>
     </div>
+
+    </div><!-- /הבאנר האחד -->
 </div>

@@ -71,7 +71,10 @@
                 </a>
             {:else}
                 {@const ad = item.slot}
-                <div
+                <!-- משבצת פנויה — כל הבאנר הוא קישור לדף הפרסום, לא רק כפתור "לפרטים" -->
+                <a
+                    href={ad.href}
+                    aria-label="{ad.text} — {ad.description}: לדף הפרסום"
                     class="h-[490px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed {ad.borderColor} {ad.bgColor} p-3 text-center transition-all {ad.hoverBorder} {ad.hoverBg} group duration-700 relative overflow-hidden"
                     style="animation: fadeIn 0.7s ease-in-out;"
                 >
@@ -110,14 +113,13 @@
                             </div>
                         </div>
 
-                        <a
-                            href={ad.href}
-                            class="mb-4 z-10 rounded-full {ad.buttonColor} px-5 py-2 text-sm font-bold text-white shadow-xl transition-transform hover:scale-105"
+                        <span
+                            class="mb-4 z-10 rounded-full {ad.buttonColor} px-5 py-2 text-sm font-bold text-white shadow-xl transition-transform group-hover:scale-105"
                         >
                             לפרטים
-                        </a>
+                        </span>
                     </div>
-                </div>
+                </a>
             {/if}
         {/each}
     </div>

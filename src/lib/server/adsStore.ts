@@ -55,6 +55,8 @@ export interface SubmittedAd {
     rejectionReason: string;
     expiresAt: string;
     durationDays: number;
+    /** "code" = הוזן קוד התנועה בשליחה (כמו שולם); "pending" = תשלום לתיאום */
+    payment: string;
 }
 
 /** הצורה הרזה שמוזרמת לתצוגה הציבורית (טור ימני + פרסומת-ביניים) */
@@ -112,6 +114,7 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         rejectionReason: x.rejection_reason ?? '',
         expiresAt: x.expires_at ?? '',
         durationDays: Number(x.duration_days) || DEFAULT_DURATION_DAYS,
+        payment: x.payment ?? 'pending',
     };
 }
 
@@ -135,6 +138,7 @@ export async function submitAd(payload: {
     mainImage?: string;
     landing?: Partial<AdLanding>;
     submittedBy?: { id: string; email: string; name: string };
+    payment?: string;
 }): Promise<{ id: string; status: AdStatus }> {
     const res = await strapiPost<{ data: StrapiItem }>('/api/items', {
         data: {
@@ -151,6 +155,7 @@ export async function submitAd(payload: {
                 landing:      payload.landing ?? {},
                 submitted_by: payload.submittedBy ?? { id: '', email: '', name: '' },
                 submitted_at: new Date().toISOString(),
+                payment: payload.payment === 'code' ? 'code' : 'pending',
             },
             publishedAt: new Date().toISOString(),
         },

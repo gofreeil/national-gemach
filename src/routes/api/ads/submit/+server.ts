@@ -33,6 +33,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 : undefined,
             title: payload.title,
             subtitle: payload.subtitle,
+            payment: payload.payment === 'code' ? 'code' : 'pending',
             hoverText: payload.hoverText ?? '',
             cta: payload.cta ?? '',
             gradient: payload.gradient,

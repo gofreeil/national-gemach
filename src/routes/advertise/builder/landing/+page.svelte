@@ -10,6 +10,7 @@
 
     const LS_KEY = "ng_ad_builder_draft_v1";
     const PAID_KEY = "ad_paid";
+    const PAID_AT_KEY = "ad_paid_at";
 
     // ===== שערת גישה (כמו ב-builder הראשי) =====
     let accessGranted = $state(false);
@@ -225,11 +226,33 @@
     }
 
     // ===== טעינת הטיוטה =====
+    // קודם מעצבים — עניין התשלום מגיע רק כאן, בשלב השליחה. אין שער.
     function checkAccess() {
         if (!browser) return;
-        const paid = localStorage.getItem(PAID_KEY) === "1";
-        accessGranted = isAdmin || paid;
+        accessGranted = true;
         accessChecked = true;
+    }
+
+    // ===== תשלום בשלב השליחה =====
+    // קוד מאחורי הקלעים: מי שכותב אותו במקום כסף — המודעה נשלחת לאישור
+    // האדמין כאילו שולם. הקוד עצמו לא כתוב בשום מקום באתר.
+    let payCode = $state("");
+    let payCodeOk = $state(false);
+    let payCodeError = $state(false);
+    /** @param {SubmitEvent} e */
+    function tryPayCode(e) {
+        e.preventDefault();
+        const normalized = payCode.trim().replace(/\s+/g, " ");
+        if (normalized === "יוצאים לחירות") {
+            payCodeOk = true;
+            payCodeError = false;
+            try {
+                localStorage.setItem(PAID_KEY, "1");
+                localStorage.setItem(PAID_AT_KEY, new Date().toISOString());
+            } catch {}
+        } else {
+            payCodeError = true;
+        }
     }
 
     onMount(() => {
@@ -341,6 +364,8 @@
                     advantages: landingAdvantages,
                     uniqueness, phone, whatsapp, website, email, address, hours, products,
                 },
+                // "code" = הוזן קוד התנועה — נשלח כמי ששולם; אחרת התשלום לתיאום
+                payment: payCodeOk ? "code" : "pending",
             };
             const res = await fetch("/api/ads/submit", {
                 method: "POST",
@@ -375,13 +400,7 @@
 
 <div class="ad-landing-builder" dir="rtl">
 
-    {#if accessChecked && !accessGranted}
-        <div class="gate-box">
-            <h1>עריכת דף הנחיתה פתוחה למפרסמים</h1>
-            <p>יש להסדיר קודם את התשלום בדף הפרסום, או להתחיל מה-builder הראשי.</p>
-            <button type="button" onclick={goBack} class="l-btn amber">לבונה הפרסומות</button>
-        </div>
-    {:else if accessGranted}
+    {#if accessGranted}
 
         {#if compressNotice.visible}
             <div class="compress-toast" role="status" aria-live="polite">
@@ -671,6 +690,38 @@
                     <li class:done={!!address}><span>{address ? "✅" : "⬜"}</span> כתובת</li>
                 </ul>
 
+                <!-- ===== תשלום — אחרי העיצוב, לפני השליחה ===== -->
+                <div class="pay-box">
+                    <p class="pay-title">💳 תשלום</p>
+                    {#if payCodeOk}
+                        <p class="pay-ok">✅ הקוד התקבל — המודעה תישלח לאישור כמי ששולם.</p>
+                    {:else}
+                        <p class="pay-sub">
+                            המודעה תעלה לאוויר אחרי אישור מנהל, בהתאם לתשלום.
+                            לתיאום התשלום:
+                        </p>
+                        <a
+                            href={"https://wa.me/972508750632?text=" + encodeURIComponent("שלום, אני מעלה פרסומת באתר הגמ\"ח הארצי ורוצה לתאם את התשלום")}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="pay-wa"
+                        >💬 לתיאום תשלום בוואטסאפ</a>
+                        <form class="pay-code" onsubmit={tryPayCode}>
+                            <input
+                                type="text"
+                                bind:value={payCode}
+                                placeholder="יש לכם קוד? הזינו אותו כאן"
+                                class="pay-code-input"
+                                aria-label="קוד תשלום"
+                            />
+                            <button type="submit" class="pay-code-btn">אישור</button>
+                        </form>
+                        {#if payCodeError}
+                            <p class="pay-error">הקוד לא זוהה — בדקו את האיות ונסו שוב</p>
+                        {/if}
+                    {/if}
+                </div>
+
                 {#if !canSubmit}
                     <p class="submit-note">כדי לשלוח: תמונה, כותרת, סלוגן, טקסט ריחוף, דרך קשר וכותרת/פתיח לדף הנחיתה. חסר משהו? חזרו <button type="button" class="inline-link" onclick={goBack}>לעריכת הכרטיס</button>.</p>
                 {/if}
@@ -711,23 +762,85 @@
         padding: 1rem 1rem 3rem;
     }
 
-    .gate-box {
+    /* ===== תשלום בשלב השליחה ===== */
+    .pay-box {
         border-radius: 1rem;
         border: 1px solid rgba(245, 158, 11, 0.4);
         background: rgba(245, 158, 11, 0.05);
-        padding: 1.5rem;
+        padding: 1.25rem;
         text-align: center;
+        margin: 1rem 0;
     }
-    .gate-box h1 {
-        font-size: 1.25rem;
+    .pay-title {
+        font-size: 1.05rem;
         font-weight: 900;
         color: #fcd34d;
         margin: 0 0 0.5rem;
     }
-    .gate-box p {
+    .pay-sub {
         font-size: 0.9rem;
         color: #d1d5db;
-        margin: 0 0 1rem;
+        margin: 0 0 0.75rem;
+        line-height: 1.5;
+    }
+    .pay-ok {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #86efac;
+        margin: 0;
+    }
+    .pay-wa {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.6rem 1.2rem;
+        border-radius: 0.75rem;
+        font-weight: 800;
+        text-decoration: none;
+        background: #16a34a;
+        color: #fff;
+        transition: background 0.2s;
+    }
+    .pay-wa:hover { background: #22c55e; }
+    .pay-code {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        align-items: stretch;
+        margin-top: 0.85rem;
+        flex-wrap: wrap;
+    }
+    .pay-code-input {
+        padding: 0.6rem 1rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+        font-family: inherit;
+        font-size: 0.9rem;
+        width: min(100%, 240px);
+        outline: none;
+        text-align: center;
+    }
+    .pay-code-input::placeholder { color: #9ca3af; }
+    .pay-code-input:focus { border-color: #fbbf24; }
+    .pay-code-btn {
+        padding: 0.6rem 1.2rem;
+        border-radius: 0.75rem;
+        border: none;
+        background: #f59e0b;
+        color: #000;
+        font-weight: 900;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .pay-code-btn:hover { background: #fbbf24; }
+    .pay-error {
+        color: #fca5a5;
+        font-size: 0.85rem;
+        font-weight: 700;
+        margin: 0.6rem 0 0;
     }
     .l-btn {
         display: inline-flex;

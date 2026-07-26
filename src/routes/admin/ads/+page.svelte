@@ -69,6 +69,11 @@
                         <span class="status-pill {ad.status}">
                             {ad.status === 'pending' ? 'ממתינה' : ad.status === 'approved' ? 'מאושרת' : 'נדחתה'}
                         </span>
+                        {#if ad.payment === 'code'}
+                            <span class="status-pill approved">💳 קוד תנועה — כמו שולם</span>
+                        {:else}
+                            <span class="status-pill pending">⌛ תשלום לתיאום</span>
+                        {/if}
                     </div>
                     <p class="ad-sub">{ad.subtitle}</p>
                     {#if ad.hoverText}<p class="ad-hover">ריחוף: {ad.hoverText}</p>{/if}
