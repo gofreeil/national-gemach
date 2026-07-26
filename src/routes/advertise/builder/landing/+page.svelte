@@ -719,7 +719,7 @@
                             <input
                                 type="text"
                                 bind:value={payCode}
-                                placeholder="יש לכם קוד? הזינו אותו כאן"
+                                placeholder="הזן קוד בעלים"
                                 class="pay-code-input"
                                 aria-label="קוד תשלום"
                             />
