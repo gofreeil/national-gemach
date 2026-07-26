@@ -234,27 +234,37 @@
     }
 
     // ===== תשלום בשלב השליחה =====
-    // קוד מאחורי הקלעים: מי שכותב אותו במקום כסף — המודעה נשלחת לאישור
-    // האדמין כאילו שולם. הקוד עצמו לא כתוב בשום מקום באתר.
+    // קוד הבעלים מאומת בצד השרת בלבד (משתנה סביבה) — הוא לא מופיע
+    // בקוד הלקוח, וגם ההגשה עצמה מאומתת שוב בשרת.
     let payCode = $state("");
     let payCodeOk = $state(false);
     let payCodeError = $state(false);
+    let payCodeChecking = $state(false);
     // תקופת הפרסום שהמפרסם בוחר — עוברת לאדמין ומקבעת את ברירת המחדל באישור
     let payDuration = $state(30);
     const payDurationLabel = $derived(payDuration === 180 ? "חצי שנה" : "חודש");
     /** @param {SubmitEvent} e */
-    function tryPayCode(e) {
+    async function tryPayCode(e) {
         e.preventDefault();
-        const normalized = payCode.trim().replace(/\s+/g, " ");
-        if (normalized === "יוצאים לחירות") {
-            payCodeOk = true;
-            payCodeError = false;
-            try {
-                localStorage.setItem(PAID_KEY, "1");
-                localStorage.setItem(PAID_AT_KEY, new Date().toISOString());
-            } catch {}
-        } else {
+        if (payCodeChecking || !payCode.trim()) return;
+        payCodeChecking = true;
+        payCodeError = false;
+        try {
+            const res = await fetch("/api/ads/verify-code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: payCode }),
+            });
+            const data = res.ok ? await res.json() : null;
+            if (data?.ok) {
+                payCodeOk = true;
+            } else {
+                payCodeError = true;
+            }
+        } catch {
             payCodeError = true;
+        } finally {
+            payCodeChecking = false;
         }
     }
 
@@ -330,9 +340,19 @@
     });
 
     // ===== ולידציה + שליחה =====
-    let canSubmit = $derived(
-        Boolean(mainImage && title && subtitle && hoverText && (phone || website) && (landingHeadline || landingPitch)),
-    );
+    // מה חסר לשליחה — עם ציון איפה משלימים: בכרטיס (בילדר) או כאן בדף הנחיתה
+    let missingFields = $derived.by(() => {
+        /** @type {Array<{ label: string, where: 'card' | 'landing' }>} */
+        const out = [];
+        if (!mainImage) out.push({ label: "תמונה ראשית", where: "card" });
+        if (!title) out.push({ label: "כותרת הפרסומת", where: "card" });
+        if (!subtitle) out.push({ label: "סלוגן", where: "card" });
+        if (!hoverText) out.push({ label: "טקסט בריחוף", where: "card" });
+        if (!phone && !website) out.push({ label: "טלפון או אתר", where: "landing" });
+        if (!landingHeadline && !landingPitch) out.push({ label: "כותרת דף הנחיתה או משפט פתיחה", where: "landing" });
+        return out;
+    });
+    let canSubmit = $derived(missingFields.length === 0);
     let submitting = $state(false);
     let submitted = $state(false);
     let submitError = $state("");
@@ -367,8 +387,8 @@
                     advantages: landingAdvantages,
                     uniqueness, phone, whatsapp, website, email, address, hours, products,
                 },
-                // "code" = הוזן קוד התנועה — נשלח כמי ששולם; אחרת התשלום לתיאום
-                payment: payCodeOk ? "code" : "pending",
+                // הקוד עצמו נשלח לשרת והוא מאמת אותו שוב — הדגל לא נקבע בדפדפן
+                ownerCode: payCodeOk ? payCode : "",
                 requestedDurationDays: payDuration,
             };
             const res = await fetch("/api/ads/submit", {
@@ -732,7 +752,15 @@
                 </div>
 
                 {#if !canSubmit}
-                    <p class="submit-note">כדי לשלוח: תמונה, כותרת, סלוגן, טקסט ריחוף, דרך קשר וכותרת/פתיח לדף הנחיתה. חסר משהו? חזרו <button type="button" class="inline-link" onclick={goBack}>לעריכת הכרטיס</button>.</p>
+                    <p class="submit-note">
+                        ⚠️ אי אפשר לשלוח עדיין — חסר: {missingFields.map((f) => f.label).join(", ")}.
+                        {#if missingFields.some((f) => f.where === "landing")}
+                            ממלאים את זה כאן למעלה, בדף הזה.
+                        {/if}
+                        {#if missingFields.some((f) => f.where === "card")}
+                            את פרטי הכרטיס משלימים <button type="button" class="inline-link" onclick={goBack}>בעמוד עריכת הכרטיס</button>.
+                        {/if}
+                    </p>
                 {/if}
                 {#if submitError}
                     <p class="submit-error">השליחה נכשלה: {submitError}</p>
