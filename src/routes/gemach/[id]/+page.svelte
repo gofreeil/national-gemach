@@ -28,6 +28,9 @@
     /** הגלריה בלי תמונת הלוגו — כדי לא להציג את אותה תמונה פעמיים */
     const gallery = $derived((gemach.gallery ?? []).filter(u => u !== gemach.image));
 
+    /** כל התמונות לתצוגה: תמונת השער ראשונה, אחריה שאר הגלריה */
+    const allImages = $derived([gemach.image, ...gallery].filter(Boolean) as string[]);
+
     /** התמונה שנפתחה במסך מלא (null = סגור) */
     let lightbox = $state<string | null>(null);
 
@@ -121,123 +124,133 @@
         </div>
     {/if}
 
-    <!-- כותרת -->
-    <header class="bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 md:p-6">
-        <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 text-4xl">
-                <GemachAvatar {gemach} categories={data.categories} />
-            </div>
-            <div class="flex-1 min-w-0">
-                <h1 class="text-2xl md:text-3xl font-black text-white leading-tight">{gemach.name}</h1>
-                <div class="flex items-center gap-2 mt-2 flex-wrap">
-                    <a href="/?category={gemach.category}"
-                        class="text-xs bg-blue-900/50 text-blue-300 px-2.5 py-1 rounded-full border border-blue-500/30 hover:bg-blue-900/80 transition-colors">
-                        {categoryLabel}
-                    </a>
-                    <span class="text-xs text-gray-400">📍 {fullAddress || gemach.city}</span>
-                    {#if gemach.featured}
-                        <span class="text-xs text-amber-300" aria-label="גמ&quot;ח מומלץ">⭐ מומלץ</span>
-                    {/if}
-                </div>
-            </div>
-        </div>
-
-        {#if gemach.description}
-            <p class="text-gray-200 leading-relaxed mt-4 whitespace-pre-line">{gemach.description}</p>
-        {/if}
-        {#if gemach.notes}
-            <p class="text-sm text-gray-400 mt-3">{gemach.notes}</p>
-        {/if}
-
-        <!-- פעולות -->
-        <div class="flex flex-wrap gap-2 mt-5">
-            {#if gemach.phone}
-                {#if phoneRevealed}
-                    <a href="tel:{gemach.phone}"
-                        class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2.5 font-bold text-white transition-colors">
-                        📞 התקשר
-                    </a>
-                    <a href="https://wa.me/{waPhone}" target="_blank" rel="noopener noreferrer"
-                        class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2.5 font-bold text-white transition-colors">
-                        💬 וואטסאפ
-                    </a>
-                {:else}
-                    <!-- הטלפון מוסתר עד לצפייה בפרסומת קצרה -->
-                    <button type="button" onclick={revealPhone}
-                        class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2.5 font-bold text-white transition-colors">
-                        📞 גלה טלפון
-                    </button>
-                {/if}
-            {/if}
-            {#if fullAddress}
-                <a href="https://waze.com/ul?q={encodeURIComponent(fullAddress)}" target="_blank" rel="noopener noreferrer"
-                    class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2.5 font-bold text-white transition-colors">
-                    🧭 ניווט
-                </a>
-            {/if}
-            {#if gemach.link}
-                <a href={gemach.link} target="_blank" rel="noopener noreferrer"
-                    class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2.5 font-bold text-white transition-colors">
-                    🔗 לאתר הגמ"ח
-                </a>
-            {/if}
-        </div>
-    </header>
-
-    <!-- גלריה -->
-    {#if gallery.length > 0}
-        <section class="mt-4 bg-[#16264d] border border-[#3b5794] rounded-2xl p-5">
-            <h2 class="font-black text-white mb-3">תמונות</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {#each gallery as url, i (url + i)}
-                    <button type="button" onclick={() => (lightbox = url)}
-                        class="aspect-square overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d] transition-transform hover:scale-[1.02]">
-                        <img src={url} alt="תמונה {i + 1} של {gemach.name}" loading="lazy" decoding="async"
+    <!-- כרטיס ראשי קומפקטי: גלריה מימין (תמונת השער ראשונה), כל המידע משמאלה -->
+    <header class="bg-[#16264d] border border-[#3b5794] rounded-2xl p-4 md:p-5">
+        <div class="flex flex-col md:flex-row md:items-start gap-4 md:gap-5">
+            {#if allImages.length > 0}
+                <!-- הגלריה: בעברית (RTL) הפריט הראשון יושב בצד ימין -->
+                <div class="w-full md:w-64 lg:w-72 flex-shrink-0">
+                    <button type="button" onclick={() => (lightbox = allImages[0])}
+                        class="block w-full aspect-video md:aspect-[4/3] overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d] transition-transform hover:scale-[1.01]">
+                        <img src={allImages[0]} alt="תמונת השער של {gemach.name}" decoding="async"
                             class="h-full w-full object-cover" />
                     </button>
-                {/each}
-            </div>
-        </section>
-    {/if}
-
-    <!-- פרטים -->
-    <section class="mt-4 bg-[#16264d] border border-[#3b5794] rounded-2xl p-5">
-        <h2 class="font-black text-white mb-3">פרטים</h2>
-        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-            {#if gemach.contact}
-                <div><dt class="text-gray-400">איש קשר</dt><dd class="text-white font-bold">{gemach.contact}</dd></div>
-            {/if}
-            {#if gemach.phone}
-                <div>
-                    <dt class="text-gray-400">טלפון</dt>
-                    {#if phoneRevealed}
-                        <dd class="text-white font-bold" dir="ltr">{gemach.phone}</dd>
-                    {:else}
-                        <dd>
-                            <button type="button" onclick={revealPhone}
-                                class="inline-flex items-center gap-1.5 font-bold text-green-400 hover:text-green-300 transition-colors">
-                                📞 גלה טלפון
-                            </button>
-                        </dd>
+                    {#if allImages.length > 1}
+                        <div class="grid grid-cols-4 gap-1.5 mt-1.5">
+                            {#each allImages.slice(1) as url, i (url + i)}
+                                <button type="button" onclick={() => (lightbox = url)}
+                                    class="aspect-square overflow-hidden rounded-lg border border-[#3b5794] bg-[#0f1c3d] transition-transform hover:scale-[1.03]">
+                                    <img src={url} alt="תמונה {i + 2} של {gemach.name}" loading="lazy" decoding="async"
+                                        class="h-full w-full object-cover" />
+                                </button>
+                            {/each}
+                        </div>
                     {/if}
                 </div>
             {/if}
-            {#if gemach.hours}
-                <div><dt class="text-gray-400">שעות פעילות</dt><dd class="text-white font-bold">{gemach.hours}</dd></div>
-            {/if}
-            {#if fullAddress}
-                <div><dt class="text-gray-400">כתובת</dt><dd class="text-white font-bold">{fullAddress}</dd></div>
-            {/if}
-        </dl>
 
-        {#if gemach.tags.length > 0}
-            <div class="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-[#3b5794]">
-                {#each gemach.tags as tag (tag)}
-                    <span class="text-xs bg-[#1c2f5a] text-gray-300 px-2 py-1 rounded-full">{tag}</span>
-                {/each}
+            <div class="flex-1 min-w-0">
+                <div class="flex items-start gap-3">
+                    {#if allImages.length === 0}
+                        <!-- אין תמונות — האווטאר (אימוג'י/לוגו) מחליף את תמונת השער -->
+                        <div class="flex-shrink-0 text-4xl">
+                            <GemachAvatar {gemach} categories={data.categories} />
+                        </div>
+                    {/if}
+                    <div class="flex-1 min-w-0">
+                        <h1 class="text-xl md:text-2xl font-black text-white leading-tight">{gemach.name}</h1>
+                        <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                            <a href="/?category={gemach.category}"
+                                class="text-xs bg-blue-900/50 text-blue-300 px-2.5 py-1 rounded-full border border-blue-500/30 hover:bg-blue-900/80 transition-colors">
+                                {categoryLabel}
+                            </a>
+                            <span class="text-xs text-gray-400">📍 {fullAddress || gemach.city}</span>
+                            {#if gemach.featured}
+                                <span class="text-xs text-amber-300" aria-label="גמ&quot;ח מומלץ">⭐ מומלץ</span>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+
+                {#if gemach.description}
+                    <p class="text-sm md:text-[15px] text-gray-200 leading-relaxed mt-3 whitespace-pre-line">{gemach.description}</p>
+                {/if}
+                {#if gemach.notes}
+                    <p class="text-sm text-gray-400 mt-2">{gemach.notes}</p>
+                {/if}
+
+                <!-- פעולות -->
+                <div class="flex flex-wrap gap-2 mt-3.5">
+                    {#if gemach.phone}
+                        {#if phoneRevealed}
+                            <a href="tel:{gemach.phone}"
+                                class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2 text-sm font-bold text-white transition-colors">
+                                📞 התקשר
+                            </a>
+                            <a href="https://wa.me/{waPhone}" target="_blank" rel="noopener noreferrer"
+                                class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2 text-sm font-bold text-white transition-colors">
+                                💬 וואטסאפ
+                            </a>
+                        {:else}
+                            <!-- הטלפון מוסתר עד לצפייה בפרסומת קצרה -->
+                            <button type="button" onclick={revealPhone}
+                                class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2 text-sm font-bold text-white transition-colors">
+                                📞 גלה טלפון
+                            </button>
+                        {/if}
+                    {/if}
+                    {#if fullAddress}
+                        <a href="https://waze.com/ul?q={encodeURIComponent(fullAddress)}" target="_blank" rel="noopener noreferrer"
+                            class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2 text-sm font-bold text-white transition-colors">
+                            🧭 ניווט
+                        </a>
+                    {/if}
+                    {#if gemach.link}
+                        <a href={gemach.link} target="_blank" rel="noopener noreferrer"
+                            class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2 text-sm font-bold text-white transition-colors">
+                            🔗 לאתר הגמ"ח
+                        </a>
+                    {/if}
+                </div>
+
+                <!-- פרטים — שורות קומפקטיות במקום כרטיס נפרד -->
+                <dl class="mt-3.5 pt-3.5 border-t border-[#3b5794] grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                    {#if gemach.contact}
+                        <div class="flex gap-1.5"><dt class="text-gray-400 flex-shrink-0">איש קשר:</dt><dd class="text-white font-bold">{gemach.contact}</dd></div>
+                    {/if}
+                    {#if gemach.phone}
+                        <div class="flex gap-1.5">
+                            <dt class="text-gray-400 flex-shrink-0">טלפון:</dt>
+                            {#if phoneRevealed}
+                                <dd class="text-white font-bold" dir="ltr">{gemach.phone}</dd>
+                            {:else}
+                                <dd>
+                                    <button type="button" onclick={revealPhone}
+                                        class="inline-flex items-center gap-1.5 font-bold text-green-400 hover:text-green-300 transition-colors">
+                                        📞 גלה טלפון
+                                    </button>
+                                </dd>
+                            {/if}
+                        </div>
+                    {/if}
+                    {#if gemach.hours}
+                        <div class="flex gap-1.5"><dt class="text-gray-400 flex-shrink-0">שעות פעילות:</dt><dd class="text-white font-bold">{gemach.hours}</dd></div>
+                    {/if}
+                    {#if fullAddress}
+                        <div class="flex gap-1.5"><dt class="text-gray-400 flex-shrink-0">כתובת:</dt><dd class="text-white font-bold">{fullAddress}</dd></div>
+                    {/if}
+                </dl>
+
+                {#if gemach.tags.length > 0}
+                    <div class="flex flex-wrap gap-1.5 mt-3">
+                        {#each gemach.tags as tag (tag)}
+                            <span class="text-xs bg-[#1c2f5a] text-gray-300 px-2 py-1 rounded-full">{tag}</span>
+                        {/each}
+                    </div>
+                {/if}
             </div>
-        {/if}
-    </section>
+        </div>
+    </header>
 
     <!-- גמ"חים נוספים -->
     {#if data.related.length > 0}
