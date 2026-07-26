@@ -34,6 +34,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             title: payload.title,
             subtitle: payload.subtitle,
             payment: payload.payment === 'code' ? 'code' : 'pending',
+            requestedDurationDays: Number(payload.requestedDurationDays) === 180 ? 180 : 30,
             hoverText: payload.hoverText ?? '',
             cta: payload.cta ?? '',
             gradient: payload.gradient,

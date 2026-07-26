@@ -88,11 +88,11 @@
         <ol class="text-right max-w-md mx-auto space-y-4 mb-8">
             <li class="flex items-start gap-3">
                 <span class="w-7 h-7 rounded-full bg-amber-400 text-black text-sm font-black flex items-center justify-center flex-shrink-0">1</span>
-                <span class="text-gray-200 text-sm md:text-base leading-relaxed">מעצבים את הפרסומת שלכם ישירות באתר.</span>
+                <span class="text-gray-200 text-sm md:text-base leading-relaxed">מעצבים את הפרסומת בקלות ישירות על האתר.</span>
             </li>
             <li class="flex items-start gap-3">
                 <span class="w-7 h-7 rounded-full bg-amber-400 text-black text-sm font-black flex items-center justify-center flex-shrink-0">2</span>
-                <span class="text-gray-200 text-sm md:text-base leading-relaxed">משלמים.</span>
+                <span class="text-gray-200 text-sm md:text-base leading-relaxed">בוחרים תקופת פרסום — כולל תשלום.</span>
             </li>
             <li class="flex items-start gap-3">
                 <span class="w-7 h-7 rounded-full bg-amber-400 text-black text-sm font-black flex items-center justify-center flex-shrink-0">3</span>

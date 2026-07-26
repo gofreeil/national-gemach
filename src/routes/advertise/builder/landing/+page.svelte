@@ -239,6 +239,9 @@
     let payCode = $state("");
     let payCodeOk = $state(false);
     let payCodeError = $state(false);
+    // תקופת הפרסום שהמפרסם בוחר — עוברת לאדמין ומקבעת את ברירת המחדל באישור
+    let payDuration = $state(30);
+    const payDurationLabel = $derived(payDuration === 180 ? "חצי שנה" : "חודש");
     /** @param {SubmitEvent} e */
     function tryPayCode(e) {
         e.preventDefault();
@@ -366,6 +369,7 @@
                 },
                 // "code" = הוזן קוד התנועה — נשלח כמי ששולם; אחרת התשלום לתיאום
                 payment: payCodeOk ? "code" : "pending",
+                requestedDurationDays: payDuration,
             };
             const res = await fetch("/api/ads/submit", {
                 method: "POST",
@@ -690,18 +694,23 @@
                     <li class:done={!!address}><span>{address ? "✅" : "⬜"}</span> כתובת</li>
                 </ul>
 
-                <!-- ===== תשלום — אחרי העיצוב, לפני השליחה ===== -->
+                <!-- ===== תקופת פרסום + תשלום — אחרי העיצוב, לפני השליחה ===== -->
                 <div class="pay-box">
-                    <p class="pay-title">💳 תשלום</p>
+                    <p class="pay-title">💳 תקופת פרסום ותשלום</p>
+                    <div class="pay-duration" role="group" aria-label="תקופת הפרסום">
+                        <span class="pay-duration-label">תקופת הפרסום:</span>
+                        <button type="button" class="pay-duration-btn" class:active={payDuration === 30} onclick={() => (payDuration = 30)}>חודש</button>
+                        <button type="button" class="pay-duration-btn" class:active={payDuration === 180} onclick={() => (payDuration = 180)}>חצי שנה</button>
+                    </div>
                     {#if payCodeOk}
-                        <p class="pay-ok">✅ הקוד התקבל — המודעה תישלח לאישור כמי ששולם.</p>
+                        <p class="pay-ok">✅ הקוד התקבל — המודעה תישלח לאישור כמי ששולם ({payDurationLabel}).</p>
                     {:else}
                         <p class="pay-sub">
                             המודעה תעלה לאוויר אחרי אישור מנהל, בהתאם לתשלום.
                             לתיאום התשלום:
                         </p>
                         <a
-                            href={"https://wa.me/972508750632?text=" + encodeURIComponent("שלום, אני מעלה פרסומת באתר הגמ\"ח הארצי ורוצה לתאם את התשלום")}
+                            href={"https://wa.me/972508750632?text=" + encodeURIComponent(`שלום, אני מעלה פרסומת באתר הגמ"ח הארצי ורוצה לתאם תשלום לתקופה של ${payDurationLabel}`)}
                             target="_blank"
                             rel="noopener noreferrer"
                             class="pay-wa"
@@ -776,6 +785,36 @@
         font-weight: 900;
         color: #fcd34d;
         margin: 0 0 0.5rem;
+    }
+    .pay-duration {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.85rem;
+    }
+    .pay-duration-label {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #d1d5db;
+    }
+    .pay-duration-btn {
+        padding: 0.45rem 1.1rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.05);
+        color: #d1d5db;
+        font-weight: 800;
+        font-size: 0.85rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .pay-duration-btn.active {
+        background: #f59e0b;
+        border-color: #f59e0b;
+        color: #000;
     }
     .pay-sub {
         font-size: 0.9rem;

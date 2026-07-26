@@ -57,6 +57,8 @@ export interface SubmittedAd {
     durationDays: number;
     /** "code" = הוזן קוד התנועה בשליחה (כמו שולם); "pending" = תשלום לתיאום */
     payment: string;
+    /** התקופה שהמפרסם ביקש בשליחה (30/180) — ברירת המחדל באישור */
+    requestedDurationDays: number;
 }
 
 /** הצורה הרזה שמוזרמת לתצוגה הציבורית (טור ימני + פרסומת-ביניים) */
@@ -115,6 +117,7 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         expiresAt: x.expires_at ?? '',
         durationDays: Number(x.duration_days) || DEFAULT_DURATION_DAYS,
         payment: x.payment ?? 'pending',
+        requestedDurationDays: Number(x.requested_duration_days) === 180 ? 180 : 30,
     };
 }
 
@@ -139,6 +142,7 @@ export async function submitAd(payload: {
     landing?: Partial<AdLanding>;
     submittedBy?: { id: string; email: string; name: string };
     payment?: string;
+    requestedDurationDays?: number;
 }): Promise<{ id: string; status: AdStatus }> {
     const res = await strapiPost<{ data: StrapiItem }>('/api/items', {
         data: {
@@ -156,6 +160,7 @@ export async function submitAd(payload: {
                 submitted_by: payload.submittedBy ?? { id: '', email: '', name: '' },
                 submitted_at: new Date().toISOString(),
                 payment: payload.payment === 'code' ? 'code' : 'pending',
+                requested_duration_days: payload.requestedDurationDays === 180 ? 180 : 30,
             },
             publishedAt: new Date().toISOString(),
         },
