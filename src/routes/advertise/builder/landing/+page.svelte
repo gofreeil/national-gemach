@@ -14,7 +14,8 @@
     // ===== שערת גישה (כמו ב-builder הראשי) =====
     let accessGranted = $state(false);
     let accessChecked = $state(false);
-    let isSuperAdmin = $derived(Boolean(data?.isSuperAdmin));
+    // אדמין של האתר — נכנס בלי דף התשלום
+    let isAdmin = $derived(Boolean(data?.isAdmin));
 
     // ===== שדות דף הנחיתה (נערכים כאן) =====
     let landingHeadline = $state("");
@@ -227,7 +228,7 @@
     function checkAccess() {
         if (!browser) return;
         const paid = localStorage.getItem(PAID_KEY) === "1";
-        accessGranted = isSuperAdmin || paid;
+        accessGranted = isAdmin || paid;
         accessChecked = true;
     }
 

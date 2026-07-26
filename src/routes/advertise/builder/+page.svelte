@@ -18,7 +18,8 @@
     // ===== שערת גישה =====
     let accessGranted = $state(false);
     let accessChecked = $state(false);
-    let isSuperAdmin = $derived(Boolean(data?.isSuperAdmin));
+    // אדמין של האתר (אדמין/סופר-אדמין) — נכנס לבונה בלי דף התשלום
+    let isAdmin = $derived(Boolean(data?.isAdmin));
 
     // ===== חלון עריכה חינם =====
     /** @type {Date | null} */
@@ -505,7 +506,7 @@
     function checkAccess() {
         if (!browser) return;
         const paid = localStorage.getItem(PAID_KEY) === "1";
-        accessGranted = isSuperAdmin || paid;
+        accessGranted = isAdmin || paid;
         accessChecked = true;
     }
 
@@ -1343,7 +1344,7 @@
 {/if}
 
 <!-- תג אדמין -->
-{#if accessGranted && isSuperAdmin}
+{#if accessGranted && isAdmin}
     <div class="admin-badge" dir="rtl">
         <p>🛡️ מצב אדמין - גישה חופשית לבונה</p>
     </div>
