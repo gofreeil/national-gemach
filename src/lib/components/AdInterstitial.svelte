@@ -6,6 +6,11 @@
 -->
 <script lang="ts">
     import { interstitial } from '$lib/adGate';
+    import { loadApprovedAds } from '$lib/adSlots';
+
+    // הרכיב יושב גלובלית ב-+layout — נקודה נוחה להתניע את טעינת
+    // המודעות המאושרות (חד-פעמי, no-op בצד השרת).
+    loadApprovedAds();
 
     // נעילת גלילת הרקע כל עוד הפרסומת פתוחה
     $effect(() => {
@@ -32,7 +37,8 @@
 
             <!-- הקריאייטיב — קליק פותח את המפרסם בלשונית חדשה, בלי לעצור את הספירה -->
             <a href={ad.href} target="_blank" rel="noopener noreferrer"
-               class="ad-int-creative bg-gradient-to-br {ad.color}">
+               class="ad-int-creative bg-gradient-to-br {ad.color}"
+               style={ad.gradientCss ? `background:${ad.gradientCss}` : undefined}>
                 {#if ad.image}
                     <img class="ad-int-img" src={ad.image} alt={ad.title} draggable="false"
                          style={`${ad.imageHeight ? `max-height:${ad.imageHeight};` : ''}${ad.imageScale ? `transform:scale(${ad.imageScale});` : ''}`} />

@@ -16,6 +16,7 @@ export interface Ad {
     imageHeight?: string;   // גובה מותאם לתמונה (ברירת מחדל: auto)
     imageScale?: number;    // זום על התמונה (ברירת מחדל: 1)
     hover?: string;         // טקסט tooltip בריחוף מעל כפתור ה-CTA
+    gradientCss?: string;   // רקע כמחרוזת CSS מלאה (מודעות מהבילדר) — גובר על color
 }
 
 export const ads: Ad[] = [

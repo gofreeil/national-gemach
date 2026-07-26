@@ -2,9 +2,9 @@
     // דף "פרסמו אצלנו" מקומי — אליו מופנים מתעניינים מהמודעות עצמן
     // (טור הדסקטופ ופרסומת-הביניים בנייד) ומהפוטר, במקום לאתר קהילה בשכונה.
     const email = 'freedomhasbegun@gmail.com';
-    // הבילדר המשותף של התנועה — שם מעצבים את הפרסומת, משלמים, והמודעה
-    // עוברת אישור מנהל לפני שהיא עולה.
-    const builderUrl = 'https://community.gofreeil.com/about/advertise/builder';
+    // הבילדר המקומי — שם מעצבים את הפרסומת, משלמים, והמודעה
+    // עוברת אישור מנהל (/admin/ads) לפני שהיא עולה.
+    const builderUrl = '/advertise/builder';
     const mailto =
         `mailto:${email}` +
         `?subject=${encodeURIComponent('פרסום בגמ"ח הארצי')}` +
@@ -97,8 +97,6 @@
         </ol>
         <a
             href={builderUrl}
-            target="_blank"
-            rel="noopener noreferrer"
             class="inline-block rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 px-8 py-4 font-black text-white text-lg shadow-xl transition hover:opacity-90 hover:scale-[1.02]"
         >
             🎨 לעיצוב הפרסומת

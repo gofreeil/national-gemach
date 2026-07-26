@@ -13,11 +13,12 @@
 // רחב המודעות ממילא על המסך כל הזמן.
 // ============================================================
 
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 import type { Ad } from './adsData';
 import { rightAds } from './rightAdsData';
+import { approvedAds, loadApprovedAds } from './adSlots';
 
 /** מתג ראשי — כיבוי חירום של כל מנגנון פרסומת-הביניים. */
 export const ADS_ENABLED = true;
@@ -25,10 +26,9 @@ export const ADS_ENABLED = true;
 /** משך הפרסומת בשניות (הספירה-לאחור). */
 export const INTERSTITIAL_SECONDS = 5;
 
-/** מאגר הקריאייטיבים לפרסומת-הביניים — נגזר אוטומטית ממודעות
- *  הטור הימני, כך שהחלפת משבצת ב-rightAdsData מתעדכנת גם כאן.
+/** משבצות פנויות כקריאייטיבים — נגזרות ממודעות הטור הימני.
  *  image ריק ⇒ AdInterstitial מציג 📢 במקום תמונה. */
-export const interstitialAds: Ad[] = rightAds.map((r, i) => ({
+const vacantInterstitialAds: Ad[] = rightAds.map((r, i) => ({
     id: i + 1,
     title: r.text,
     description: r.description,
@@ -38,14 +38,31 @@ export const interstitialAds: Ad[] = rightAds.map((r, i) => ({
     color: r.interstitialColor,
 }));
 
+/** מאגר הקריאייטיבים כרגע: מודעות אמיתיות מהבילדר (אם אושרו) ואחריהן
+ *  המשבצות הפנויות — אותה תצוגה כמו הטור הימני בדסקטופ. */
+function currentInterstitialAds(): Ad[] {
+    const real: Ad[] = get(approvedAds).map((a, i) => ({
+        id: 1000 + i,
+        title: a.title,
+        description: a.subtitle,
+        cta: a.cta || 'לפרטים',
+        hover: a.hover || undefined,
+        href: `/ads/${a.id}`,
+        image: a.mainImage,
+        color: '',
+        gradientCss: a.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)',
+    }));
+    return [...real, ...vacantInterstitialAds];
+}
+
 /** הטור הימני מוסתר מתחת ל-xl (1280px) — שם הפרסומת עוברת למסך-מלא. */
 function rightColumnHidden(): boolean {
     return browser && window.matchMedia('(max-width: 1279.98px)').matches;
 }
 
-/** האם הפיצ'ר פעיל בפועל: המתג דלוק, יש מה להציג, והטור הימני לא נראה. */
+/** האם הפיצ'ר פעיל בפועל: המתג דלוק והטור הימני לא נראה. */
 export function adsReady(): boolean {
-    return ADS_ENABLED && interstitialAds.length > 0 && rightColumnHidden();
+    return ADS_ENABLED && rightColumnHidden();
 }
 
 export interface InterstitialState {
@@ -84,6 +101,7 @@ function finish() {
  *  אם הפיצ'ר כבוי (או שאנחנו ב-SSR) — נפתר מיד בלי להציג דבר. */
 export function runInterstitial(): Promise<void> {
     if (!browser || !adsReady()) return Promise.resolve();
+    loadApprovedAds(); // בטוח לקרוא שוב — טעינה חד-פעמית
 
     // ריצה קודמת שעדיין פעילה — לסגור ולשחרר את הממתין לה, כדי לא להשאיר Promise תלוי
     if (resolveCurrent) {
@@ -93,7 +111,8 @@ export function runInterstitial(): Promise<void> {
         prev();
     }
 
-    const ad = interstitialAds[pickIndex++ % interstitialAds.length];
+    const pool = currentInterstitialAds();
+    const ad = pool[pickIndex++ % pool.length];
     const total = INTERSTITIAL_SECONDS;
     const start = performance.now();
 

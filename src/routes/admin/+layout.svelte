@@ -11,7 +11,10 @@
         { href: '/admin/gemachim/new', label: 'הוספת גמ"ח', icon: '➕', exact: true },
         { href: '/admin/gemachim/complete', label: 'השלמת מפה', icon: '🗺️', exact: true },
         { href: '/admin/categories', label: 'קטגוריות',    icon: '🏷️', exact: false },
-        ...(isSuper ? [{ href: '/admin/admins', label: 'ניהול אדמינים', icon: '🔑', exact: false }] : []),
+        ...(isSuper ? [
+            { href: '/admin/ads',    label: 'אישור פרסומות', icon: '📢', exact: false },
+            { href: '/admin/admins', label: 'ניהול אדמינים', icon: '🔑', exact: false },
+        ] : []),
     ]);
 
     function active(href: string, exact: boolean, current: string) {
