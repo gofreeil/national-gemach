@@ -955,7 +955,7 @@
         gap: 0.5rem;
         padding: 0.35rem 1rem;
         border-radius: 999px;
-        background: linear-gradient(to right, rgba(245, 158, 11, 0.2), rgba(249, 115, 22, 0.2));
+        background: linear-gradient(to right, rgba(245, 158, 11, 0.2), rgba(249, 115, 22, 0.2)), #16264d;
         border: 1px solid rgba(245, 158, 11, 0.3);
         margin-bottom: 1rem;
         color: #fcd34d;
@@ -970,11 +970,16 @@
         margin: 0 0 0.75rem;
     }
     .l-header p {
+        /* אסור טקסט אפור ישירות על הרקע הוורוד — תמיד קופסה כהה */
         color: #d1d5db;
         font-size: 0.9rem;
         max-width: 42rem;
         margin: 0 auto;
         line-height: 1.6;
+        background: #16264d;
+        border: 1px solid #3b5794;
+        border-radius: 1rem;
+        padding: 0.8rem 1.4rem;
     }
     .l-back {
         margin-top: 1rem;
@@ -990,8 +995,8 @@
 
     /* ===== כרטיס שלב ===== */
     .step-card {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)), #16264d;
+        border: 1px solid #3b5794;
         border-radius: 1.25rem;
         padding: 1.25rem 1.25rem 1.5rem;
         margin-bottom: 1.25rem;

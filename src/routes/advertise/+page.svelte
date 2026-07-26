@@ -63,10 +63,15 @@
         </p>
     </div>
 
-    <!-- שני מיקומי הפרסום — באותו באנר, מופרדים בקו פנימי -->
-    <div class="grid md:grid-cols-2 border-t border-[#3b5794]">
+    <!-- שני מיקומי הפרסום — באותו באנר, מופרדים בקווים פנימיים מקוצרים
+         (הקווים לא נוגעים בקצוות הבאנר) -->
+    <div class="mx-8 md:mx-12 border-t border-[#3b5794]"></div>
+    <div class="grid md:grid-cols-2">
         {#each placements as p, i (p.title)}
-            <div class="p-6 flex flex-col {i === 1 ? 'border-t md:border-t-0 md:border-r border-[#3b5794]' : ''}">
+            <div class="relative p-6 flex flex-col">
+                {#if i === 1}
+                    <div class="absolute top-0 right-8 left-8 border-t border-[#3b5794] md:top-6 md:bottom-6 md:right-0 md:left-auto md:border-t-0 md:border-r" aria-hidden="true"></div>
+                {/if}
                 <div class="text-4xl mb-3">{p.icon}</div>
                 <h2 class="text-xl font-black text-white mb-1">{p.title}</h2>
                 <p class="text-sm text-amber-300 font-bold mb-4">{p.where}</p>
@@ -83,7 +88,8 @@
     </div>
 
     <!-- איך מפרסמים -->
-    <div class="border-t border-[#3b5794] p-6 md:p-8 text-center">
+    <div class="mx-8 md:mx-12 border-t border-[#3b5794]"></div>
+    <div class="p-6 md:p-8 text-center">
         <h2 class="text-2xl font-black text-white mb-6">איך מפרסמים?</h2>
         <ol class="text-right max-w-md mx-auto space-y-4 mb-8">
             <li class="flex items-start gap-3">

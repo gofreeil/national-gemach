@@ -1436,11 +1436,16 @@
         -webkit-text-fill-color: transparent;
     }
     .b-hero-sub {
+        /* אסור טקסט אפור ישירות על הרקע הוורוד — תמיד קופסה כהה */
         color: #d1d5db;
         font-size: 1.05rem;
         max-width: 42rem;
         margin: 0 auto;
         line-height: 1.6;
+        background: #16264d;
+        border: 1px solid #3b5794;
+        border-radius: 1rem;
+        padding: 0.8rem 1.4rem;
     }
 
     .b-countdown, .b-expired, .b-autosave {
@@ -1453,18 +1458,19 @@
         align-items: flex-start;
         gap: 0.75rem;
     }
+    /* רקע כהה אטום מתחת לגוון — הקופסאות יושבות על הרקע הוורוד של האתר */
     .b-countdown {
         border: 2px solid rgba(245, 158, 11, 0.5);
-        background: linear-gradient(135deg, rgba(120, 53, 15, 0.25), rgba(124, 45, 18, 0.15));
+        background: linear-gradient(135deg, rgba(120, 53, 15, 0.25), rgba(124, 45, 18, 0.15)), #16264d;
     }
     .b-expired {
         border: 1px solid rgba(239, 68, 68, 0.4);
-        background: rgba(239, 68, 68, 0.1);
+        background: linear-gradient(rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.1)), #16264d;
     }
     .b-autosave {
         margin-top: 0.75rem;
         border: 1px solid rgba(34, 197, 94, 0.4);
-        background: rgba(34, 197, 94, 0.08);
+        background: linear-gradient(rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.08)), #16264d;
     }
     .b-cd-icon { font-size: 1.6rem; flex-shrink: 0; }
     .b-cd-title {
@@ -1545,8 +1551,8 @@
     }
 
     .live-demo-card {
-        background: rgba(0, 0, 0, 0.35);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #16264d;
+        border: 1px solid #3b5794;
         border-radius: 0.85rem;
         padding: 0.7rem;
     }
@@ -1571,8 +1577,8 @@
 
     /* ============== כרטיס שלב ============== */
     .step-card {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)), #16264d;
+        border: 1px solid #3b5794;
         border-radius: 1.25rem;
         padding: 1.25rem 1.25rem 1.5rem;
         margin-bottom: 1.25rem;
