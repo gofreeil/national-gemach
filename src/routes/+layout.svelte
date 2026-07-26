@@ -9,8 +9,27 @@
     import MobileAdsDrawer from '$lib/components/MobileAdsDrawer.svelte';
     import WelcomeScreen from '$lib/components/WelcomeScreen.svelte';
     import AdInterstitial from '$lib/components/AdInterstitial.svelte';
+    import { onMount } from 'svelte';
 
     let { children, data } = $props();
+
+    // הטענת Google Analytics (gtag) בצד-הלקוח — רק אם הוגדר מזהה מדידה (GA_MEASUREMENT_ID).
+    // עלות שרת אפסית: הסקריפט נטען מגוגל, לא מהשרת שלנו.
+    onMount(() => {
+        const gaId = data.gaId;
+        if (!gaId || typeof document === 'undefined') return;
+        if (document.getElementById('ga-gtag')) return;
+        const s = document.createElement('script');
+        s.id = 'ga-gtag';
+        s.async = true;
+        s.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+        document.head.appendChild(s);
+        const w = window as unknown as { dataLayer?: unknown[]; gtag?: (...a: unknown[]) => void };
+        w.dataLayer = w.dataLayer || [];
+        w.gtag = function () { w.dataLayer!.push(arguments); };
+        w.gtag('js', new Date());
+        w.gtag('config', gaId);
+    });
 </script>
 
 <svelte:head>
@@ -55,7 +74,7 @@
 <AdInterstitial />
 
 <div class="site-bg min-h-screen flex flex-col">
-    <Header user={data.user} adminRole={data.adminRole} />
+    <Header user={data.user} adminRole={data.adminRole} visitors={data.visitors} />
 
     <div class="layout-container flex-grow">
         <RightAdBanner />

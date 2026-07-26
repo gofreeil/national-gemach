@@ -200,6 +200,17 @@ async function saveConfig(patch: Record<string, unknown>): Promise<void> {
     configLoadedAt = Date.now();
 }
 
+/** קורא ערך גולמי מתוך ההגדרות הכלליות (מטמון 20 שנ' — לא יוצר קריאה נוספת ל-Strapi) */
+export async function getConfigValue<T = unknown>(key: string): Promise<T | undefined> {
+    const cfg = await loadConfig();
+    return cfg[key] as T | undefined;
+}
+
+/** כותב ערך יחיד להגדרות הכלליות (ממזג, לא דורס) */
+export async function setConfigValue(key: string, value: unknown): Promise<void> {
+    await saveConfig({ [key]: value });
+}
+
 /** רשימת הקטגוריות בפועל — מהגדרות אם נשמרו, אחרת ברירת המחדל המובנית */
 export async function getCategories(): Promise<CategoryDef[]> {
     const cfg = await loadConfig();

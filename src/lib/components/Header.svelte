@@ -5,11 +5,20 @@
     // משתמש מחובר (מגיע מ-+layout.server דרך +layout.svelte); null = אנונימי
     let {
         user = null,
-        adminRole = null
+        adminRole = null,
+        visitors = null
     }: {
         user?: { name: string; email: string } | null;
         adminRole?: 'super_admin' | 'admin' | null;
+        visitors?: { count: number; label: string } | null;
     } = $props();
+
+    // מוצג רק כשיש נתון אמיתי מ-GA (אין מספרים מזויפים). count מעוצב עם מפריד אלפים.
+    const visitorText = $derived(
+        visitors && visitors.count > 0
+            ? new Intl.NumberFormat('he-IL').format(visitors.count)
+            : null
+    );
 
     let languages = [
         { name: "עברית", code: "he", flag: "il" },
@@ -141,6 +150,15 @@
 
             <!-- Right side controls -->
             <div class="flex items-center gap-3">
+                <!-- מונה גולשים (נתון אמיתי מ-GA; מוצג רק אם קיים) -->
+                {#if visitorText}
+                    <div class="flex items-center gap-2 bg-[#16264d] px-3 py-2 rounded-lg border border-blue-500/30" title="לפי Google Analytics, מתעדכן פעם ביום">
+                        <span class="text-green-400 text-lg" aria-hidden="true">●</span>
+                        <span class="text-white text-sm font-bold">{visitorText}</span>
+                        <span class="text-gray-300 text-sm">{visitors?.label}</span>
+                    </div>
+                {/if}
+
                 <!-- פאנל ניהול (מורשים בלבד) -->
                 {#if adminRole}
                     <a
