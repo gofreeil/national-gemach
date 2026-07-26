@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page as pageStore } from '$app/stores';
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
+    import PhoneIcon from '$lib/components/PhoneIcon.svelte';
     import { gatedNav } from '$lib/adGate';
     import type { PageData } from './$types';
 
@@ -80,7 +81,7 @@
                             <div class="flex items-center gap-4 mt-3 flex-wrap">
                                 {#if gemach.phone}
                                     <a href="tel:{gemach.phone}" class="relative z-10 inline-flex items-center gap-2 text-sm font-bold text-green-400 hover:text-green-300 transition-colors" aria-label="התקשר ל{gemach.name}">
-                                        📞 {gemach.phone}
+                                        <PhoneIcon class="h-4 w-4" /> {gemach.phone}
                                     </a>
                                 {/if}
                                 {#if gemach.link}

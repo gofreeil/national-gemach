@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
+    import PhoneIcon from '$lib/components/PhoneIcon.svelte';
     import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
     import { runInterstitial, gatedNav } from '$lib/adGate';
     import type { PageData } from './$types';
@@ -188,7 +189,7 @@
                         {#if phoneRevealed}
                             <a href="tel:{gemach.phone}"
                                 class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2 text-sm font-bold text-white transition-colors">
-                                📞 התקשר
+                                <PhoneIcon class="h-4 w-4 text-green-200" /> התקשר
                             </a>
                             <a href="https://wa.me/{waPhone}" target="_blank" rel="noopener noreferrer"
                                 class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2 text-sm font-bold text-white transition-colors">
@@ -198,7 +199,7 @@
                             <!-- הטלפון מוסתר עד לצפייה בפרסומת קצרה -->
                             <button type="button" onclick={revealPhone}
                                 class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2 text-sm font-bold text-white transition-colors">
-                                📞 גלה טלפון
+                                <PhoneIcon class="h-4 w-4 text-green-200" /> גלה טלפון
                             </button>
                         {/if}
                     {/if}
@@ -230,7 +231,7 @@
                                 <dd>
                                     <button type="button" onclick={revealPhone}
                                         class="inline-flex items-center gap-1.5 font-bold text-green-400 hover:text-green-300 transition-colors">
-                                        📞 גלה טלפון
+                                        <PhoneIcon class="h-4 w-4" /> גלה טלפון
                                     </button>
                                 </dd>
                             {/if}

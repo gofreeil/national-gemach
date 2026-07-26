@@ -2,6 +2,7 @@
     import { untrack } from 'svelte';
     import { cities, type Gemach } from '$lib/gemachData';
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
+    import PhoneIcon from '$lib/components/PhoneIcon.svelte';
     import { gatedNav } from '$lib/adGate';
     import type { PageData } from './$types';
 
@@ -532,7 +533,7 @@
                                             class="relative z-10 inline-flex items-center gap-2 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
                                             aria-label="התקשר ל{gemach.name}"
                                         >
-                                            📞 {gemach.phone}
+                                            <PhoneIcon class="h-4 w-4" /> {gemach.phone}
                                         </a>
                                     {/if}
                                     {#if gemach.link}
@@ -728,7 +729,7 @@
                                 class="relative z-10 inline-flex items-center gap-2 mt-3 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
                                 aria-label="התקשר ל{gemach.name}"
                             >
-                                📞 {gemach.phone}
+                                <PhoneIcon class="h-4 w-4" /> {gemach.phone}
                             </a>
                         {/if}
                     </div>
