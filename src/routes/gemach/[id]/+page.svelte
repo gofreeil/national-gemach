@@ -2,15 +2,18 @@
     import { page } from '$app/stores';
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
     import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
-    import { adsReady, runInterstitial, gatedNav } from '$lib/adGate';
+    import { runInterstitial, gatedNav } from '$lib/adGate';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
 
-    /** חשיפת הטלפון מאחורי פרסומת. כשהפיצ'ר כבוי — חשוף מלכתחילה (התנהגות רגילה);
-     *  כשדלוק — מוסתר עד שלוחצים "גלה טלפון", ואז מוצגת פרסומת 5 שניות ואז נחשף. */
-    let phoneRevealed = $state(!adsReady());
+    /** הטלפון מוסתר תמיד (דסקטופ ונייד) עד לחיצה על "גלה טלפון" — הלחיצה
+     *  היא נקודת מדידה (אירוע GA). כשפרסומת-הביניים פעילה מוצגת פרסומת
+     *  5 שניות לפני החשיפה; אחרת נחשף מיד. */
+    let phoneRevealed = $state(false);
     function revealPhone() {
+        const w = window as unknown as { gtag?: (...a: unknown[]) => void };
+        w.gtag?.('event', 'phone_reveal', { gemach_id: data.gemach.id, gemach_name: data.gemach.name });
         runInterstitial().then(() => (phoneRevealed = true));
     }
 
