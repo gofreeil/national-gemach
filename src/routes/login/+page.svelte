@@ -42,7 +42,22 @@
 		}
 	}
 
+	// הגשר של "יוצאים לחירות" נשען על עוגייה משותפת בדומיין ‎.gofreeil.com, ולכן
+	// community/sso מקבל רק callback ב-https תחת gofreeil.com — ומכל כתובת אחרת
+	// (localhost בפיתוח, ‎*.vercel.app) מחזיר 400. עדיף להסביר מראש מלשלוח לשגיאה.
+	const SSO_HOME = 'https://gemach.gofreeil.com';
+	let ssoOffsite = $state(false);
+
+	function ssoAllowedHere(): boolean {
+		const { protocol, hostname } = window.location;
+		return protocol === 'https:' && (hostname === 'gofreeil.com' || hostname.endsWith('.gofreeil.com'));
+	}
+
 	function communitySSO() {
+		if (!ssoAllowedHere()) {
+			ssoOffsite = true;
+			return;
+		}
 		const callback = `${window.location.origin}/auth/community-callback?returnTo=${encodeURIComponent(data.redirectTo || '/')}`;
 		window.location.href = `https://community.gofreeil.com/sso?callback=${encodeURIComponent(callback)}`;
 	}
@@ -78,6 +93,19 @@
 		<p class="mb-5 text-center text-xs leading-relaxed text-gray-500">
 			רשומים כבר בקהילה, בשכונה או באתר אחר של יוצאים לחירות? נזהה אתכם אוטומטית.
 		</p>
+
+		{#if ssoOffsite}
+			<div class="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-xs leading-relaxed text-amber-200">
+				ההתחברות דרך "יוצאים לחירות" עובדת רק בכתובת הרשמית
+				(<span dir="ltr">gemach.gofreeil.com</span>) — היא נשענת על עוגייה משותפת לכל אתרי הרשת.
+				<a
+					href="{SSO_HOME}/login?redirect={encodeURIComponent(data.redirectTo || '/')}"
+					class="mt-2 block font-bold text-amber-100 underline hover:text-white"
+				>
+					המשך להתחברות בכתובת הרשמית
+				</a>
+			</div>
+		{/if}
 
 		<div class="mb-5 flex items-center gap-3">
 			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
