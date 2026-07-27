@@ -59,24 +59,42 @@
                 <!-- מודעה אמיתית מהבילדר — קליק מוביל לדף הנחיתה המקומי -->
                 <a
                     href="/ads/{item.ad.id}"
-                    title={item.ad.hover || undefined}
                     class="h-[490px] flex flex-col rounded-2xl overflow-hidden shadow-lg transition-transform hover:scale-105 group relative"
                 >
                     <div class="flex-1 relative overflow-hidden bg-black/30">
                         {#if item.ad.mainImage}
+                            <!-- בריחוף העכבר התמונה נמוגה ומפנה מקום לתוכן שהמפרסם כתב -->
                             <img
                                 src={item.ad.mainImage}
                                 alt={item.ad.title}
                                 loading="lazy"
                                 decoding="async"
-                                class="absolute inset-0 w-full h-full object-cover"
+                                class="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 group-hover:opacity-0"
                             />
                         {/if}
-                        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2 pt-8 text-center">
+                        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2 pt-8 text-center transition-opacity duration-700 group-hover:opacity-0">
                             <h3 class="text-white font-black text-sm leading-tight">{item.ad.title}</h3>
                             {#if item.ad.subtitle}
                                 <p class="text-gray-200 text-[11px] leading-tight mt-0.5">{item.ad.subtitle}</p>
                             {/if}
+                        </div>
+
+                        <!-- שכבת הריחוף: "טקסט הריחוף" מהבילדר — התוכן הנוסף
+                             שנועד למכור, בדיוק כמו בכרטיס של קהילה בשכונה -->
+                        <div
+                            class="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 text-center opacity-0 transition-opacity duration-700 group-hover:opacity-100"
+                        >
+                            <div>
+                                <h3 class="text-white font-black text-sm leading-tight mb-1">{item.ad.title}</h3>
+                                {#if item.ad.subtitle}
+                                    <p class="text-gray-200 text-[11px] leading-tight">{item.ad.subtitle}</p>
+                                {/if}
+                                {#if item.ad.hover}
+                                    <p class="mt-2 pt-2 border-t border-white/20 text-amber-200 text-[11px] font-bold leading-snug">
+                                        {item.ad.hover}
+                                    </p>
+                                {/if}
+                            </div>
                         </div>
                     </div>
                     <div
