@@ -2,7 +2,9 @@
     import { onMount } from "svelte";
     import { adSlots, loadApprovedAds } from "$lib/adSlots";
 
-    let currentGroup = $state(0);
+    const PER_VIEW = 4; // כמה משבצות נראות בטור בו-זמנית
+
+    let rotation = $state(0);
     let totalSwaps = $state(0);
     const MAX_SWAPS = 8; // 3 full cycles of 3 groups (original + 8 swaps = 9 steps)
 
@@ -10,7 +12,7 @@
         loadApprovedAds();
         const interval = setInterval(() => {
             if (totalSwaps < MAX_SWAPS) {
-                currentGroup = (currentGroup + 1) % 3;
+                rotation++;
                 totalSwaps++;
             } else {
                 clearInterval(interval);
@@ -20,9 +22,26 @@
         return () => clearInterval(interval);
     });
 
-    let displayedAds = $derived(
-        $adSlots.slice(currentGroup * 4, (currentGroup + 1) * 4),
+    // מודעות בתשלום מוצמדות לראש הטור ואינן משתתפות בסבב.
+    // למה: הסבב עבר על שלישיות של 4 משבצות ונעצר אחרי 8 החלפות —
+    // כלומר על הקבוצה האחרונה, שבה אין מודעות אמיתיות. התוצאה הייתה
+    // שמודעה ששולם עליה נראתה 6 שניות ואז נעלמה עד רענון הדף.
+    let paid = $derived(
+        $adSlots.filter((s) => s.kind === "real").slice(0, PER_VIEW),
     );
+    let vacant = $derived($adSlots.filter((s) => s.kind === "vacant"));
+
+    // המשבצות הפנויות ממשיכות להתחלף במקומות שנשארו פנויים בטור
+    let displayedAds = $derived.by(() => {
+        const room = PER_VIEW - paid.length;
+        if (room <= 0 || vacant.length === 0) return paid;
+        const start = (rotation * room) % vacant.length;
+        const cycle = Array.from(
+            { length: Math.min(room, vacant.length) },
+            (_, i) => vacant[(start + i) % vacant.length],
+        );
+        return [...paid, ...cycle];
+    });
 </script>
 
 <!-- RightAdBanner.svelte -->
@@ -36,7 +55,7 @@
         תוכן שיווקי
     </h4>
     <div class="space-y-3">
-        {#each displayedAds as item, index}
+        {#each displayedAds as item}
             {#if item.kind === 'real'}
                 <!-- מודעה אמיתית מהבילדר — קליק מוביל לדף הנחיתה המקומי -->
                 <a
@@ -82,7 +101,7 @@
                     <div
                         class="absolute top-3 right-3 text-sm font-black text-white/60 bg-white/10 px-3 py-1 rounded-full border border-white/5 backdrop-blur-sm shadow-sm"
                     >
-                        {currentGroup * 4 + index + 1}
+                        {item.no}
                     </div>
 
                     <div

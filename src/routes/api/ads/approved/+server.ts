@@ -7,6 +7,9 @@ import { listApproved } from '$lib/server/adsStore';
 // endpoint נפרד (ולא ה-layout) כדי שהמודעות יהיו שכבה עצמאית.
 export const GET: RequestHandler = async ({ setHeaders }) => {
     const ads = await listApproved();
-    setHeaders({ 'cache-control': 'public, s-maxage=120, stale-while-revalidate=600' });
+    // קאש קצר בלבד: s-maxage גדול + stale-while-revalidate ארוך גרמו לכך
+    // שתשובת "אין מודעות" שנשמרה לפני האישור הוגשה עוד דקות ארוכות אחריו,
+    // ומודעה שאושרה במסך האדמין לא הופיעה בטור הימני.
+    setHeaders({ 'cache-control': 'public, s-maxage=60, stale-while-revalidate=60' });
     return json({ ads });
 };

@@ -24,7 +24,7 @@ export interface ApprovedAd {
 
 export type AdSlot =
     | { kind: 'real'; ad: ApprovedAd }
-    | { kind: 'vacant'; slot: RightAd };
+    | { kind: 'vacant'; slot: RightAd; no: number };  // no = מספר המשבצת לתצוגה
 
 export const approvedAds = writable<ApprovedAd[]>([]);
 
@@ -51,6 +51,6 @@ export const adSlots = derived(approvedAds, ($approved): AdSlot[] => {
         .map((ad) => ({ kind: 'real', ad }));
     const vacant: AdSlot[] = rightAds
         .slice(real.length)
-        .map((slot) => ({ kind: 'vacant', slot }));
+        .map((slot, i) => ({ kind: 'vacant', slot, no: real.length + i + 1 }));
     return [...real, ...vacant];
 });

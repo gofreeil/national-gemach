@@ -124,7 +124,9 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
 
 // ---------- קאש קצר לרשימת המאושרות ----------
 // נקראת בכל טעינת ה-endpoint הציבורי — אין צורך להציף את Strapi.
-const TTL_MS = 120_000;
+// קצר בכוונה: invalidateAdsCache מנקה רק את המופע (lambda) שביצע את האישור,
+// ולכן זה גם הזמן המרבי שמופע אחר ימשיך להחזיר רשימה ישנה אחרי אישור מודעה.
+const TTL_MS = 60_000;
 let approvedCache: { at: number; list: ApprovedAdPublic[] } | null = null;
 
 export function invalidateAdsCache(): void {
