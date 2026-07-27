@@ -40,6 +40,7 @@
         tools: 1.28,
         books: 1.24,          // judaica_books.webp — מסגרת קרם
         electronics: 1.20,    // מסגרת קרם דקה בקצה הימני
+        judaism: 1.14,        // judaism.webp — הבהרה רכה בקצוות סביב הטלית
     };
     const zoomFor = (key: string) => CAT_ZOOM[key] ?? 1.06;
 

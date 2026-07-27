@@ -49,7 +49,7 @@ export interface CategoryDef {
 // גובר על הרשימה הזו.
 // תמונות נושא לקטגוריות תואמות — יובאו מ"קהילה בשכונה" (דף "למסירה") ומוצגות
 // באריחים במקום האימוג'י. קטגוריות בלי תמונה תואמת (מזון, כספים וכו')
-// נשארות עם אימוג'י; 'judaism' שומר על אייקון המנורה הייעודי שלו.
+// נשארות עם אימוג'י; ב-'judaism' אייקון המנורה נשאר כנפילה-לאחור לתמונה שבורה.
 const CAT_IMG = (name: string) => `/images/categories/${name}.webp`;
 
 export const categories: CategoryDef[] = [
@@ -63,7 +63,7 @@ export const categories: CategoryDef[] = [
     { key: 'wedding', label: 'חתונה', icon: '💍', image: CAT_IMG('wedding') },
     { key: 'events', label: 'שמחות ואירועים', icon: '🎉' },
     { key: 'money', label: 'כספים והלוואות', icon: '💰' },
-    { key: 'judaism', label: 'יהדות', icon: '🕎' },
+    { key: 'judaism', label: 'יהדות', icon: '🕎', image: CAT_IMG('judaism') },
     { key: 'holidays', label: 'שבת וחגים', icon: '🕯️' },
     { key: 'electronics', label: 'חשמל ומחשבים', icon: '💻', image: CAT_IMG('electronics') },
     { key: 'transport', label: 'רכב והסעות', icon: '🚗' },
