@@ -48,7 +48,7 @@ export interface CategoryDef {
 // ניתן לערוך/להוסיף קטגוריות בפאנל הניהול (/admin/categories) — מה שנשמר שם
 // גובר על הרשימה הזו.
 // תמונות נושא לקטגוריות תואמות — יובאו מ"קהילה בשכונה" (דף "למסירה") ומוצגות
-// באריחים במקום האימוג'י. קטגוריות בלי תמונה תואמת (רפואי, מזון, חתונה וכו')
+// באריחים במקום האימוג'י. קטגוריות בלי תמונה תואמת (רפואי, מזון וכו')
 // נשארות עם אימוג'י; 'judaism' שומר על אייקון המנורה הייעודי שלו.
 const CAT_IMG = (name: string) => `/images/categories/${name}.webp`;
 
@@ -60,7 +60,7 @@ export const categories: CategoryDef[] = [
     { key: 'medical', label: 'ציוד רפואי', icon: '🏥' },
     { key: 'food', label: 'מזון', icon: '🥫' },
     { key: 'tools', label: 'כלים', icon: '🔧', image: CAT_IMG('tools') },
-    { key: 'wedding', label: 'חתונה', icon: '💍' },
+    { key: 'wedding', label: 'חתונה', icon: '💍', image: CAT_IMG('wedding') },
     { key: 'events', label: 'שמחות ואירועים', icon: '🎉' },
     { key: 'money', label: 'כספים והלוואות', icon: '💰' },
     { key: 'judaism', label: 'יהדות', icon: '🕎' },
