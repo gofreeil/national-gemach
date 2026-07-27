@@ -2,45 +2,44 @@
     import { onMount } from "svelte";
     import { adSlots, loadApprovedAds } from "$lib/adSlots";
 
-    const PER_VIEW = 4; // כמה משבצות נראות בטור בו-זמנית
+    const PER_VIEW = 4;      // כמה משבצות נראות בטור בו-זמנית
+    const VIEW_MS = 14000;   // כמה זמן כל קבוצה נשארת על המסך (החלפה איטית)
+    const FADE_MS = 900;     // אורך הדעיכה בין קבוצה לקבוצה
 
     let rotation = $state(0);
-    let totalSwaps = $state(0);
-    const MAX_SWAPS = 8; // 3 full cycles of 3 groups (original + 8 swaps = 9 steps)
+    let fading = $state(false);
+
+    let slots = $derived($adSlots);
+
+    // כל המשבצות משתתפות בסבב — גם מודעה בתשלום מתחלפת כמו השאר,
+    // והסבב אינסופי (בלי תקרת החלפות שהייתה עוצרת אותו על קבוצה אחת).
+    let displayedAds = $derived.by(() => {
+        if (slots.length <= PER_VIEW) return slots;
+        const start = (rotation * PER_VIEW) % slots.length;
+        return Array.from(
+            { length: PER_VIEW },
+            (_, i) => slots[(start + i) % slots.length],
+        );
+    });
 
     onMount(() => {
         loadApprovedAds();
+        let fadeTimer: ReturnType<typeof setTimeout> | undefined;
+        // דעיכה החוצה → החלפת הקבוצה בזמן שהטור שקוף → דעיכה פנימה.
+        // כך אין קפיצה: המשבצות לא מתחלפות מול העין אלא מתוך שקיפות מלאה.
         const interval = setInterval(() => {
-            if (totalSwaps < MAX_SWAPS) {
+            if (slots.length <= PER_VIEW) return;
+            fading = true;
+            fadeTimer = setTimeout(() => {
                 rotation++;
-                totalSwaps++;
-            } else {
-                clearInterval(interval);
-            }
-        }, 6000);
+                fading = false;
+            }, FADE_MS);
+        }, VIEW_MS);
 
-        return () => clearInterval(interval);
-    });
-
-    // מודעות בתשלום מוצמדות לראש הטור ואינן משתתפות בסבב.
-    // למה: הסבב עבר על שלישיות של 4 משבצות ונעצר אחרי 8 החלפות —
-    // כלומר על הקבוצה האחרונה, שבה אין מודעות אמיתיות. התוצאה הייתה
-    // שמודעה ששולם עליה נראתה 6 שניות ואז נעלמה עד רענון הדף.
-    let paid = $derived(
-        $adSlots.filter((s) => s.kind === "real").slice(0, PER_VIEW),
-    );
-    let vacant = $derived($adSlots.filter((s) => s.kind === "vacant"));
-
-    // המשבצות הפנויות ממשיכות להתחלף במקומות שנשארו פנויים בטור
-    let displayedAds = $derived.by(() => {
-        const room = PER_VIEW - paid.length;
-        if (room <= 0 || vacant.length === 0) return paid;
-        const start = (rotation * room) % vacant.length;
-        const cycle = Array.from(
-            { length: Math.min(room, vacant.length) },
-            (_, i) => vacant[(start + i) % vacant.length],
-        );
-        return [...paid, ...cycle];
+        return () => {
+            clearInterval(interval);
+            clearTimeout(fadeTimer);
+        };
     });
 </script>
 
@@ -54,7 +53,7 @@
     >
         תוכן שיווקי
     </h4>
-    <div class="space-y-3">
+    <div class="space-y-3 ads-track" class:fading>
         {#each displayedAds as item}
             {#if item.kind === 'real'}
                 <!-- מודעה אמיתית מהבילדר — קליק מוביל לדף הנחיתה המקומי -->
@@ -62,7 +61,6 @@
                     href="/ads/{item.ad.id}"
                     title={item.ad.hover || undefined}
                     class="h-[490px] flex flex-col rounded-2xl overflow-hidden shadow-lg transition-transform hover:scale-105 group relative"
-                    style="animation: fadeIn 0.7s ease-in-out;"
                 >
                     <div class="flex-1 relative overflow-hidden bg-black/30">
                         {#if item.ad.mainImage}
@@ -95,7 +93,6 @@
                     href={ad.href}
                     aria-label="{ad.text} — {ad.description}: לדף הפרסום"
                     class="h-[490px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed {ad.borderColor} {ad.bgColor} p-3 text-center transition-all {ad.hoverBorder} {ad.hoverBg} group duration-700 relative overflow-hidden"
-                    style="animation: fadeIn 0.7s ease-in-out;"
                 >
                     <!-- Ad Numbering -->
                     <div
@@ -145,14 +142,18 @@
 </aside>
 
 <style>
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateX(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
+    /* דעיכה רכה בין קבוצות המודעות — במקום החלקה קופצנית של כל כרטיס.
+       הערך חייב להתאים ל-FADE_MS שבסקריפט. */
+    .ads-track {
+        opacity: 1;
+        transition: opacity 900ms ease-in-out;
+    }
+    .ads-track.fading {
+        opacity: 0;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .ads-track {
+            transition-duration: 1ms;
         }
     }
 </style>
