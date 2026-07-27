@@ -709,6 +709,7 @@
                     <li class:done={!!subtitle}><span>{subtitle ? "✅" : "⬜"}</span> סלוגן</li>
                     <li class:done={!!hoverText}><span>{hoverText ? "✅" : "⬜"}</span> טקסט בריחוף</li>
                     <li class:done={!!(phone || website)}><span>{phone || website ? "✅" : "⬜"}</span> דרך ליצירת קשר</li>
+                    <li class:done={!!(landingHeadline || landingPitch)}><span>{landingHeadline || landingPitch ? "✅" : "⬜"}</span> כותרת או משפט פתיחה לדף הנחיתה</li>
                     <li class:done={products.length > 0}><span>{products.length > 0 ? "✅" : "⬜"}</span> מוצרים ({products.length})</li>
                     <li class:done={!!uniqueness}><span>{uniqueness ? "✅" : "⬜"}</span> מה מייחד אתכם</li>
                     <li class:done={!!address}><span>{address ? "✅" : "⬜"}</span> כתובת</li>

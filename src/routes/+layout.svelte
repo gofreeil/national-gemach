@@ -63,9 +63,10 @@
 
 <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>
 
-<!-- מסך פתיחה אחרי התחברות — גלובלי, כדי שיופיע בכל יעד נחיתה -->
-{#if data.user}
-    <WelcomeScreen userName={data.user.name ?? ''} />
+<!-- מסך פתיחה אחרי התחברות — גלובלי, כדי שיופיע בכל יעד נחיתה.
+     ב-dev מוצג גם בלי התחברות, לתצוגה מקדימה עם ?welcome=new/back -->
+{#if data.user || import.meta.env.DEV}
+    <WelcomeScreen userName={data.user?.name ?? ''} />
 {/if}
 
 <MobileAdsDrawer user={data.user} />
