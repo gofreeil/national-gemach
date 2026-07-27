@@ -192,20 +192,23 @@
     @media (min-width: 860px) {
         .al-hero { padding: 2.25rem 2rem; }
         .al-hero-inner.has-media {
-            grid-template-columns: minmax(0, 1fr) minmax(0, 20rem);
+            grid-template-columns: minmax(0, 1fr) minmax(0, 22rem);
             text-align: right;
         }
     }
     .al-copy { min-width: 0; }
     .al-logo {
-        width: 56px;
-        height: 56px;
-        border-radius: 0.85rem;
+        width: 68px;
+        height: 68px;
+        border-radius: 0.9rem;
         background: white;
-        padding: 5px;
+        padding: 6px;
         object-fit: contain;
         margin-bottom: 0.75rem;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    }
+    @media (min-width: 860px) {
+        .al-logo { width: 88px; height: 88px; border-radius: 1.1rem; padding: 7px; }
     }
     .al-hero h1 {
         color: white;
@@ -243,10 +246,14 @@
         display: block;
         width: auto;
         max-width: 100%;
-        max-height: 19rem;
+        max-height: 17rem;
         margin-inline: auto;
         border-radius: 0.9rem;
         box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+    /* בדסקטופ התמונה גדלה עד לגובה של טור הטקסט שלידה — פרופורציה מאוזנת */
+    @media (min-width: 860px) {
+        .al-media img { max-height: 27rem; border-radius: 1.1rem; }
     }
 
     .al-actions {

@@ -621,11 +621,11 @@
                     <div class="landing-mock">
                         <!-- הכותרת, משפט הפתיחה והיתרונות יושבים ליד התמונה — בלי גלילה -->
                         <header class="landing-hero" style:background={gradient}>
-                            {#if logo}
-                                <img src={logo} alt="לוגו" class="landing-logo" class:circle={logoShape === "circle"} />
-                            {/if}
                             <div class="landing-hero-inner" class:has-media={!!(landingImage || mainImage)}>
                                 <div class="landing-hero-content">
+                                    {#if logo}
+                                        <img src={logo} alt="לוגו" class="landing-logo" class:circle={logoShape === "circle"} />
+                                    {/if}
                                     <h1>{landingHeadline || title || "כותרת דף הנחיתה"}</h1>
                                     <p>{landingPitch || subtitle || "משפט הפתיחה יופיע כאן"}</p>
                                     {#if advInHero}
@@ -1360,7 +1360,7 @@
     }
     @media (min-width: 700px) {
         .landing-hero-inner.has-media {
-            grid-template-columns: minmax(0, 1fr) minmax(0, 13rem);
+            grid-template-columns: minmax(0, 1fr) minmax(0, 15rem);
             text-align: right;
         }
     }
@@ -1370,28 +1370,31 @@
         display: block;
         width: auto;
         max-width: 100%;
-        max-height: 13rem;
+        max-height: 12rem;
         margin-inline: auto;
         border-radius: 0.7rem;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    }
+    @media (min-width: 700px) {
+        .landing-hero-media img { max-height: 19rem; }
     }
     .landing-cta-row { margin-top: 0.9rem; }
     @media (min-width: 700px) {
         .has-media .landing-cta-row { text-align: right; }
     }
+    /* כמו בדף האמיתי: הלוגו בתוך טור הטקסט, לא צף בפינה (שם הוא היה מכסה את הכותרת) */
     .landing-logo {
-        position: absolute;
-        top: 0.7rem;
-        right: 0.7rem;
-        width: 42px;
-        height: 42px;
-        border-radius: 0.55rem;
+        width: 54px;
+        height: 54px;
+        border-radius: 0.7rem;
         background: white;
-        padding: 4px;
+        padding: 5px;
         object-fit: contain;
-        z-index: 3;
-        margin: 0;
+        margin: 0 0 0.6rem;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    }
+    @media (min-width: 700px) {
+        .landing-logo { width: 68px; height: 68px; border-radius: 0.85rem; }
     }
     .landing-logo.circle { border-radius: 999px; }
     .landing-hero h1 {
