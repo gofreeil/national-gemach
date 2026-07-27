@@ -14,6 +14,7 @@
 import { env } from '$env/dynamic/private';
 import { strapiGet, strapiPost } from './strapiClient.js';
 import { getAdmins } from './adminStore.js';
+import { planLabelWithPrice } from '../adPlans.js';
 
 const SITE_NAME = 'הגמ"ח הארצי';
 
@@ -71,7 +72,7 @@ export async function notifyOwnerCodeUse(info: {
             `📢 שימוש בקוד בעלים — ${SITE_NAME}\n` +
             `פרסומת: "${info.adTitle}"\n` +
             `מי השתמש: ${who}\n` +
-            `תקופה מבוקשת: ${info.durationDays === 180 ? 'חצי שנה' : 'חודש'}\n` +
+            `תקופה מבוקשת: ${planLabelWithPrice(info.durationDays)}\n` +
             `המודעה ממתינה לאישור ב-gemach.gofreeil.com/admin/ads`;
         await strapiPost('/api/messages', {
             data: { receiver, content, read: false },

@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAdminContext, requireSuperAdmin } from '$lib/server/admin';
 import { listAllForAdmin, approveAd, rejectAd } from '$lib/server/adsStore';
+import { normalizePlanDays, planLabel } from '$lib/adPlans';
 
 // מסך אישור פרסומות — סופר-אדמין בלבד (כמו במקור בקבוצות רכישה):
 // התשלום ידני, ולכן מי שמקבל את הכסף הוא שמאשר ואת משך הפרסום.
@@ -29,12 +30,12 @@ export const actions: Actions = {
         const id = String(form.get('id') ?? '');
         if (!id) return fail(400, { error: 'חסר מזהה פרסומת' });
         // משך הפרסום נקבע כאן ולא ע"י המפרסם — לפי מה ששולם בפועל.
-        const durationDays = Number(form.get('durationDays')) === 180 ? 180 : 30;
+        const durationDays = normalizePlanDays(form.get('durationDays'));
         try {
             await approveAd(id, { durationDays, decidedBy: user.email ?? user.name ?? '' });
             return {
                 success: true,
-                message: `הפרסומת אושרה ופורסמה ל-${durationDays === 180 ? 'חצי שנה' : 'חודש'} ✅`,
+                message: `הפרסומת אושרה ופורסמה ל-${planLabel(durationDays)} ✅`,
             };
         } catch (err) {
             console.error('approve failed:', err);

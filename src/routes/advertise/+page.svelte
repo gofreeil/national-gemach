@@ -15,6 +15,9 @@
             'המיקום המבוקש (טור הדסקטופ / פרסומת הנייד / שניהם):\n'
         )}`;
 
+    // המחירון — מקור אמת יחיד ב-$lib/adPlans (משותף לבילדר, לשרת ולמסך האישור)
+    import { adPlans } from '$lib/adPlans';
+
     const placements = [
         {
             icon: '🖥️',
@@ -87,6 +90,25 @@
         {/each}
     </div>
 
+    <!-- מחירון — לבחור ולשלם מראש -->
+    <div class="mx-8 md:mx-12 border-t border-[#3b5794]"></div>
+    <div class="p-6 md:p-8">
+        <h2 class="text-2xl font-black text-white mb-2 text-center">לבחור ולשלם מראש</h2>
+        <p class="text-sm text-gray-300 text-center mb-6">בוחרים תקופה, משלמים מראש — והמודעה רצה עד סופה.</p>
+        <ul class="max-w-md mx-auto space-y-2">
+            {#each adPlans as plan (plan.days)}
+                <li class="flex items-baseline justify-between gap-3 rounded-xl bg-[#0f1c3d] border border-[#3b5794] px-4 py-3">
+                    <span class="text-gray-200 text-sm md:text-base">{plan.title}</span>
+                    <span class="text-amber-300 font-black text-base md:text-lg whitespace-nowrap">{plan.price} ₪</span>
+                </li>
+            {/each}
+        </ul>
+        <p class="mt-5 text-center text-sm text-gray-300">
+            <a href="/advertise/terms" class="underline hover:text-white transition-colors">📜 תנאי הפרסום</a>
+            — מומלץ לקרוא לפני התשלום
+        </p>
+    </div>
+
     <!-- איך מפרסמים -->
     <div class="mx-8 md:mx-12 border-t border-[#3b5794]"></div>
     <div class="p-6 md:p-8 text-center">
@@ -98,7 +120,7 @@
             </li>
             <li class="flex items-start gap-3">
                 <span class="w-7 h-7 rounded-full bg-amber-400 text-black text-sm font-black flex items-center justify-center flex-shrink-0">2</span>
-                <span class="text-gray-200 text-sm md:text-base leading-relaxed">בוחרים תקופת פרסום — כולל תשלום.</span>
+                <span class="text-gray-200 text-sm md:text-base leading-relaxed">בוחרים תקופת פרסום ומשלמים מראש.</span>
             </li>
             <li class="flex items-start gap-3">
                 <span class="w-7 h-7 rounded-full bg-amber-400 text-black text-sm font-black flex items-center justify-center flex-shrink-0">3</span>

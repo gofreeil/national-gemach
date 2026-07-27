@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { browser } from "$app/environment";
     import { goto } from "$app/navigation";
+    import { adPlans, planFor, DEFAULT_PLAN_DAYS } from "$lib/adPlans";
 
     // עורך דף הנחיתה + שליחה סופית - פורט מקבוצות רכישה (במקור מ"קהילה בשכונה").
     // חולק את אותה טיוטת localStorage עם ה-builder הראשי.
@@ -241,8 +242,9 @@
     let payCodeError = $state(false);
     let payCodeChecking = $state(false);
     // תקופת הפרסום שהמפרסם בוחר — עוברת לאדמין ומקבעת את ברירת המחדל באישור
-    let payDuration = $state(30);
-    const payDurationLabel = $derived(payDuration === 180 ? "חצי שנה" : "חודש");
+    let payDuration = $state(DEFAULT_PLAN_DAYS);
+    const payPlan = $derived(planFor(payDuration));
+    const payDurationLabel = $derived(payPlan.label);
     /** @param {SubmitEvent} e */
     async function tryPayCode(e) {
         e.preventDefault();
@@ -717,12 +719,24 @@
 
                 <!-- ===== תקופת פרסום + תשלום — אחרי העיצוב, לפני השליחה ===== -->
                 <div class="pay-box">
-                    <p class="pay-title">💳 תקופת פרסום ותשלום</p>
+                    <p class="pay-title">💳 לבחור ולשלם מראש</p>
                     <div class="pay-duration" role="group" aria-label="תקופת הפרסום">
-                        <span class="pay-duration-label">תקופת הפרסום:</span>
-                        <button type="button" class="pay-duration-btn" class:active={payDuration === 30} onclick={() => (payDuration = 30)}>חודש</button>
-                        <button type="button" class="pay-duration-btn" class:active={payDuration === 180} onclick={() => (payDuration = 180)}>חצי שנה</button>
+                        {#each adPlans as plan (plan.days)}
+                            <button
+                                type="button"
+                                class="pay-duration-btn"
+                                class:active={payDuration === plan.days}
+                                onclick={() => (payDuration = plan.days)}
+                            >
+                                <span class="pay-plan-label">{plan.title}</span>
+                                <span class="pay-plan-price">{plan.price} ₪</span>
+                            </button>
+                        {/each}
                     </div>
+                    <p class="pay-terms">
+                        <a href="/advertise/terms" target="_blank" rel="noopener">📜 תנאי הפרסום</a>
+                        — לקריאה לפני התשלום
+                    </p>
                     {#if payCodeOk}
                         <p class="pay-ok">✅ הקוד התקבל — המודעה תישלח לאישור כמי ששולם ({payDurationLabel}).</p>
                     {:else}
@@ -731,7 +745,7 @@
                             לתיאום התשלום:
                         </p>
                         <a
-                            href={"https://wa.me/972508750632?text=" + encodeURIComponent(`שלום, אני מעלה פרסומת באתר הגמ"ח הארצי ורוצה לתאם תשלום לתקופה של ${payDurationLabel}`)}
+                            href={"https://wa.me/972508750632?text=" + encodeURIComponent(`שלום, אני מעלה פרסומת באתר הגמ"ח הארצי ורוצה לתאם תשלום עבור ${payPlan.title} (${payPlan.price} ₪)`)}
                             target="_blank"
                             rel="noopener noreferrer"
                             class="pay-wa"
@@ -823,14 +837,13 @@
         flex-wrap: wrap;
         margin-bottom: 0.85rem;
     }
-    .pay-duration-label {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: #d1d5db;
-    }
     .pay-duration-btn {
-        padding: 0.45rem 1.1rem;
-        border-radius: 999px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        padding: 0.5rem 0.9rem;
+        border-radius: 0.9rem;
         border: 1px solid rgba(255, 255, 255, 0.2);
         background: rgba(255, 255, 255, 0.05);
         color: #d1d5db;
@@ -844,6 +857,24 @@
         background: #f59e0b;
         border-color: #f59e0b;
         color: #000;
+    }
+    .pay-plan-price {
+        font-size: 1rem;
+        font-weight: 900;
+        color: #fcd34d;
+    }
+    .pay-duration-btn.active .pay-plan-price {
+        color: #000;
+    }
+    .pay-terms {
+        font-size: 0.85rem;
+        color: #d1d5db;
+        margin: 0 0 0.85rem;
+    }
+    .pay-terms a {
+        color: #fcd34d;
+        font-weight: 800;
+        text-decoration: underline;
     }
     .pay-sub {
         font-size: 0.9rem;

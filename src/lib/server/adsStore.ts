@@ -14,9 +14,10 @@
 // ============================================================
 
 import { strapiGet, strapiPost, strapiPut, strapiDelete } from './strapiClient.js';
+import { DEFAULT_PLAN_DAYS, normalizePlanDays } from '../adPlans.js';
 
 const AD_CATEGORY = '__ng_ad';
-export const DEFAULT_DURATION_DAYS = 30;
+export const DEFAULT_DURATION_DAYS = DEFAULT_PLAN_DAYS;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type AdStatus = 'pending' | 'approved' | 'rejected';
@@ -57,7 +58,7 @@ export interface SubmittedAd {
     durationDays: number;
     /** "code" = הוזן קוד התנועה בשליחה (כמו שולם); "pending" = תשלום לתיאום */
     payment: string;
-    /** התקופה שהמפרסם ביקש בשליחה (30/180) — ברירת המחדל באישור */
+    /** התקופה שהמפרסם ביקש בשליחה (אחד ממסלולי adPlans) — ברירת המחדל באישור */
     requestedDurationDays: number;
 }
 
@@ -117,7 +118,7 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         expiresAt: x.expires_at ?? '',
         durationDays: Number(x.duration_days) || DEFAULT_DURATION_DAYS,
         payment: x.payment ?? 'pending',
-        requestedDurationDays: Number(x.requested_duration_days) === 180 ? 180 : 30,
+        requestedDurationDays: normalizePlanDays(x.requested_duration_days),
     };
 }
 
@@ -160,7 +161,7 @@ export async function submitAd(payload: {
                 submitted_by: payload.submittedBy ?? { id: '', email: '', name: '' },
                 submitted_at: new Date().toISOString(),
                 payment: payload.payment === 'code' ? 'code' : 'pending',
-                requested_duration_days: payload.requestedDurationDays === 180 ? 180 : 30,
+                requested_duration_days: normalizePlanDays(payload.requestedDurationDays),
             },
             publishedAt: new Date().toISOString(),
         },
@@ -241,17 +242,18 @@ async function mergeExtra(id: string, patch: Record<string, unknown>, status?: A
 }
 
 /** אישור מודעה — קובע תוקף (ברירת מחדל 30 יום). התשלום ידני, ולכן
- *  מי שקיבל את הכסף (המנהל) הוא שקובע חודש או חצי שנה. */
+ *  מי שקיבל את הכסף (המנהל) הוא שקובע את המסלול בפועל. */
 export async function approveAd(
     id: string,
     { durationDays = DEFAULT_DURATION_DAYS, decidedBy = '' }: { durationDays?: number; decidedBy?: string } = {},
 ): Promise<void> {
-    const expires = new Date(Date.now() + durationDays * DAY_MS);
+    const days = normalizePlanDays(durationDays);
+    const expires = new Date(Date.now() + days * DAY_MS);
     await mergeExtra(id, {
         decided_at: new Date().toISOString(),
         decided_by: decidedBy,
         rejection_reason: '',
-        duration_days: durationDays,
+        duration_days: days,
         expires_at: expires.toISOString(),
     }, 'approved');
     invalidateAdsCache();

@@ -1,5 +1,6 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
+    import { adPlans } from '$lib/adPlans';
 
     // מסך אישור פרסומות לאדמין — ממתינות / מאושרות / נדחות.
     // פורט מקבוצות רכישה; עטוף בקופסה כהה כי הרקע באתר ורוד בהיר.
@@ -105,8 +106,11 @@
                                     שולם עבור:
                                     <!-- ברירת המחדל = התקופה שהמפרסם בחר בשליחה -->
                                     <select name="durationDays" class="duration-select">
-                                        <option value="30" selected={ad.requestedDurationDays !== 180}>חודש</option>
-                                        <option value="180" selected={ad.requestedDurationDays === 180}>חצי שנה</option>
+                                        {#each adPlans as plan (plan.days)}
+                                            <option value={plan.days} selected={ad.requestedDurationDays === plan.days}>
+                                                {plan.label} — {plan.price} ₪
+                                            </option>
+                                        {/each}
                                     </select>
                                 </label>
                                 <button type="submit" class="a-btn approve">✅ אשר ופרסם</button>
