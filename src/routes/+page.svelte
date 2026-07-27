@@ -829,14 +829,14 @@
     .cat-tile {
         position: relative;
         width: clamp(7rem, 29vw, 8.5rem);   /* vw ⇒ ההצצה לאריח הבא מובטחת בכל רוחב מסך */
-        min-height: 9.75rem;
+        min-height: 10.25rem;
         height: 100%;                       /* ה-li נמתח לגובה השורה; בלי זה תחתית האריחים מתפרעת */
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        padding: 1rem 0.75rem;
+        gap: 0.4rem;
+        padding: 0.85rem 0.5rem;            /* ריפוד צר ⇒ מקום לתמונה גדולה יותר */
         border-radius: 1rem;
         border: 1px solid #3b5794;
         background: linear-gradient(160deg, #1b2f5e 0%, #132342 55%, #0f1c37 100%);
@@ -874,6 +874,7 @@
         min-width: 1.35rem;
         height: 1.35rem;
         padding: 0 0.4rem;
+        z-index: 2;                     /* מעל התמונה — התג לא נבלע במסגרת */
         border-radius: 999px;
         font-size: 0.72rem;
         font-weight: 900;
@@ -887,13 +888,14 @@
     /* תמונת נושא במקום האימוג'י — גדולה, ממלאת כמעט את כל רוחב האריח.
        overflow:hidden חותך את הזום-פנימה (‎--z) שמעלים מסגרות לבנות אפויות בקצוות. */
     .cat-photo {
-        width: 5.75rem;
+        width: 6.75rem;
         max-width: 100%;
         aspect-ratio: 1 / 1;
         overflow: hidden;
-        border-radius: 1rem;
+        border-radius: 0.85rem;
+        border: 3px solid #000;         /* מסגרת שחורה צמודה — התמונה ממלאת אותה בלי רווח */
         background: #0f1c3d;
-        box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.95);
     }
     .cat-photo img {
         width: 100%;
