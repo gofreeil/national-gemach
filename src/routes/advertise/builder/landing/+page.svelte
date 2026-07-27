@@ -341,6 +341,14 @@
         } catch {}
     });
 
+    // ===== תצוגה מקדימה =====
+    // "אם נכנס בצורה סמטרית" — היתרונות נכנסים לטור שליד התמונה רק כשמשפט
+    // הפתיחה קצר; אחרת הם יורדים לשורה רחבה מתחת לגיבור.
+    let hasAdvantages = $derived(landingAdvantages.some((a) => a.trim()));
+    let advInHero = $derived(
+        Boolean(landingImage || mainImage) && hasAdvantages && landingPitch.length <= 300
+    );
+
     // ===== ולידציה + שליחה =====
     // מה חסר לשליחה — עם ציון איפה משלימים: בכרטיס (בילדר) או כאן בדף הנחיתה
     let missingFields = $derived.by(() => {
@@ -611,34 +619,52 @@
 
                 <div class="preview-frame">
                     <div class="landing-mock">
+                        <!-- הכותרת, משפט הפתיחה והיתרונות יושבים ליד התמונה — בלי גלילה -->
                         <header class="landing-hero" style:background={gradient}>
-                            {#if landingImage || mainImage}
-                                <img src={landingImage || mainImage} alt={title} class="landing-hero-bg" />
-                            {/if}
-                            <div class="landing-hero-overlay"></div>
                             {#if logo}
                                 <img src={logo} alt="לוגו" class="landing-logo" class:circle={logoShape === "circle"} />
                             {/if}
-                            <div class="landing-hero-content">
-                                <h1>{landingHeadline || title || "כותרת דף הנחיתה"}</h1>
-                                <p>{landingPitch || subtitle || "משפט הפתיחה יופיע כאן"}</p>
-                                {#if phone}
-                                    <a href="tel:{phone}" class="landing-cta">📞 {phone}</a>
-                                {:else if website}
-                                    <a href={website} class="landing-cta">לאתר שלנו ←</a>
-                                {:else}
-                                    <span class="landing-cta dim">השלימו פרטי קשר</span>
+                            <div class="landing-hero-inner" class:has-media={!!(landingImage || mainImage)}>
+                                <div class="landing-hero-content">
+                                    <h1>{landingHeadline || title || "כותרת דף הנחיתה"}</h1>
+                                    <p>{landingPitch || subtitle || "משפט הפתיחה יופיע כאן"}</p>
+                                    {#if advInHero}
+                                        <ul class="advantages-list on-hero">
+                                            {#each landingAdvantages as adv}
+                                                {#if adv.trim()}
+                                                    <li class="advantage-item">
+                                                        <span class="advantage-check" aria-hidden="true">✓</span>
+                                                        <span class="advantage-text">{adv}</span>
+                                                    </li>
+                                                {/if}
+                                            {/each}
+                                        </ul>
+                                    {/if}
+                                    <div class="landing-cta-row">
+                                        {#if phone}
+                                            <a href="tel:{phone}" class="landing-cta">📞 {phone}</a>
+                                        {:else if website}
+                                            <a href={website} class="landing-cta">לאתר שלנו ←</a>
+                                        {:else}
+                                            <span class="landing-cta dim">השלימו פרטי קשר</span>
+                                        {/if}
+                                    </div>
+                                </div>
+                                {#if landingImage || mainImage}
+                                    <div class="landing-hero-media">
+                                        <img src={landingImage || mainImage} alt={title} />
+                                    </div>
                                 {/if}
                             </div>
                         </header>
 
-                        {#if landingAdvantages.some((a) => a.trim())}
+                        {#if hasAdvantages && !advInHero}
                             <section class="landing-section">
-                                <ul class="advantages-list">
+                                <ul class="advantages-list strip">
                                     {#each landingAdvantages as adv}
                                         {#if adv.trim()}
                                             <li class="advantage-item">
-                                                <span class="advantage-check" style:background={gradient} aria-hidden="true">✓</span>
+                                                <span class="advantage-check tinted" style:background={gradient} aria-hidden="true">✓</span>
                                                 <span class="advantage-text">{adv}</span>
                                             </li>
                                         {/if}
@@ -647,17 +673,20 @@
                             </section>
                         {/if}
 
-                        {#if landingExtended}
-                            <section class="landing-section">
-                                <h2>הסיפור שלנו</h2>
-                                <p style="white-space: pre-line">{landingExtended}</p>
-                            </section>
-                        {/if}
-
-                        {#if uniqueness}
-                            <section class="landing-section">
-                                <h2>מה מייחד אותנו</h2>
-                                <p style="white-space: pre-line">{uniqueness}</p>
+                        {#if landingExtended || uniqueness}
+                            <section class="landing-section landing-about">
+                                {#if landingExtended}
+                                    <article>
+                                        <h2>הסיפור שלנו</h2>
+                                        <p style="white-space: pre-line">{landingExtended}</p>
+                                    </article>
+                                {/if}
+                                {#if uniqueness}
+                                    <article>
+                                        <h2>מה מייחד אותנו</h2>
+                                        <p style="white-space: pre-line">{uniqueness}</p>
+                                    </article>
+                                {/if}
                             </section>
                         {/if}
 
@@ -684,15 +713,17 @@
                         {/if}
 
                         <section class="landing-section landing-contact">
-                            <h2>פרטי קשר</h2>
-                            <ul>
-                                {#if phone}<li>📞 <a href="tel:{phone}">{phone}</a></li>{/if}
-                                {#if whatsapp}<li>💬 <a href="https://wa.me/{whatsapp.replace(/\D/g, '')}">וואטסאפ: {whatsapp}</a></li>{/if}
-                                {#if email}<li>✉️ <a href="mailto:{email}">{email}</a></li>{/if}
-                                {#if website}<li>🌐 <a href={website} target="_blank" rel="noopener">{website}</a></li>{/if}
-                                {#if address}<li>📍 {address}</li>{/if}
-                                {#if hours}<li>🕒 {hours}</li>{/if}
-                            </ul>
+                            <div class="landing-pills">
+                                {#if phone}<a class="landing-pill" href="tel:{phone}">📞 {phone}</a>{/if}
+                                {#if whatsapp}<a class="landing-pill" href="https://wa.me/{whatsapp.replace(/\D/g, '')}">💬 {whatsapp}</a>{/if}
+                                {#if email}<a class="landing-pill" href="mailto:{email}">✉️ {email}</a>{/if}
+                                {#if website}<a class="landing-pill" href={website} target="_blank" rel="noopener">🌐 אתר</a>{/if}
+                            </div>
+                            {#if address || hours}
+                                <p class="landing-meta">
+                                    {#if address}📍 {address}{/if}{#if address && hours} · {/if}{#if hours}🕒 {hours}{/if}
+                                </p>
+                            {/if}
                         </section>
                     </div>
                 </div>
@@ -1319,31 +1350,34 @@
     .landing-hero {
         position: relative;
         padding: 1.6rem 1.4rem;
-        text-align: center;
-        min-height: 160px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
         overflow: hidden;
     }
-    .landing-hero-bg {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        opacity: 0.28;
+    .landing-hero-inner {
+        display: grid;
+        gap: 1.1rem;
+        align-items: center;
+        text-align: center;
     }
-    .landing-hero-overlay {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.25));
+    @media (min-width: 700px) {
+        .landing-hero-inner.has-media {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 13rem);
+            text-align: right;
+        }
     }
-    .landing-hero-content {
-        position: relative;
-        z-index: 2;
-        max-width: 480px;
+    .landing-hero-content { min-width: 0; }
+    .landing-hero-media { min-width: 0; }
+    .landing-hero-media img {
+        display: block;
+        width: auto;
+        max-width: 100%;
+        max-height: 13rem;
+        margin-inline: auto;
+        border-radius: 0.7rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    }
+    .landing-cta-row { margin-top: 0.9rem; }
+    @media (min-width: 700px) {
+        .has-media .landing-cta-row { text-align: right; }
     }
     .landing-logo {
         position: absolute;
@@ -1364,37 +1398,45 @@
         color: white;
         font-size: 1.55rem;
         font-weight: 900;
+        line-height: 1.25;
         margin: 0 0 0.4rem;
     }
     .landing-hero p {
         color: rgba(255, 255, 255, 0.92);
         font-size: 0.95rem;
-        margin: 0 0 1rem;
+        margin: 0;
         line-height: 1.45;
+        overflow-wrap: anywhere;
     }
     .landing-cta {
         display: inline-block;
-        padding: 0.75rem 1.5rem;
+        padding: 0.6rem 1.25rem;
         border-radius: 999px;
         background: white;
         color: black;
         font-weight: 800;
-        font-size: 1rem;
+        font-size: 0.95rem;
         text-decoration: none;
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
     }
     .landing-cta.dim { opacity: 0.6; }
 
     .landing-section {
-        padding: 1.25rem 1.5rem;
+        padding: 1.1rem 1.5rem;
         border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
     .landing-section h2 {
         color: white;
-        font-size: 1.15rem;
+        font-size: 1.05rem;
         font-weight: 900;
-        margin: 0 0 0.75rem;
-        text-align: center;
+        margin: 0 0 0.5rem;
+    }
+    .landing-about {
+        display: grid;
+        gap: 1.1rem;
+    }
+    @media (min-width: 700px) {
+        .landing-about { grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.75rem; }
     }
     .landing-section p {
         color: #d1d5db;
@@ -1407,39 +1449,41 @@
         padding: 0;
         margin: 0;
         display: grid;
-        gap: 0.65rem;
-        max-width: 540px;
-        margin-inline: auto;
+        gap: 0.45rem;
+    }
+    .advantages-list.on-hero { margin-top: 0.85rem; }
+    .advantages-list.strip {
+        grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+        gap: 0.5rem 1.25rem;
     }
     .advantage-item {
         display: flex;
         align-items: center;
-        gap: 0.85rem;
-        padding: 0.4rem 0.2rem;
+        gap: 0.6rem;
         text-align: right;
-        transition: transform 200ms ease;
     }
-    .advantage-item:hover { transform: translateX(-3px); }
     .advantage-check {
         flex-shrink: 0;
-        width: 32px;
-        height: 32px;
+        width: 22px;
+        height: 22px;
         border-radius: 999px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
+        background: rgba(255, 255, 255, 0.92);
+        color: #111827;
         font-weight: 900;
-        font-size: 1rem;
+        font-size: 0.75rem;
         line-height: 1;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
     }
+    .advantage-check.tinted { color: #fff; }
     .advantage-text {
-        color: #e5e7eb;
-        font-size: 0.92rem;
-        line-height: 1.4;
+        font-size: 0.9rem;
+        line-height: 1.35;
         font-weight: 600;
     }
+    .on-hero .advantage-text { color: rgba(255, 255, 255, 0.95); }
+    .strip .advantage-text { color: #e5e7eb; }
     .products-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -1477,22 +1521,36 @@
         font-size: 0.95rem;
         margin: 0;
     }
-    .landing-contact ul {
-        list-style: none;
-        padding: 0;
-        max-width: 360px;
-        margin: 0 auto;
+    .landing-contact { text-align: center; }
+    .landing-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        justify-content: center;
     }
-    .landing-contact li {
-        padding: 0.4rem 0;
+    .landing-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.4rem 0.85rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         color: #e5e7eb;
-        font-size: 0.9rem;
-    }
-    .landing-contact a {
-        color: #fbbf24;
+        font-size: 0.85rem;
+        font-weight: 700;
         text-decoration: none;
     }
-    .landing-contact a:hover { text-decoration: underline; }
+    .landing-pill:hover {
+        background: rgba(251, 191, 36, 0.12);
+        border-color: rgba(251, 191, 36, 0.45);
+        color: #fde68a;
+    }
+    .landing-meta {
+        color: #9ca3af;
+        font-size: 0.8rem;
+        margin: 0.7rem 0 0;
+    }
     .img-placeholder {
         width: 100%;
         height: 100px;
