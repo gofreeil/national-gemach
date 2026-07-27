@@ -377,7 +377,7 @@
         </div>
 
         <!-- סטטיסטיקות חיות — נגזרות מהנתונים בפועל (לא מוקאפ), צמודות ללוגו.
-             באנר כהה אחד, שלושת הנתונים זה מתחת לזה, מופרדים בקו קצר שלא נוגע בשוליים. -->
+             באנר כהה אחד, שני הנתונים זה מתחת לזה, מופרדים בקו קצר שלא נוגע בשוליים. -->
         <div class="rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-3 min-w-[112px]">
             <div class="text-center">
                 <div class="text-xl md:text-2xl font-black text-blue-300 leading-tight">{gemachim.length}</div>
@@ -387,11 +387,6 @@
             <div class="text-center">
                 <div class="text-xl md:text-2xl font-black text-purple-300 leading-tight">{cityCount}</div>
                 <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">ערים</div>
-            </div>
-            <div class="mx-auto my-2 h-px w-3/5 bg-[#3b5794]" aria-hidden="true"></div>
-            <div class="text-center">
-                <div class="text-xl md:text-2xl font-black text-pink-300 leading-tight">{categories.length}</div>
-                <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">קטגוריות</div>
             </div>
         </div>
     </div>
