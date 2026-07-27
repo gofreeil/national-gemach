@@ -239,3 +239,19 @@ export async function getCategories(): Promise<CategoryDef[]> {
 export async function saveCategories(list: CategoryDef[]): Promise<void> {
     await saveConfig({ categories: list });
 }
+
+// ---------- 📌 נעוצים ----------
+// מזהי הגמ"חים שמופיעים בראש דף הבית, לפי סדר התצוגה. נשמרים כאן ולא
+// בדגל featured כדי שאפשר יהיה לנעוץ גם פריטים מהרשימה הסטטית (שאינם ב-DB).
+
+/** מזהי הנעוצים כפי שנשמרו. undefined = הרשימה מעולם לא נשמרה. */
+export async function getPinnedIds(): Promise<string[] | undefined> {
+    const cfg = await loadConfig();
+    const raw = cfg.pinned;
+    if (!Array.isArray(raw)) return undefined;
+    return raw.filter((v): v is string => typeof v === 'string' && v.trim() !== '');
+}
+
+export async function savePinnedIds(ids: string[]): Promise<void> {
+    await saveConfig({ pinned: [...new Set(ids.filter(Boolean))] });
+}

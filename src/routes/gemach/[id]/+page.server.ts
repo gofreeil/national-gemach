@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getCategories } from '$lib/server/adminStore';
 import { findGemachById, getMergedGemachim } from '$lib/server/gemachSource';
+import { getPinnedIdsResolved } from '$lib/server/pinned';
 import { getGemachOwnerId } from '$lib/server/db';
 import { isGemachOwner } from '$lib/server/ownership';
 
@@ -11,6 +12,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
     // "גמ"חים נוספים" — אותה קטגוריה, ואם אין מספיק אז אותה עיר
     const all = await getMergedGemachim();
+    const pinned = (await getPinnedIdsResolved(all)).includes(gemach.id);
     const others = all.filter(g => g.id !== gemach.id);
     const related = [
         ...others.filter(g => g.category === gemach.category),
@@ -28,5 +30,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         }
     }
 
-    return { gemach, categories, related, canEdit };
+    return { gemach, categories, related, canEdit, pinned };
 };

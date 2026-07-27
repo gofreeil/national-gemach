@@ -2,6 +2,7 @@ import { fail, redirect, error } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getGemachById, updateGemach, deleteGemach } from '$lib/server/db';
 import { getCategories } from '$lib/server/adminStore';
+import { pinGemach, unpinGemach } from '$lib/server/pinned';
 import { parseGemachForm, saveErrorMessage } from '$lib/server/gemachForm';
 import { cities } from '$lib/gemachData';
 
@@ -23,6 +24,9 @@ export const actions: Actions = {
 			console.error('[admin] updateGemach failed:', e);
 			return fail(500, { error: saveErrorMessage(e, 'עדכון'), values: input });
 		}
+		// תיבת "נעץ" בטופס מסונכרנת עם רשימת הנעוצים — היא מקור האמת לדף הבית
+		await (input.featured ? pinGemach(params.id) : unpinGemach(params.id))
+			.catch(e => console.error('[admin] pin sync failed:', e));
 		throw redirect(303, '/admin/gemachim?flash=updated');
 	},
 

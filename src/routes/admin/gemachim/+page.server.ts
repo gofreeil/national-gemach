@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAllGemachim, deleteGemach, patchGemachOrder } from '$lib/server/db';
 import { getCategories } from '$lib/server/adminStore';
+import { getPinnedIdsResolved, pinGemach, unpinGemach } from '$lib/server/pinned';
 import type { Gemach } from '$lib/gemachData';
 
 const PAGE_SIZE = 50;
@@ -11,6 +12,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
 	const [all, categories] = await Promise.all([getAllGemachim(), getCategories()]);
+	// מצב הנעיצה מגיע מרשימת הנעוצים (/admin/pinned) — היא מקור האמת
+	const pinnedIds = await getPinnedIdsResolved(all);
 
 	const filtered = q
 		? all.filter(g =>
@@ -29,6 +32,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	return {
 		items,
 		categories,
+		pinnedIds,
 		total,
 		managedTotal: all.length,
 		page: safePage,
@@ -77,12 +81,12 @@ export const actions: Actions = {
 		try { await reorder(id, 'down'); } catch (e) { console.error(e); return fail(500, { error: 'הסידור נכשל' }); }
 		return { success: true };
 	},
-	toggleFeature: async ({ request }) => {
+	togglePin: async ({ request }) => {
 		const fd = await request.formData();
 		const id = fd.get('id') as string;
-		const featured = fd.get('featured') === 'true';
+		const pin = fd.get('pinned') === 'true';
 		if (!id) return fail(400, { error: 'חסר מזהה' });
-		try { await patchGemachOrder(id, { featured }); } catch (e) { console.error(e); return fail(500, { error: 'העדכון נכשל' }); }
+		try { await (pin ? pinGemach(id) : unpinGemach(id)); } catch (e) { console.error(e); return fail(500, { error: 'העדכון נכשל' }); }
 		return { success: true };
 	},
 	delete: async ({ request }) => {

@@ -169,8 +169,8 @@
                                 {categoryLabel}
                             </a>
                             <span class="text-xs text-gray-400">📍 {fullAddress || gemach.city}</span>
-                            {#if gemach.featured}
-                                <span class="text-xs text-amber-300" aria-label="גמ&quot;ח מומלץ">⭐ מומלץ</span>
+                            {#if data.pinned}
+                                <span class="text-xs text-amber-300" aria-label="גמ&quot;ח נעוץ בדף הבית">📌 נעוץ</span>
                             {/if}
                         </div>
                     </div>

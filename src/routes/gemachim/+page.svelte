@@ -1,15 +1,10 @@
 <script lang="ts">
     import { page as pageStore } from '$app/stores';
-    import GemachAvatar from '$lib/components/GemachAvatar.svelte';
-    import PhoneIcon from '$lib/components/PhoneIcon.svelte';
-    import { gatedNav } from '$lib/adGate';
+    import GemachCard from '$lib/components/GemachCard.svelte';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
 
-    function getCategoryLabel(key: string) {
-        return data.categories.find(c => c.key === key)?.label ?? key;
-    }
     function pageHref(p: number) {
         const u = new URLSearchParams($pageStore.url.searchParams);
         if (p <= 1) u.delete('page'); else u.set('page', String(p));
@@ -58,44 +53,7 @@
     {:else}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {#each data.items as gemach (gemach.id)}
-                <article class="relative bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
-                    <div class="flex items-start gap-3">
-                        <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
-                            <GemachAvatar {gemach} categories={data.categories} />
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <h2 class="font-black text-white text-lg leading-tight">
-                                <a href="/gemach/{gemach.id}" onclick={(e) => gatedNav(e, `/gemach/${gemach.id}`)} class="after:absolute after:inset-0 after:content-[''] hover:text-blue-300 transition-colors">{gemach.name}</a>
-                            </h2>
-                            <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
-                                    {getCategoryLabel(gemach.category)}
-                                </span>
-                                <span class="text-xs text-gray-400">
-                                    📍 {gemach.city}{gemach.neighborhood ? ` – ${gemach.neighborhood}` : ''}
-                                </span>
-                            </div>
-                            {#if gemach.description}
-                                <p class="text-gray-300 text-sm mt-2 leading-relaxed line-clamp-3">{gemach.description}</p>
-                            {/if}
-                            <div class="flex items-center gap-4 mt-3 flex-wrap">
-                                {#if gemach.phone}
-                                    <a href="tel:{gemach.phone}" class="relative z-10 inline-flex items-center gap-2 text-sm font-bold text-green-400 hover:text-green-300 transition-colors" aria-label="התקשר ל{gemach.name}">
-                                        <PhoneIcon class="h-4 w-4" /> {gemach.phone}
-                                    </a>
-                                {/if}
-                                {#if gemach.link}
-                                    <a href={gemach.link} target="_blank" rel="noopener noreferrer" class="relative z-10 inline-flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors">
-                                        🔗 קישור
-                                    </a>
-                                {/if}
-                                <a href="/gemach/{gemach.id}" onclick={(e) => gatedNav(e, `/gemach/${gemach.id}`)} class="relative z-10 inline-flex items-center gap-1 text-sm font-bold text-gray-300 hover:text-white transition-colors">
-                                    לפרטים ←
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </article>
+                <GemachCard {gemach} categories={data.categories} heading="h2" />
             {/each}
         </div>
 

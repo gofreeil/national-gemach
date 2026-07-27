@@ -1,9 +1,7 @@
 <script lang="ts">
     import { untrack } from 'svelte';
-    import { cities, type Gemach } from '$lib/gemachData';
-    import GemachAvatar from '$lib/components/GemachAvatar.svelte';
-    import PhoneIcon from '$lib/components/PhoneIcon.svelte';
-    import { gatedNav } from '$lib/adGate';
+    import { cities } from '$lib/gemachData';
+    import GemachCard from '$lib/components/GemachCard.svelte';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -13,12 +11,13 @@
     /** מספר הערים שבהן יש גמ"חים בפועל (לשורת הסטטיסטיקה) */
     let cityCount = $derived(new Set(gemachim.map(g => g.city)).size);
 
-    /** גמ"חים שהאדמין נעץ (⭐ בפאנל הניהול) */
-    let featuredGemachim = $derived(gemachim.filter(g => g.featured));
+    /** הנעוצים — הרשימה שהאדמין עורך ב-/admin/pinned, בסדר שנקבע שם */
+    let pinnedGemachim = $derived(data.pinned);
+    let pinnedIds = $derived(new Set(pinnedGemachim.map(g => g.id)));
     /** החדשים שנוספו — בלי הנעוצים. פריטים עם טלפון קודם, כדי שדף הבית לא יוביל
      *  בפריטים חלקיים (מיון יציב → סדר החדש-קודם נשמר בתוך כל קבוצה). */
     let newestGemachim = $derived(
-        gemachim.filter(g => !g.featured)
+        gemachim.filter(g => !pinnedIds.has(g.id))
             .sort((a, b) => (b.phone ? 1 : 0) - (a.phone ? 1 : 0))
             .slice(0, 6)
     );
@@ -358,10 +357,6 @@
         showResults = false;
     }
 
-    function getCategoryLabel(key: string) {
-        return categories.find(c => c.key === key)?.label ?? key;
-    }
-
 </script>
 
 <!-- Hero Section -->
@@ -498,57 +493,7 @@
         {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {#each filteredGemachim as gemach (gemach.id)}
-                    <article class="relative bg-[#16264d] border border-[#3b5794] rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
-                        <div class="flex items-start gap-3">
-                            <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
-                                <GemachAvatar {gemach} {categories} />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <h3 class="font-black text-white text-lg leading-tight">
-                                    <a href="/gemach/{gemach.id}" onclick={(e) => gatedNav(e, `/gemach/${gemach.id}`)} class="after:absolute after:inset-0 after:content-[''] hover:text-blue-300 transition-colors">{gemach.name}</a>
-                                </h3>
-                                <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                    <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
-                                        {getCategoryLabel(gemach.category)}
-                                    </span>
-                                    <span class="text-xs text-gray-400">
-                                        📍 {gemach.city}{gemach.neighborhood ? ` – ${gemach.neighborhood}` : ''}
-                                    </span>
-                                </div>
-                                <p class="text-gray-300 text-sm mt-2 leading-relaxed">{gemach.description}</p>
-                                {#if gemach.contact}
-                                    <p class="text-xs text-gray-400 mt-2">👤 {gemach.contact}</p>
-                                {/if}
-                                {#if gemach.notes}
-                                    <p class="text-xs text-amber-300/80 mt-1">💬 {gemach.notes}</p>
-                                {/if}
-                                <div class="flex items-center gap-4 mt-3 flex-wrap">
-                                    {#if gemach.phone}
-                                        <a
-                                            href="tel:{gemach.phone}"
-                                            class="relative z-10 inline-flex items-center gap-2 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
-                                            aria-label="התקשר ל{gemach.name}"
-                                        >
-                                            <PhoneIcon class="h-4 w-4" /> {gemach.phone}
-                                        </a>
-                                    {/if}
-                                    {#if gemach.link}
-                                        <a
-                                            href={gemach.link}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="relative z-10 inline-flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors"
-                                        >
-                                            🔗 קישור
-                                        </a>
-                                    {/if}
-                                    <a href="/gemach/{gemach.id}" onclick={(e) => gatedNav(e, `/gemach/${gemach.id}`)} class="relative z-10 inline-flex items-center gap-1 text-sm font-bold text-gray-300 hover:text-white transition-colors">
-                                        לפרטים ←
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </article>
+                    <GemachCard {gemach} {categories} />
                 {/each}
             </div>
         {/if}
@@ -699,46 +644,14 @@
         </div>
       </div>
 
-        {#snippet gemachCard(gemach: Gemach, pinned: boolean = false)}
-            <article class="relative bg-[#16264d] border {pinned ? 'border-amber-500/30' : 'border-[#3b5794]'} rounded-2xl p-5 hover:bg-[#1e3260] hover:border-[#4c6cb0] transition-all">
-                <div class="flex items-start gap-3">
-                    <div class="text-3xl flex-shrink-0 mt-0.5" aria-hidden="true">
-                        <GemachAvatar {gemach} {categories} />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="font-black text-white text-lg leading-tight">
-                            {#if pinned}<span class="text-amber-400 text-sm" aria-hidden="true">⭐</span> {/if}<a
-                                href="/gemach/{gemach.id}" onclick={(e) => gatedNav(e, `/gemach/${gemach.id}`)} class="after:absolute after:inset-0 after:content-[''] hover:text-blue-300 transition-colors">{gemach.name}</a>
-                        </h3>
-                        <div class="flex items-center gap-2 mt-1 flex-wrap">
-                            <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
-                                {getCategoryLabel(gemach.category)}
-                            </span>
-                            <span class="text-xs text-gray-400">
-                                📍 {gemach.city}{gemach.neighborhood ? ` – ${gemach.neighborhood}` : ''}
-                            </span>
-                        </div>
-                        <p class="text-gray-300 text-sm mt-2 leading-relaxed line-clamp-2">{gemach.description}</p>
-                        {#if gemach.phone}
-                            <a
-                                href="tel:{gemach.phone}"
-                                class="relative z-10 inline-flex items-center gap-2 mt-3 text-sm font-bold text-green-400 hover:text-green-300 transition-colors"
-                                aria-label="התקשר ל{gemach.name}"
-                            >
-                                <PhoneIcon class="h-4 w-4" /> {gemach.phone}
-                            </a>
-                        {/if}
-                    </div>
-                </div>
-            </article>
-        {/snippet}
-
-        <!-- Featured Gemachim — נעוצים ע"י האדמין (⭐ בפאנל הניהול) -->
-        {#if featuredGemachim.length > 0}
-            <h2 class="text-2xl font-black text-white text-center mb-6">גמחים מומלצים</h2>
+        <!-- נעוצים — הרשימה שהאדמין עורך ב-/admin/pinned (📌) -->
+        {#if pinnedGemachim.length > 0}
+            <h2 class="text-2xl font-black text-white text-center mb-6">
+                <span aria-hidden="true">📌</span> גמחים נעוצים
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-                {#each featuredGemachim as gemach (gemach.id)}
-                    {@render gemachCard(gemach, true)}
+                {#each pinnedGemachim as gemach (gemach.id)}
+                    <GemachCard {gemach} {categories} pinned />
                 {/each}
             </div>
         {/if}
@@ -747,7 +660,7 @@
         <h2 class="text-2xl font-black text-white text-center mb-6">גמחים חדשים שנוספו</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {#each newestGemachim as gemach (gemach.id)}
-                {@render gemachCard(gemach)}
+                <GemachCard {gemach} {categories} />
             {/each}
         </div>
 
@@ -766,7 +679,7 @@
     </section>
 {/if}
 
-<!-- מעבר לרשימת כל הגמ"חים (עם עימוד, 20 בכל עמוד) — בסוף דף הבית -->
+<!-- מעבר לרשימת כל הגמ"חים (עם עימוד) — בסוף דף הבית -->
 <section class="px-4 pb-14 pt-2 text-center">
     <a
         href="/gemachim"
@@ -775,7 +688,7 @@
         <h2 class="text-2xl md:text-3xl font-black text-white group-hover:text-blue-200 transition-colors">
             לכלל הגמ"חים ←
         </h2>
-        <p class="text-sm text-gray-300">עיון בכל {gemachim.length} הגמ"חים במאגר, 20 בכל עמוד</p>
+        <p class="text-sm text-gray-300">עיון בכל {gemachim.length} הגמ"חים במאגר</p>
     </a>
 </section>
 

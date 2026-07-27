@@ -15,6 +15,7 @@
     function catLabel(key: string) {
         return data.categories.find(c => c.key === key)?.label ?? key;
     }
+    const pinned = $derived(new Set(data.pinnedIds));
     function pageHref(p: number) {
         const u = new URLSearchParams($page.url.searchParams);
         u.set('page', String(p));
@@ -56,7 +57,10 @@
             {/if}
         </div>
     {:else}
-        <p class="text-xs text-gray-500">מציג {data.items.length} מתוך {data.total} · עמוד {data.page}/{data.pages}. ⭐ מצמיד לראש · ▲▼ סידור ידני.</p>
+        <p class="text-xs text-gray-500">
+            מציג {data.items.length} מתוך {data.total} · עמוד {data.page}/{data.pages}.
+            📌 נועץ בראש דף הבית (<a href="/admin/pinned" class="text-blue-400 hover:underline">ניהול הרשימה</a>) · ▲▼ סידור ידני.
+        </p>
 
         <div class="space-y-2">
             {#each data.items as g, i (g.id)}
@@ -79,7 +83,7 @@
 
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
-                            {#if g.featured}<span class="text-amber-400" title="מוצמד לראש">⭐</span>{/if}
+                            {#if pinned.has(g.id)}<span class="text-amber-400" title="נעוץ בדף הבית">📌</span>{/if}
                             <h3 class="font-bold text-white truncate">{g.name}</h3>
                         </div>
                         <div class="flex items-center gap-2 mt-1 flex-wrap text-xs text-gray-400">
@@ -97,11 +101,11 @@
 
                     <!-- פעולות -->
                     <div class="flex flex-col sm:flex-row items-center gap-1.5 flex-shrink-0">
-                        <form method="POST" action="?/toggleFeature" use:enhance>
+                        <form method="POST" action="?/togglePin" use:enhance>
                             <input type="hidden" name="id" value={g.id} />
-                            <input type="hidden" name="featured" value={g.featured ? 'false' : 'true'} />
-                            <button class="w-8 h-8 rounded-lg {g.featured ? 'bg-amber-500/20 text-amber-300' : 'bg-[#16264d] text-gray-400 hover:bg-[#243a6e]'} transition-colors"
-                                title={g.featured ? 'בטל הצמדה' : 'הצמד לראש'}>⭐</button>
+                            <input type="hidden" name="pinned" value={pinned.has(g.id) ? 'false' : 'true'} />
+                            <button class="w-8 h-8 rounded-lg {pinned.has(g.id) ? 'bg-amber-500/20 text-amber-300' : 'bg-[#16264d] text-gray-400 hover:bg-[#243a6e]'} transition-colors"
+                                title={pinned.has(g.id) ? 'הסר מהנעוצים' : 'נעץ בדף הבית'}>📌</button>
                         </form>
                         <a href={`/admin/gemachim/${g.id}`} class="w-8 h-8 rounded-lg bg-[#16264d] text-gray-300 hover:bg-[#243a6e] transition-colors flex items-center justify-center" title="עריכה">✏️</a>
                         <form method="POST" action="?/delete"

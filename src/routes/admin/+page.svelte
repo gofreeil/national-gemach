@@ -19,10 +19,10 @@
             <div class="text-3xl font-black text-blue-400">{s.managed}</div>
             <div class="text-xs text-gray-400 mt-1">גמ"חים מנוהלים (DB)</div>
         </div>
-        <div class="card p-4">
-            <div class="text-3xl font-black text-amber-400">{s.featured}</div>
-            <div class="text-xs text-gray-400 mt-1">מוצמדים לראש</div>
-        </div>
+        <a href="/admin/pinned" class="card p-4 hover:bg-[#1e3260] transition-colors block">
+            <div class="text-3xl font-black text-amber-400">{s.pinned}</div>
+            <div class="text-xs text-gray-400 mt-1">📌 נעוצים בדף הבית</div>
+        </a>
         <div class="card p-4">
             <div class="text-3xl font-black text-purple-400">{s.categories}</div>
             <div class="text-xs text-gray-400 mt-1">קטגוריות</div>
@@ -99,6 +99,11 @@
             <div class="text-2xl mb-2" aria-hidden="true">🗺️</div>
             <div class="font-bold text-white">השלמת פרטים למפה</div>
             <div class="text-xs text-gray-400 mt-1">כתובת/עיר + גזירת קואורדינטות אוטומטית</div>
+        </a>
+        <a href="/admin/pinned" class="card p-5 hover:bg-[#1e3260] transition-colors block">
+            <div class="text-2xl mb-2" aria-hidden="true">📌</div>
+            <div class="font-bold text-white">גמ"חים נעוצים</div>
+            <div class="text-xs text-gray-400 mt-1">הרשימה שבראש דף הבית — נעיצה, הסרה וסידור</div>
         </a>
         <a href="/admin/categories" class="card p-5 hover:bg-[#1e3260] transition-colors block">
             <div class="text-2xl mb-2" aria-hidden="true">🏷️</div>

@@ -10,6 +10,7 @@
         { href: '/admin/gemachim',   label: 'גמ"חים',      icon: '🤝', exact: false },
         { href: '/admin/gemachim/new', label: 'הוספת גמ"ח', icon: '➕', exact: true },
         { href: '/admin/gemachim/complete', label: 'השלמת מפה', icon: '🗺️', exact: true },
+        { href: '/admin/pinned',     label: 'נעוצים',      icon: '📌', exact: false },
         { href: '/admin/categories', label: 'קטגוריות',    icon: '🏷️', exact: false },
         ...(isSuper ? [
             { href: '/admin/ads',    label: 'אישור פרסומות', icon: '📢', exact: false },

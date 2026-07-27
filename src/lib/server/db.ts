@@ -111,7 +111,7 @@ function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach {
     };
 }
 
-/** מיון ידני: מומלצים בראש, ואז לפי order (קטן→גדול), ואז החדשים ביותר */
+/** מיון ידני: נעוצים בראש, ואז לפי order (קטן→גדול), ואז החדשים ביותר */
 function sortManaged(a: Gemach, b: Gemach): number {
     if (!!a.featured !== !!b.featured) return a.featured ? -1 : 1;
     const ao = a.order ?? Number.POSITIVE_INFINITY;

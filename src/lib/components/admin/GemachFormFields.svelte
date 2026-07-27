@@ -320,7 +320,7 @@
             <label class="flex items-center gap-2 cursor-pointer select-none rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 w-full">
                 <input name="featured" type="checkbox" value="true" checked={gemach?.featured ?? false}
                     class="h-5 w-5 rounded accent-amber-500" />
-                <span class="text-sm font-bold text-amber-200">⭐ הצמד לראש הרשימה</span>
+                <span class="text-sm font-bold text-amber-200">📌 נעץ בראש דף הבית</span>
             </label>
         </div>
     {/if}
