@@ -2,6 +2,8 @@
 // logger.ts — לוגר קטן עם רמות וחותמות זמן
 // ============================================================
 
+import { readEnv } from './env.ts';
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const LEVELS: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
@@ -9,7 +11,7 @@ const LEVELS: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error:
 export class Logger {
 	constructor(
 		private readonly scope: string,
-		private readonly minLevel: LogLevel = (process.env.DISCOVERY_LOG_LEVEL as LogLevel) || 'info',
+		private readonly minLevel: LogLevel = (readEnv('DISCOVERY_LOG_LEVEL') as LogLevel) || 'info',
 	) {}
 
 	child(scope: string): Logger {

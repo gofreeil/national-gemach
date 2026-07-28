@@ -14,6 +14,7 @@ import os from 'node:os';
 import { categories as siteCategories, cities as siteCities } from '../../src/lib/gemachData.ts';
 import type { CategoryRef, ScanSpec } from './core/types.ts';
 import { Logger } from './core/logger.ts';
+import { readEnv } from './core/env.ts';
 import { sleep } from './core/rateLimiter.ts';
 import { createStateStore } from './core/stateStore.ts';
 import { StrapiGateway } from './strapi/gateway.ts';
@@ -76,7 +77,7 @@ function buildSpec(flags: CliArgs['flags'], overrides: Partial<ScanSpec> = {}): 
 async function cmdScan(flags: CliArgs['flags']): Promise<void> {
 	const spec = buildSpec(flags);
 	if (!spec.apply) logger.info('ריצה יבשה — שום דבר לא ייכתב. הוסיפו --apply לייבוא אמיתי.');
-	const gateway = new StrapiGateway(process.env.STRAPI_TOKEN, logger.child('strapi'));
+	const gateway = new StrapiGateway(readEnv('STRAPI_TOKEN'), logger.child('strapi'));
 	const store = await createStateStore(logger);
 	try {
 		const pipeline = new DiscoveryPipeline({
@@ -99,7 +100,7 @@ async function cmdWorker(flags: CliArgs['flags']): Promise<void> {
 		process.exitCode = 1;
 		return;
 	}
-	const gateway = new StrapiGateway(process.env.STRAPI_TOKEN, logger.child('strapi'));
+	const gateway = new StrapiGateway(readEnv('STRAPI_TOKEN'), logger.child('strapi'));
 	gateway.assertWritable();
 	const workerId = `${os.hostname()}#${process.pid}`;
 	const intervalSec = flagNum(flags, 'interval', 20);

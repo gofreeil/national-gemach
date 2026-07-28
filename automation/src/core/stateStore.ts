@@ -12,6 +12,7 @@
 
 import type { CandidateRecord, RawResult, RunStats, ScanSpec } from './types.ts';
 import type { Logger } from './logger.ts';
+import { readEnv } from './env.ts';
 
 export type FingerprintOrigin = 'imported' | 'rejected' | 'manual';
 
@@ -47,7 +48,7 @@ export abstract class StateStore {
 
 /** DATABASE_URL מוגדר → Postgres; אחרת קובץ מקומי (עם אזהרה) */
 export async function createStateStore(logger: Logger): Promise<StateStore> {
-	const url = process.env.DATABASE_URL?.trim();
+	const url = readEnv('DATABASE_URL')?.trim();
 	if (url) {
 		const { PostgresStateStore } = await import('../db/postgresStateStore.ts');
 		return new PostgresStateStore(url, logger.child('pg'));
