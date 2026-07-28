@@ -32,6 +32,18 @@ export function ownerCandidateKeys(user: OwnerSessionLike): Set<string> {
     return keys;
 }
 
+/**
+ * מזהה-הבעלים שנכתב לפריט שהמשתמש הזה יוצר/מאמץ.
+ * תבנית credentials_<email> היא זו שבה "קהילה בשכונה" מזהה בעלות — כך אותו
+ * משתמש עורך את הגמ"ח בשני האתרים. נפילה-אחורה למזהה המספרי של Strapi אם
+ * משום-מה אין מייל בסשן. '' = אין מזהה שמיש.
+ */
+export function ownerIdForSession(user: OwnerSessionLike): string {
+    const email = (user.email ?? '').trim().toLowerCase();
+    if (email) return `credentials_${email}`;
+    return (user.id ?? '').toString().trim();
+}
+
 /** האם ה-user_id של הפריט שייך למשתמש הנוכחי. sheet:/ריק → תמיד false. */
 export function isGemachOwner(
     user: OwnerSessionLike | null | undefined,

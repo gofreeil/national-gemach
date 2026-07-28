@@ -3,30 +3,45 @@ import type { Actions, PageServerLoad } from './$types';
 import { createGemach } from '$lib/server/db';
 import { getCategories } from '$lib/server/adminStore';
 import { parseGemachForm, saveErrorMessage } from '$lib/server/gemachForm';
+import { ownerIdForSession } from '$lib/server/ownership';
+import { newDraftToken, setDraftTicket } from '$lib/server/guestDraft';
 import { cities } from '$lib/gemachData';
 
-export const load: PageServerLoad = async ({ locals, url }) => {
-	// הוספת גמ"ח מחייבת התחברות — הגמ"ח נרשם על שם המשתמש כדי שיוכל לערוך אותו אח"כ
+export const load: PageServerLoad = async ({ locals }) => {
+	// הטופס פתוח גם למי שאינו מחובר — לא לחסום מתנדב שרוצה לתרום גמ"ח בגלל
+	// מסך התחברות. אורח שישלח יקבל טיוטה שמורה, וההתחברות בסוף (/gemach/claim)
+	// היא זו שרושמת את הגמ"ח על שמו ומפרסמת אותו.
 	const session = await locals.auth();
-	if (!session?.user) throw redirect(302, `/login?redirect=${encodeURIComponent(url.pathname)}`);
 
-	return { categories: await getCategories(), cities };
+	return { loggedIn: !!session?.user, categories: await getCategories(), cities };
 };
 
 export const actions: Actions = {
-	create: async ({ request, locals }) => {
+	create: async ({ request, locals, cookies }) => {
 		const session = await locals.auth();
-		if (!session?.user) throw redirect(302, '/login');
 
 		const form = await request.formData();
 		const { input, error } = parseGemachForm(form);
 		if (error) return fail(400, { error, values: input });
 
-		// מזהה-בעלים בפורמט שבו "קהילה בשכונה" כותבת ומזהה בעלות (credentials_<email>) —
-		// כך אותו משתמש יכול לערוך את הגמ"ח בשני האתרים. נפילה-אחורה למזהה המספרי
-		// של Strapi אם משום-מה אין מייל בסשן.
-		const email = (session.user.email ?? '').trim().toLowerCase();
-		const ownerId = email ? `credentials_${email}` : String(session.user.id ?? '').trim();
+		// ----- אורח: שומרים כטיוטה מוסתרת ושולחים להתחברות -----
+		if (!session?.user) {
+			const token = newDraftToken();
+			input.status = 'draft';   // מוסתר מהאתר עד שיאומץ ויפורסם
+			let draftId: string;
+			try {
+				// בלי ownerId — הטיוטה עדיין לא שייכת לאיש; רק מחזיק האסימון יאמץ אותה
+				({ id: draftId } = await createGemach(input, { guestToken: token }));
+			} catch (e) {
+				console.error('[guest-create] createGemach failed:', e);
+				return fail(500, { error: saveErrorMessage(e, 'יצירת'), values: input });
+			}
+			setDraftTicket(cookies, { id: draftId, token });
+			throw redirect(303, '/gemach/claim');
+		}
+
+		// ----- מחובר: נוצר מיד כגמ"ח מפורסם על שמו -----
+		const ownerId = ownerIdForSession(session.user);
 
 		let id: string;
 		try {

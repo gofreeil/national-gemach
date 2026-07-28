@@ -334,7 +334,7 @@ const SHEET_PREFIX = 'sheet:';
  *  Nominatim — ההשלמה נעשית במסך "השלמת פרטים" באצוות מבוקרות). */
 export async function createGemach(
     input: CreateGemachInput,
-    opts: { geocode?: boolean; ownerId?: string } = {},
+    opts: { geocode?: boolean; ownerId?: string; guestToken?: string } = {},
 ): Promise<{ id: string }> {
     let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
     let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
@@ -348,6 +348,13 @@ export async function createGemach(
     // → opts.ownerId (בפורמט credentials_<email> של "קהילה בשכונה", כך שהגמ"ח
     // ניתן לעריכה ע"י אותו משתמש בשני האתרים). יצירת-אדמין ללא ownerId → בלי user_id.
     const userId = input.sourceId ? SHEET_PREFIX + input.sourceId : opts.ownerId;
+
+    // טיוטת אורח (ראה guestDraft.ts): נשמרת בלי בעלים, עם אסימון שרק הדפדפן
+    // שיצר אותה מחזיק — הוא מה שיאפשר לו לאמץ אותה אחרי ההתחברות.
+    const extra = buildExtra(input);
+    if (opts.guestToken) {
+        extra[GUEST_CLAIM_KEY] = { token: opts.guestToken, at: new Date().toISOString() };
+    }
 
     const res = await strapiPost<{ data: StrapiItem }>('/api/items', {
         data: {
@@ -363,13 +370,87 @@ export async function createGemach(
             city:         input.city,
             lat,
             lng,
-            extra_fields: buildExtra(input),
-            status1:      input.status ?? 'active',
+            extra_fields: extra,
+            // דרך toItemStatus — 'draft' אינו ערך חוקי ב-status1 של Strapi
+            status1:      toItemStatus(input.status ?? 'active'),
             ...(userId ? { user_id: userId } : {}),
             publishedAt:  new Date().toISOString(),
         },
     });
     return { id: res.data.documentId };
+}
+
+// ------------------------------------------------------------
+// טיוטות אורח — גמ"ח שנוצר ע"י מבקר לא-מחובר וממתין שיתחבר ויאמץ אותו.
+// האסימון נשמר ב-extra_fields.guest_claim ומוצלב מול העוגייה שבדפדפן
+// (ראה guestDraft.ts). מזהה הפריט לבדו לא מספיק כדי לאמץ טיוטה.
+// ------------------------------------------------------------
+const GUEST_CLAIM_KEY = 'guest_claim';
+
+function guestClaimToken(extra: Record<string, unknown>): string | null {
+    const c = extra[GUEST_CLAIM_KEY];
+    if (!c || typeof c !== 'object') return null;
+    const t = (c as { token?: unknown }).token;
+    return typeof t === 'string' && t.trim() !== '' ? t : null;
+}
+
+/** שולף את הפריט רק אם הוא באמת טיוטת-אורח פנויה שהאסימון תואם לה.
+ *  שגיאות רשת/Strapi נזרקות — הקוראים מחליטים איך להציג אותן. */
+async function fetchGuestDraft(documentId: string, token: string): Promise<StrapiItem | null> {
+    const res = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
+    const item = res.data;
+    if (!item) return null;
+    // כבר יש בעלים → אינו ניתן לאימוץ
+    if ((item.user_id ?? '').trim() !== '') return null;
+    // 'active' מותר: אם אדמין הספיק לאשר את הטיוטה מרשימת הסקירה לפני
+    // שהאורח התחבר, האימוץ עדיין צריך לרשום אותה על שמו. סטטוס אחר
+    // (rejected/inactive) הוא החלטת אדמין — אסור לעקוף אותה באימוץ.
+    const st = fromItemStatus(item.status1);
+    if (st !== 'draft' && st !== 'active') return null;
+    const extra = (item.extra_fields ?? {}) as Record<string, unknown>;
+    return guestClaimToken(extra) === token ? item : null;
+}
+
+/** פרטי טיוטת אורח להצגה במסך "התחברו כדי לפרסם".
+ *  null גם בכשל שליפה — זהו מסך תצוגה, ואין מה להראות בלי הטיוטה. */
+export async function getGuestDraft(
+    documentId: string,
+    token: string,
+): Promise<{ id: string; name: string; city: string } | null> {
+    try {
+        const item = await fetchGuestDraft(documentId, token);
+        if (!item) return null;
+        return { id: item.documentId, name: item.label ?? '', city: item.city ?? '' };
+    } catch (e) {
+        if (e instanceof StrapiContentTypeError) return null;
+        console.error('[national-gemach] getGuestDraft failed:', e);
+        return null;
+    }
+}
+
+/** מאמץ טיוטת אורח: רושם אותה על שם המשתמש, מפרסם אותה ומבטל את האסימון
+ *  (חד-פעמי). false = האסימון לא תואם / הטיוטה כבר אומצה. כשל כתיבה נזרק,
+ *  כדי שהמשתמש יראה שגיאה אמיתית ולא "לא נמצאה טיוטה". */
+export async function claimGuestDraft(
+    documentId: string,
+    token: string,
+    ownerId: string,
+): Promise<boolean> {
+    // בלי מזהה-בעלים אין טעם לפרסם — הגמ"ח היה עולה לאוויר בלי שאיש יוכל
+    // לערוך אותו. זורקים, כדי שהטיוטה והעוגייה יישמרו לניסיון נוסף.
+    if (!ownerId.trim()) throw new Error('claimGuestDraft: אין מזהה-בעלים לסשן');
+
+    const item = await fetchGuestDraft(documentId, token);
+    if (!item) return false;
+
+    // מיזוג ולא דריסה — extra_fields מכיל שדות משותפים עם "קהילה בשכונה"
+    const extra = { ...((item.extra_fields ?? {}) as Record<string, unknown>) };
+    delete extra[GUEST_CLAIM_KEY];
+
+    await strapiPut(`/api/items/${documentId}`, {
+        data: { user_id: ownerId, status1: 'active', extra_fields: extra },
+    });
+    return true;
 }
 
 /** מעדכן גמ"ח קיים. ממזג את extra_fields כדי לא לדרוס שדות של הקהילה. */
@@ -412,7 +493,7 @@ export async function updateGemach(
         neighborhood: input.neighborhood ?? '',
         city:         input.city,
         extra_fields: mergedExtra,
-        ...(input.status ? { status1: input.status } : {}),
+        ...(input.status ? { status1: toItemStatus(input.status) } : {}),
     };
 
     // קואורדינטות: פין מפורש מכובד; אחרת נגזרות מהכתובת/עיר. לא דורסים ערך

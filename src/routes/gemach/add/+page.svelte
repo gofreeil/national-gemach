@@ -32,6 +32,11 @@
 			פרסום אחד — שתי רשתות: הגמ"ח יופיע במאגר הארצי וגם באתר
 			<span class="font-bold text-emerald-300">קהילה בשכונה</span>.
 		</p>
+		{#if !data.loggedIn}
+			<p class="mt-2 inline-block rounded-full border border-emerald-500/40 bg-emerald-950/60 px-3.5 py-1.5 text-sm font-semibold text-emerald-100 shadow-md">
+				אין צורך בחשבון כדי להתחיל — מלאו את הפרטים, נשמור לכם אותם, וההתחברות בסוף.
+			</p>
+		{/if}
 	</div>
 
 	{#if form?.error}
@@ -52,7 +57,11 @@
 				disabled={saving}
 				class="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 font-bold text-white transition hover:opacity-90 disabled:opacity-60"
 			>
-				{saving ? 'מפרסם...' : 'פרסם גמ"ח'}
+				{#if saving}
+					{data.loggedIn ? 'מפרסם...' : 'שומר...'}
+				{:else}
+					{data.loggedIn ? 'פרסם גמ"ח' : 'שמירה והמשך'}
+				{/if}
 			</button>
 			<a
 				href="/"
