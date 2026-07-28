@@ -94,7 +94,7 @@
 
     <!-- מחירון — לבחור ולשלם מראש -->
     <div class="mx-8 md:mx-12 border-t border-[#3b5794]"></div>
-    <div class="p-6 md:p-8">
+    <div class="p-6 md:p-8" id="plans">
         <h2 class="text-2xl font-black text-white mb-2 text-center">לבחור ולשלם מראש</h2>
         <p class="text-sm text-gray-300 text-center mb-6">בוחרים תקופה, משלמים מראש — והמודעה רצה עד סופה.</p>
         <ul class="max-w-md mx-auto space-y-2">
@@ -135,7 +135,13 @@
         >
             🎨 לעיצוב הפרסומת
         </a>
-        <p class="mt-4 text-xs text-gray-400">
+        <p class="mt-4 text-sm text-gray-300">
+            כבר יש לכם פרסומת?
+            <a href="/advertise/manage" class="font-bold text-amber-300 underline hover:text-amber-200 transition-colors">
+                לנתונים ולעריכה בדשבורד שלכם ←
+            </a>
+        </p>
+        <p class="mt-3 text-xs text-gray-400">
             שאלות? כתבו לנו:
             <a href={mailto} class="underline hover:text-white transition-colors" dir="ltr">{email}</a>
         </p>

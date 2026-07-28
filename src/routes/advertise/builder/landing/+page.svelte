@@ -12,6 +12,10 @@
     const LS_KEY = "ng_ad_builder_draft_v1";
     const PAID_KEY = "ad_paid";
     const PAID_AT_KEY = "ad_paid_at";
+    // מזהה מודעה קיימת שנפתחה לעריכה מדשבורד הנכס (/advertise/manage/[id]):
+    // בסיום מחליפים את המודעה הקיימת (PUT) במקום ליצור חדשה, ובלי תשלום נוסף.
+    const EDIT_KEY = "ng_ad_edit_id";
+    let editId = $state("");
 
     // ===== שערת גישה (כמו ב-builder הראשי) =====
     let accessGranted = $state(false);
@@ -274,6 +278,8 @@
         if (!browser) return;
         checkAccess();
 
+        try { editId = localStorage.getItem(EDIT_KEY) ?? ""; } catch {}
+
         /** @param {DragEvent} e */
         const blockOutsideDrop = (e) => {
             if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
@@ -401,13 +407,26 @@
                 ownerCode: payCodeOk ? payCode : "",
                 requestedDurationDays: payDuration,
             };
-            const res = await fetch("/api/ads/submit", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
+            // עריכת מודעה קיימת מחליפה את התוכן שלה; השאר (סטטוס, תוקף,
+            // מסלול) נקבע בזמנו ע"י האדמין ולא נשלח מכאן.
+            const res = editId
+                ? await fetch(`/api/ads/${encodeURIComponent(editId)}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                })
+                : await fetch("/api/ads/submit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
             if (!res.ok) {
                 throw new Error(await extractServerError(res));
+            }
+            // הטיוטה סיימה את תפקידה — כדי שהכניסה הבאה לבונה תתחיל נקייה
+            // ולא תדרוס בטעות את המודעה שנערכה
+            if (editId) {
+                try { localStorage.removeItem(EDIT_KEY); } catch {}
             }
             submitted = true;
         } catch (e) {
@@ -749,6 +768,19 @@
                 </ul>
 
                 <!-- ===== תקופת פרסום + תשלום — אחרי העיצוב, לפני השליחה ===== -->
+                {#if editId}
+                    <!-- עריכה של מודעה קיימת: אין בחירת מסלול ואין תשלום נוסף -->
+                    <div class="pay-box">
+                        <p class="pay-title">✏️ עריכת מודעה קיימת</p>
+                        <p class="pay-sub">
+                            השמירה מחליפה את התוכן של המודעה שכבר קיימת — התקופה, המסלול
+                            והתשלום נשארים כמו שהם. אין צורך לשלם שוב.
+                        </p>
+                        <a href="/advertise/manage/{editId}" class="pay-wa" style="background:#3b5794">
+                            → חזרה לדשבורד הנכס בלי לשמור
+                        </a>
+                    </div>
+                {:else}
                 <div class="pay-box">
                     <p class="pay-title">💳 לבחור ולשלם מראש</p>
                     <div class="pay-duration" role="group" aria-label="תקופת הפרסום">
@@ -796,6 +828,7 @@
                         {/if}
                     {/if}
                 </div>
+                {/if}
 
                 {#if !canSubmit}
                     <p class="submit-note">
@@ -809,11 +842,17 @@
                     </p>
                 {/if}
                 {#if submitError}
-                    <p class="submit-error">השליחה נכשלה: {submitError}</p>
+                    <p class="submit-error">{editId ? "השמירה נכשלה" : "השליחה נכשלה"}: {submitError}</p>
                 {/if}
 
                 <button type="button" onclick={submitAd} disabled={!canSubmit || submitting} class="submit-btn" class:enabled={canSubmit && !submitting}>
-                    {#if submitting}שולח...{:else}🚀 שליחת הפרסומת לאישור{/if}
+                    {#if submitting}
+                        {editId ? "שומר..." : "שולח..."}
+                    {:else if editId}
+                        💾 שמירת השינויים במודעה
+                    {:else}
+                        🚀 שליחת הפרסומת לאישור
+                    {/if}
                 </button>
             </section>
 
@@ -822,15 +861,27 @@
             <section class="step-card success-card">
                 <div class="done-box">
                     <div class="done-emoji">🎉</div>
-                    <h2>הפרסומת נשלחה לאישור!</h2>
-                    <p>
-                        הצוות שלנו יעבור על הפרסומת ויאשר אותה בהקדם.
-                        ברגע שתאושר - היא תופיע באתר ותקבלו עדכון.
-                    </p>
-                    <div class="done-actions">
-                        <a href="/" class="l-btn ghost">לדף הבית</a>
-                        <a href="/advertise" class="l-btn amber">לדף הפרסום</a>
-                    </div>
+                    {#if editId}
+                        <h2>השינויים נשמרו!</h2>
+                        <p>
+                            המודעה המעודכנת מוצגת באתר מעכשיו (עד דקה עד שהתצוגה מתרעננת).
+                            הנתונים והתקופה של הפרסום נשמרו כמו שהיו.
+                        </p>
+                        <div class="done-actions">
+                            <a href="/advertise/manage/{editId}" class="l-btn amber">לדשבורד הנכס</a>
+                            <a href="/ads/{editId}" class="l-btn ghost">לדף הנחיתה</a>
+                        </div>
+                    {:else}
+                        <h2>הפרסומת נשלחה לאישור!</h2>
+                        <p>
+                            הצוות שלנו יעבור על הפרסומת ויאשר אותה בהקדם.
+                            ברגע שתאושר - היא תופיע באתר ותקבלו עדכון.
+                        </p>
+                        <div class="done-actions">
+                            <a href="/advertise/manage" class="l-btn amber">לנכסים שלי</a>
+                            <a href="/" class="l-btn ghost">לדף הבית</a>
+                        </div>
+                    {/if}
                 </div>
             </section>
         {/if}

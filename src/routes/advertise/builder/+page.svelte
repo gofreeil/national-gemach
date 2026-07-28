@@ -12,6 +12,10 @@
     const LS_KEY = "ng_ad_builder_draft_v1";
     const PAID_KEY = "ad_paid";
     const PAID_AT_KEY = "ad_paid_at";
+    // הבונה נפתח לעריכת מודעה קיימת מדשבורד הנכס (/advertise/manage/[id]):
+    // הטיוטה נטענה שם מהמודעה, וכאן רק מציגים שזו עריכה ולא מודעה חדשה.
+    const EDIT_KEY = "ng_ad_edit_id";
+    let editId = $state("");
 
     const ADMIN_WA_NUMBER = "972508750632";
 
@@ -516,6 +520,8 @@
         if (!browser) return;
         checkAccess();
 
+        try { editId = localStorage.getItem(EDIT_KEY) ?? ""; } catch {}
+
         // מניעת פתיחת תמונה בטאב חדש כשהגרירה מפספסת את אזור ההעלאה
         /** @param {DragEvent} e */
         const blockOutsideDrop = (e) => {
@@ -726,11 +732,25 @@
         <!-- כותרת -->
         <div class="b-hero">
             <div class="b-hero-icon">🎨</div>
-            <h1 class="b-hero-title">בונה הפרסומות</h1>
+            <h1 class="b-hero-title">{editId ? "עריכת הפרסומת שלי" : "בונה הפרסומות"}</h1>
             <p class="b-hero-sub">
                 מעצבים את הפרסומת שלכם צעד-צעד - בדיוק כפי שתיראה באתר.
                 <br />כל שינוי נשמר אוטומטית.
             </p>
+
+            <!-- נפתח מדשבורד הנכס: בסיום מחליפים את המודעה הקיימת, בלי תשלום -->
+            {#if editId}
+                <div class="b-edit-mode">
+                    <span class="b-cd-icon">✏️</span>
+                    <div>
+                        <p class="b-cd-title">עריכה של מודעה קיימת</p>
+                        <p class="b-cd-text">
+                            השינויים יחליפו את המודעה שכבר באתר — התקופה והתשלום נשארים כמו שהם.
+                            <a href="/advertise/manage/{editId}">חזרה לדשבורד הנכס</a>
+                        </p>
+                    </div>
+                </div>
+            {/if}
 
             <!-- ספירה לאחור ליום העריכה החינמי -->
             {#if paidAt && !freeEditExpired && freeEditUntil}
@@ -1448,7 +1468,7 @@
         padding: 0.8rem 1.4rem;
     }
 
-    .b-countdown, .b-expired, .b-autosave {
+    .b-countdown, .b-expired, .b-autosave, .b-edit-mode {
         margin: 1.25rem auto 0;
         max-width: 42rem;
         border-radius: 1rem;
@@ -1472,6 +1492,14 @@
         border: 1px solid rgba(34, 197, 94, 0.4);
         background: linear-gradient(rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.08)), #16264d;
     }
+    /* מצב עריכה של מודעה קיימת — כחול, נבדל מהתראות התוקף הכתומות */
+    .b-edit-mode {
+        border: 2px solid rgba(96, 165, 250, 0.5);
+        background: linear-gradient(rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.12)), #16264d;
+    }
+    .b-edit-mode .b-cd-title { color: #93c5fd; }
+    .b-edit-mode a { color: #93c5fd; font-weight: 800; }
+
     .b-cd-icon { font-size: 1.6rem; flex-shrink: 0; }
     .b-cd-title {
         font-weight: 900;

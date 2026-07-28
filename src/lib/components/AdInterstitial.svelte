@@ -7,6 +7,7 @@
 <script lang="ts">
     import { interstitial } from '$lib/adGate';
     import { loadApprovedAds } from '$lib/adSlots';
+    import { markAdSeen, trackAdClick } from '$lib/adTrack';
 
     // הרכיב יושב גלובלית ב-+layout — נקודה נוחה להתניע את טעינת
     // המודעות המאושרות (חד-פעמי, no-op בצד השרת).
@@ -19,6 +20,11 @@
         const prev = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         return () => { document.body.style.overflow = prev; };
+    });
+
+    // חשיפה למודעה מהבילדר (adId קיים רק בהן — למשבצת פנויה אין מה למדוד)
+    $effect(() => {
+        if ($interstitial.open) markAdSeen($interstitial.ad?.adId);
     });
 
     const pct = $derived(Math.round($interstitial.progress * 100));
@@ -37,6 +43,7 @@
 
             <!-- הקריאייטיב — קליק פותח את המפרסם בלשונית חדשה, בלי לעצור את הספירה -->
             <a href={ad.href} target="_blank" rel="noopener noreferrer"
+               onclick={() => trackAdClick(ad.adId)}
                class="ad-int-creative bg-gradient-to-br {ad.color}"
                style={ad.gradientCss ? `background:${ad.gradientCss}` : undefined}>
                 {#if ad.image}

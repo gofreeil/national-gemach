@@ -2,9 +2,16 @@
     // דף נחיתה של פרסומת מאושרת — פורט מקבוצות רכישה (במקור מ"קהילה בשכונה").
     // עיצוב מינימליסטי: הכותרת, משפט הפתיחה והיתרונות יושבים *ליד* התמונה
     // ולא מתחתיה — כדי לחסוך גלילה. הגולש רואה את כל העיקר במסך הראשון.
+    import { onMount } from 'svelte';
+    import { trackAdLanding, trackAdLead } from '$lib/adTrack';
+
     let { data } = $props();
     let ad = $derived(data.ad);
     let lp = $derived(data.ad.landing ?? {});
+
+    // מדידה לדשבורד המפרסם: צפייה בדף, וכל לחיצה על דרך יצירת קשר = פנייה.
+    // נמדד בצד הלקוח כי התגובה של הדף נשמרת ב-cache (s-maxage) בשרת.
+    onMount(() => trackAdLanding(ad.id));
 
     let heroImage = $derived(lp.image || ad.mainImage || '');
     let advList = $derived((lp.advantages ?? []).filter((a: string) => a?.trim()));
@@ -83,12 +90,12 @@
                 {#if lp.phone || lp.whatsapp || lp.website}
                     <div class="al-actions">
                         {#if lp.phone}
-                            <a href="tel:{lp.phone}" class="al-btn light">📞 {lp.phone}</a>
+                            <a href="tel:{lp.phone}" onclick={() => trackAdLead(ad.id)} class="al-btn light">📞 {lp.phone}</a>
                         {/if}
                         {#if lp.whatsapp}
-                            <a href="https://wa.me/{waNumber(lp.whatsapp)}" target="_blank" rel="noopener noreferrer" class="al-btn wa">וואטסאפ</a>
+                            <a href="https://wa.me/{waNumber(lp.whatsapp)}" onclick={() => trackAdLead(ad.id)} target="_blank" rel="noopener noreferrer" class="al-btn wa">וואטסאפ</a>
                         {:else if lp.website}
-                            <a href={lp.website} target="_blank" rel="noopener noreferrer" class="al-btn ghost">לאתר ←</a>
+                            <a href={lp.website} onclick={() => trackAdLead(ad.id)} target="_blank" rel="noopener noreferrer" class="al-btn ghost">לאתר ←</a>
                         {/if}
                     </div>
                 {/if}
@@ -158,10 +165,10 @@
     <!-- פרטי קשר — שורת גלולות, לא רשימה מתמשכת -->
     <section class="al-section al-contact">
         <div class="al-pills">
-            {#if lp.phone}<a class="al-pill" href="tel:{lp.phone}">📞 {lp.phone}</a>{/if}
-            {#if lp.whatsapp}<a class="al-pill" href="https://wa.me/{waNumber(lp.whatsapp)}" target="_blank" rel="noopener noreferrer">💬 {lp.whatsapp}</a>{/if}
-            {#if lp.email}<a class="al-pill" href="mailto:{lp.email}">✉️ {lp.email}</a>{/if}
-            {#if lp.website}<a class="al-pill" href={lp.website} target="_blank" rel="noopener noreferrer">🌐 {linkLabel(lp.website)}</a>{/if}
+            {#if lp.phone}<a class="al-pill" href="tel:{lp.phone}" onclick={() => trackAdLead(ad.id)}>📞 {lp.phone}</a>{/if}
+            {#if lp.whatsapp}<a class="al-pill" href="https://wa.me/{waNumber(lp.whatsapp)}" onclick={() => trackAdLead(ad.id)} target="_blank" rel="noopener noreferrer">💬 {lp.whatsapp}</a>{/if}
+            {#if lp.email}<a class="al-pill" href="mailto:{lp.email}" onclick={() => trackAdLead(ad.id)}>✉️ {lp.email}</a>{/if}
+            {#if lp.website}<a class="al-pill" href={lp.website} onclick={() => trackAdLead(ad.id)} target="_blank" rel="noopener noreferrer">🌐 {linkLabel(lp.website)}</a>{/if}
         </div>
         {#if lp.address || lp.hours}
             <p class="al-meta">

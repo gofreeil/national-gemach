@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { submitAd } from '$lib/server/adsStore';
+import { submitAd, normalizeLanding } from '$lib/server/adsStore';
 import { isOwnerCode, notifyOwnerCodeUse } from '$lib/server/adsCode';
 import { normalizePlanDays } from '$lib/adPlans';
 
@@ -45,25 +45,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             gradient: payload.gradient,
             logo: payload.logo ?? '',
             mainImage: payload.mainImage,
-            landing: {
-                headline: payload.landing.headline ?? '',
-                pitch: payload.landing.pitch ?? '',
-                extended: payload.landing.extended ?? '',
-                image: payload.landing.image ?? '',
-                advantages: [
-                    payload.landing.advantages?.[0] ?? '',
-                    payload.landing.advantages?.[1] ?? '',
-                    payload.landing.advantages?.[2] ?? '',
-                ],
-                uniqueness: payload.landing.uniqueness ?? '',
-                phone: payload.landing.phone ?? '',
-                whatsapp: payload.landing.whatsapp ?? '',
-                website: payload.landing.website ?? '',
-                email: payload.landing.email ?? '',
-                address: payload.landing.address ?? '',
-                hours: payload.landing.hours ?? '',
-                products: Array.isArray(payload.landing.products) ? payload.landing.products : [],
-            },
+            landing: normalizeLanding(payload.landing),
         });
         // התראה לבעלים על שימוש בקוד — לא חוסמת ולא מפילה את ההגשה
         if (usedOwnerCode) {

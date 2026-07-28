@@ -43,6 +43,7 @@ const vacantInterstitialAds: Ad[] = rightAds.map((r, i) => ({
 function currentInterstitialAds(): Ad[] {
     const real: Ad[] = get(approvedAds).map((a, i) => ({
         id: 1000 + i,
+        adId: a.id,   // המזהה האמיתי ב-Strapi — למדידת חשיפות/קליקים
         title: a.title,
         description: a.subtitle,
         cta: a.cta || 'לפרטים',

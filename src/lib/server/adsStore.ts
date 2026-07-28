@@ -54,6 +54,8 @@ export interface SubmittedAd {
     decidedAt: string;
     decidedBy: string;
     rejectionReason: string;
+    /** עריכה אחרונה בידי המפרסם עצמו (דשבורד הנכס) — ריק אם לא נערכה */
+    editedAt: string;
     expiresAt: string;
     durationDays: number;
     /** "code" = הוזן קוד התנועה בשליחה (כמו שולם); "pending" = תשלום לתיאום */
@@ -115,6 +117,7 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         decidedAt: x.decided_at ?? '',
         decidedBy: x.decided_by ?? '',
         rejectionReason: x.rejection_reason ?? '',
+        editedAt: x.edited_at ?? '',
         expiresAt: x.expires_at ?? '',
         durationDays: Number(x.duration_days) || DEFAULT_DURATION_DAYS,
         payment: x.payment ?? 'pending',
@@ -219,6 +222,88 @@ export async function getAd(id: string): Promise<SubmittedAd | null> {
     } catch {
         return null;
     }
+}
+
+/** מיפוי אחיד של שדות דף הנחיתה מגוף בקשה — משותף לשליחה חדשה
+ *  (/api/ads/submit) ולעריכה בידי הבעלים (PUT /api/ads/[id]). */
+export function normalizeLanding(raw: unknown): Partial<AdLanding> {
+    const l = (raw ?? {}) as Record<string, any>;
+    return {
+        headline: l.headline ?? '',
+        pitch: l.pitch ?? '',
+        extended: l.extended ?? '',
+        image: l.image ?? '',
+        advantages: [l.advantages?.[0] ?? '', l.advantages?.[1] ?? '', l.advantages?.[2] ?? ''],
+        uniqueness: l.uniqueness ?? '',
+        phone: l.phone ?? '',
+        whatsapp: l.whatsapp ?? '',
+        website: l.website ?? '',
+        email: l.email ?? '',
+        address: l.address ?? '',
+        hours: l.hours ?? '',
+        products: Array.isArray(l.products) ? l.products : [],
+    };
+}
+
+/** האם המודעה נשלחה בידי המשתמש הזה. משווים מול קבוצת המזהים שלו
+ *  (ownerCandidateKeys) — כי submitted_by נשמר עם id ומייל, ובאתרים
+ *  התאומים המזהה המספרי לא בהכרח זהה. */
+export function isAdOwner(keys: Set<string>, ad: SubmittedAd): boolean {
+    const id = (ad.submittedBy.id ?? '').trim();
+    const email = (ad.submittedBy.email ?? '').trim().toLowerCase();
+    return Boolean((id && keys.has(id)) || (email && keys.has(email)));
+}
+
+/** המודעות של המפרסם עצמו — לדשבורד הנכס (/advertise/manage). */
+export async function listForOwner(keys: Set<string>): Promise<SubmittedAd[]> {
+    if (keys.size === 0) return [];
+    const res = await strapiGet<{ data: StrapiItem[] }>('/api/items', {
+        'filters[category][$eq]': AD_CATEGORY,
+        sort: 'createdAt:desc',
+        'pagination[pageSize]': '100',
+    });
+    return (res.data ?? [])
+        .map(fromStrapi)
+        .filter((a): a is SubmittedAd => Boolean(a))
+        .filter((a) => isAdOwner(keys, a));
+}
+
+/** עריכה מחדש בידי המפרסם — תוכן בלבד. סטטוס, תוקף, תשלום ותקופה
+ *  לא נוגעים כאן: מודעה מאושרת נשארת באוויר, ורק edited_at מתעדכן
+ *  כדי שמסך האישור (/admin/ads) יראה שהיא נערכה אחרי האישור. */
+export async function updateAdContent(
+    id: string,
+    patch: {
+        title: string;
+        subtitle?: string;
+        hoverText?: string;
+        cta?: string;
+        gradient?: string;
+        logo?: string;
+        mainImage?: string;
+        landing?: Partial<AdLanding>;
+    },
+): Promise<void> {
+    const res = await strapiGet<{ data: StrapiItem }>(`/api/items/${encodeURIComponent(id)}`);
+    if (res.data?.category !== AD_CATEGORY) throw new Error('not an ad');
+    const existing = (res.data?.extra_fields ?? {}) as Record<string, unknown>;
+    await strapiPut(`/api/items/${encodeURIComponent(id)}`, {
+        data: {
+            label: patch.title,
+            description: patch.subtitle ?? '',
+            extra_fields: {
+                ...existing,
+                hover_text: patch.hoverText ?? '',
+                cta: patch.cta ?? '',
+                gradient: patch.gradient ?? existing.gradient ?? '',
+                logo: patch.logo ?? '',
+                main_image: patch.mainImage ?? existing.main_image ?? '',
+                landing: { ...((existing.landing ?? {}) as object), ...(patch.landing ?? {}) },
+                edited_at: new Date().toISOString(),
+            },
+        },
+    });
+    invalidateAdsCache();
 }
 
 /** כל המודעות למסך האדמין (ממתינות + מאושרות + נדחות). */

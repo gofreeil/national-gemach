@@ -17,6 +17,8 @@ export interface Ad {
     imageScale?: number;    // זום על התמונה (ברירת מחדל: 1)
     hover?: string;         // טקסט tooltip בריחוף מעל כפתור ה-CTA
     gradientCss?: string;   // רקע כמחרוזת CSS מלאה (מודעות מהבילדר) — גובר על color
+    /** מזהה המודעה ב-Strapi (רק למודעות מהבילדר) — למדידה בדשבורד המפרסם */
+    adId?: string;
 }
 
 export const ads: Ad[] = [

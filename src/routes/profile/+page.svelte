@@ -15,6 +15,9 @@
 		<p class="mt-1 text-sm text-gray-400">{data.user.email}</p>
 
 		<div class="mt-8 flex flex-col gap-3">
+			<a href="/advertise/manage" class="rounded-2xl border border-[#3b5794] bg-[#1c2f5a] px-4 py-3 font-bold text-white transition hover:bg-[#2a4379]">
+				📢 הפרסומות שלי — נתונים ועריכה
+			</a>
 			<a href="https://community.gofreeil.com/profile" class="rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-3 font-bold text-white transition hover:opacity-90">
 				🕊️ לפרופיל המלא בקהילה
 			</a>

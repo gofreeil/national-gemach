@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { adSlots, loadApprovedAds } from "$lib/adSlots";
+    import { markAdSeen, trackAdClick } from "$lib/adTrack";
 
     const PER_VIEW = 4;      // כמה משבצות נראות בטור בו-זמנית
     const VIEW_MS = 14000;   // כמה זמן כל קבוצה נשארת על המסך (החלפה איטית)
@@ -20,6 +21,13 @@
             { length: PER_VIEW },
             (_, i) => slots[(start + i) % slots.length],
         );
+    });
+
+    // כל מודעה שנכנסת לקבוצה המוצגת נספרת כחשיפה (פעם אחת לכל ביקור)
+    $effect(() => {
+        for (const item of displayedAds) {
+            if (item.kind === 'real') markAdSeen(item.ad.id);
+        }
     });
 
     onMount(() => {
@@ -59,6 +67,7 @@
                 <!-- מודעה אמיתית מהבילדר — קליק מוביל לדף הנחיתה המקומי -->
                 <a
                     href="/ads/{item.ad.id}"
+                    onclick={() => trackAdClick(item.ad.id)}
                     class="h-[490px] flex flex-col rounded-2xl overflow-hidden shadow-lg transition-transform hover:scale-105 group relative"
                 >
                     <div class="flex-1 relative overflow-hidden bg-black/30">
