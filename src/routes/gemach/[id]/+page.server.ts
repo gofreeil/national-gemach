@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getCategories } from '$lib/server/adminStore';
-import { findGemachById, getMergedGemachim } from '$lib/server/gemachSource';
+import { findGemachById, getMergedGemachim, toListItem } from '$lib/server/gemachSource';
 import { getPinnedIdsResolved } from '$lib/server/pinned';
 import { getGemachOwnerId } from '$lib/server/db';
 import { isGemachOwner } from '$lib/server/ownership';
@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     const related = [
         ...others.filter(g => g.category === gemach.category),
         ...others.filter(g => g.category !== gemach.category && g.city === gemach.city),
-    ].slice(0, 6);
+    ].slice(0, 6).map(toListItem);   // בלי טלפונים — כרטיסי "נוספים" לא מציגים אותם
 
     // כפתור "ערוך" מוצג רק לבעל הגמ"ח המחובר. רק פריטים מנוהלים (Strapi) הם בעלי
     // בעלים; לפריט סטטי אין user_id. שולפים את מזהה-הבעלים בנפרד כדי לא לדלוף מייל.

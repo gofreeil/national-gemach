@@ -33,6 +33,11 @@ export interface Gemach {
     ownerId?: string;
 }
 
+/** הצורה שרשימות ציבוריות (דף הבית, /gemachim, "גמ"חים נוספים") מעבירות
+ *  ללקוח: בלי הטלפון — הוא נחשף רק בעמוד הגמ"ח, אחרי "גלה טלפון" (פרסומת).
+ *  hasPhone מאפשר להעדיף פריטים שיש להם טלפון בלי לחשוף את המספר. */
+export type ListGemach = Omit<Gemach, 'phone'> & { hasPhone?: boolean };
+
 export interface CategoryDef {
     key: string;
     label: string;

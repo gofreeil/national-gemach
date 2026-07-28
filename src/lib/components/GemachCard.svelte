@@ -10,7 +10,7 @@
     // ============================================================
     import GemachAvatar from './GemachAvatar.svelte';
     import { gatedNav } from '$lib/adGate';
-    import type { Gemach, CategoryDef } from '$lib/gemachData';
+    import type { ListGemach, CategoryDef } from '$lib/gemachData';
 
     let {
         gemach,
@@ -18,7 +18,8 @@
         pinned = false,
         heading = 'h3'
     }: {
-        gemach: Gemach;
+        /** הצורה הציבורית — בלי טלפון (הוא נחשף רק בעמוד הגמ"ח) */
+        gemach: ListGemach;
         categories?: CategoryDef[];
         /** גמ"ח נעוץ — מסגרת זהב ואייקון 📌 */
         pinned?: boolean;
@@ -32,19 +33,8 @@
         categories.find(c => c.key === gemach.category)?.label ?? gemach.category
     );
 
-    // מספרי טלפון שנכתבו בתוך שדות טקסט חופשי (תיאור/איש קשר/הערות) מוסתרים
-    // גם הם — אחרת הטלפון היה גלוי בלי לחיצה דרך הדלת האחורית.
-    const PHONE_RE = /[+(]?\d[\d\-().\s]{6,}\d\)?/g;
-    function withoutPhones(text: string | undefined | null): string {
-        return (text ?? '')
-            .replace(PHONE_RE, ' ')
-            .replace(/\s{2,}/g, ' ')
-            .replace(/^[\s\-–,:;·|]+|[\s\-–,:;·|]+$/g, '');
-    }
-
-    const description = $derived(withoutPhones(gemach.description));
-    const contact = $derived(withoutPhones(gemach.contact));
-    const notes = $derived(withoutPhones(gemach.notes));
+    // אין כאן טיפול בטלפון: הרשימות מגיעות מהשרת בלי טלפון ובלי מספרים
+    // שנכתבו בתוך הטקסט (toListItem ב-gemachSource.ts).
 </script>
 
 <article
@@ -70,14 +60,14 @@
                 </span>
             </div>
 
-            {#if description}
-                <p class="mt-2 line-clamp-3 text-sm leading-relaxed text-gray-300">{description}</p>
+            {#if gemach.description}
+                <p class="mt-2 line-clamp-3 text-sm leading-relaxed text-gray-300">{gemach.description}</p>
             {/if}
-            {#if contact}
-                <p class="mt-2 line-clamp-1 text-xs text-gray-400">👤 {contact}</p>
+            {#if gemach.contact}
+                <p class="mt-2 line-clamp-1 text-xs text-gray-400">👤 {gemach.contact}</p>
             {/if}
-            {#if notes}
-                <p class="mt-1 line-clamp-2 text-xs text-amber-300/80">💬 {notes}</p>
+            {#if gemach.notes}
+                <p class="mt-1 line-clamp-2 text-xs text-amber-300/80">💬 {gemach.notes}</p>
             {/if}
         </div>
 

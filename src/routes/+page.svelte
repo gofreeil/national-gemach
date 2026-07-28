@@ -15,10 +15,11 @@
     let pinnedGemachim = $derived(data.pinned);
     let pinnedIds = $derived(new Set(pinnedGemachim.map(g => g.id)));
     /** החדשים שנוספו — בלי הנעוצים. פריטים עם טלפון קודם, כדי שדף הבית לא יוביל
-     *  בפריטים חלקיים (מיון יציב → סדר החדש-קודם נשמר בתוך כל קבוצה). */
+     *  בפריטים חלקיים (מיון יציב → סדר החדש-קודם נשמר בתוך כל קבוצה).
+     *  hasPhone ולא phone: המספר עצמו לא נשלח לרשימות. */
     let newestGemachim = $derived(
         gemachim.filter(g => !pinnedIds.has(g.id))
-            .sort((a, b) => (b.phone ? 1 : 0) - (a.phone ? 1 : 0))
+            .sort((a, b) => (b.hasPhone ? 1 : 0) - (a.hasPhone ? 1 : 0))
             .slice(0, 6)
     );
 
