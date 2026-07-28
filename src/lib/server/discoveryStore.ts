@@ -18,6 +18,10 @@ import type { Gemach } from '$lib/gemachData';
 
 const JOB_CATEGORY = '__ng_discovery_job';
 
+// משימה שסומנה 'running' ולא דיווחה התקדמות זמן רב — ה-worker כנראה מת
+// (נפילת חשמל/סגירת חלון). בלי זה היא הייתה חוסמת את התור לנצח.
+const STALE_RUNNING_MS = 20 * 60 * 1000;
+
 // status1 ב-Strapi הוא enumeration סגור (active|inactive|deleted|resolved|
 // pending|rejected|frozen). מצב ה-job נשמר ב-extra_fields.job_status,
 // ו-status1 מקבל את הערך החוקי הקרוב — חייב להיות זהה ל-JOB_ITEM_STATUS
@@ -58,6 +62,8 @@ export interface DiscoveryJobView {
 	finishedAt: string;
 	claimedBy: string;
 	error: string;
+	/** נתקעה: סומנה כרצה אך לא דיווחה התקדמות — לא חוסמת סריקה חדשה */
+	isStale: boolean;
 	stats: {
 		queries?: number; rawResults?: number; candidates?: number;
 		imported?: number; duplicates?: number; errors?: number;
@@ -142,9 +148,14 @@ function mapJob(row: StrapiJobItem): DiscoveryJobView {
 	const status: JobStatus = (['queued', 'running', 'done', 'failed', 'cancelled'] as const).includes(rawStatus as JobStatus)
 		? (rawStatus as JobStatus)
 		: (row.status1 === 'resolved' ? 'done' : row.status1 === 'rejected' ? 'failed' : row.status1 === 'inactive' ? 'cancelled' : 'queued');
+	const lastSignal = String(x.progress_at ?? x.started_at ?? row.createdAt ?? '');
+	const lastMs = Date.parse(lastSignal);
+	const isStale = status === 'running'
+		&& Number.isFinite(lastMs) && Date.now() - lastMs > STALE_RUNNING_MS;
 	return {
 		id: row.documentId,
 		status,
+		isStale,
 		note: row.description ?? '',
 		requestedBy: String(x.requested_by ?? ''),
 		createdAt: row.createdAt,
@@ -173,7 +184,7 @@ export async function listDiscoveryJobs(limit = 12): Promise<DiscoveryJobView[]>
 }
 
 export function hasActiveJob(jobs: DiscoveryJobView[]): boolean {
-	return jobs.some((j) => j.status === 'queued' || j.status === 'running');
+	return jobs.some((j) => j.status === 'queued' || (j.status === 'running' && !j.isStale));
 }
 
 /** יצירת משימת סריקה בתור. הקטגוריות החיות מהפאנל מוטמעות במשימה כדי

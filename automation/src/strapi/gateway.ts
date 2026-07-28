@@ -34,6 +34,10 @@ const JOB_ITEM_STATUS: Record<string, string> = {
 	cancelled: 'inactive',
 };
 
+// משימה 'running' שלא דיווחה התקדמות זמן רב — ה-worker שלה מת (נפילת
+// חשמל/סגירת חלון). worker חדש משחזר אותה במקום שתיתקע לנצח.
+const STALE_RUNNING_MS = 20 * 60 * 1000;
+
 const REQUEST_ATTEMPTS = 4;
 const REQUEST_TIMEOUT_MS = 30_000;
 const RETRY_DELAY_MS = 1_500;
@@ -256,6 +260,13 @@ export class StrapiGateway {
 		};
 	}
 
+	/** האם משימה שסומנה כרצה נתקעה (ה-worker שלה מת) */
+	private isStale(job: DiscoveryJob): boolean {
+		if (job.status !== 'running') return false;
+		const last = Date.parse(String(job.extra.progress_at ?? job.extra.started_at ?? job.createdAt ?? ''));
+		return Number.isFinite(last) && Date.now() - last > STALE_RUNNING_MS;
+	}
+
 	/** ה-job הישן ביותר שממתין בתור (FIFO). ב-Strapi מסננים לפי status1
 	 *  ('pending' = פתוח), ואת ההבחנה queued/running עושים על job_status. */
 	async fetchQueuedJob(): Promise<DiscoveryJob | null> {
@@ -267,8 +278,13 @@ export class StrapiGateway {
 		});
 		try {
 			const res = await this.request<{ data: StrapiJobItem[] }>('GET', `/api/items?${params}`);
-			const row = (res.data ?? []).map((r) => this.mapJob(r)).find((j) => j.status === 'queued');
-			return row ?? null;
+			const jobs = (res.data ?? []).map((r) => this.mapJob(r));
+			// עדיפות לתור הרגיל; אחריו משימה שנתקעה אחרי קריסת worker
+			const fresh = jobs.find((j) => j.status === 'queued');
+			if (fresh) return fresh;
+			const stale = jobs.find((j) => this.isStale(j));
+			if (stale) this.logger.warn(`משימה ${stale.documentId} נתקעה (ה-worker הקודם כנראה נפל) — משחזר אותה`);
+			return stale ?? null;
 		} catch (e) {
 			this.logger.warn('שליפת תור המשימות נכשלה', e);
 			return null;
@@ -303,8 +319,10 @@ export class StrapiGateway {
 	 *  ל-Strapi אין עדכון-מותנה אטומי, ולכן אחרי הכתיבה קוראים שוב ומוודאים
 	 *  ש-claimed_by הוא שלנו — שני עובדים במקביל לא ירוצו על אותה משימה. */
 	async claimJob(documentId: string, workerId: string): Promise<boolean> {
-		const status = await this.getJobStatus(documentId);
-		if (status !== 'queued') return false;
+		const res0 = await this.request<{ data: StrapiJobItem | null }>('GET', `/api/items/${documentId}`);
+		if (!res0.data) return false;
+		const current = this.mapJob(res0.data);
+		if (current.status !== 'queued' && !this.isStale(current)) return false;
 		await this.mergeJob(documentId, { claimed_by: workerId, started_at: new Date().toISOString() }, 'running');
 
 		const res = await this.request<{ data: StrapiJobItem | null }>('GET', `/api/items/${documentId}`);

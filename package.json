@@ -17,7 +17,11 @@
 		"discovery:selftest": "npm --prefix automation run selftest --",
 		"discovery:migrate": "npm --prefix automation run migrate --",
 		"discovery:scan": "npm --prefix automation run scan --",
-		"discovery:scan:apply": "npm --prefix automation run scan:apply --"
+		"discovery:scan:apply": "npm --prefix automation run scan:apply --",
+		"discovery:service:install": "powershell -NoProfile -ExecutionPolicy Bypass -File automation/service/install-service.ps1",
+		"discovery:service:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File automation/service/uninstall-service.ps1",
+		"discovery:service:status": "powershell -NoProfile -ExecutionPolicy Bypass -File automation/service/status-service.ps1",
+		"discovery:service:log": "powershell -NoProfile -Command \"Get-Content automation/state/logs/worker.log -Tail 40 -Wait\""
 	},
 	"devDependencies": {
 		"@auth/sveltekit": "^1.11.2",
