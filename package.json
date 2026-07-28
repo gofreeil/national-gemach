@@ -9,7 +9,16 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"discovery:setup": "npm --prefix automation install && npm --prefix automation exec playwright install chromium",
+		"discovery:solve": "npm --prefix automation run solve",
+		"discovery:worker": "npm --prefix automation run worker",
+		"discovery:status": "npm --prefix automation run status",
+		"discovery:selftest": "npm --prefix automation run selftest",
+		"discovery:migrate": "npm --prefix automation run migrate",
+		"__discovery_note": "לדגלים נוספים (--cities/--categories/--imports) הריצו מתוך automation/: npm run scan -- --headful",
+		"discovery:scan": "npm --prefix automation run scan --",
+		"discovery:scan:apply": "npm --prefix automation run scan:apply --"
 	},
 	"devDependencies": {
 		"@auth/sveltekit": "^1.11.2",

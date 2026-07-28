@@ -100,6 +100,28 @@
         </a>
     {/if}
 
+    <!-- טיוטות מאוטומציית הגילוי שממתינות לאישור -->
+    {#if data.discoveryDrafts > 0}
+        <a href="/admin/discovery" class="card p-5 block transition-colors hover:bg-[#1e3260] border-purple-500/40 bg-purple-500/5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-bold text-white">
+                        🛰️ גילוי חכם:
+                        <span class="mr-1 rounded-full border border-purple-500/40 bg-purple-500/10 px-2 py-0.5 text-xs font-black text-purple-300">
+                            ⏳ {data.discoveryDrafts} טיוטות ממתינות לאישור
+                        </span>
+                    </h2>
+                    <p class="text-sm text-gray-400 mt-1">
+                        גמ"חים חדשים שהאוטומציה איתרה — לא יופיעו באתר עד שתאשרו אותם
+                    </p>
+                </div>
+                <span class="rounded-xl bg-purple-600 hover:bg-purple-500 px-5 py-2.5 text-sm font-bold text-white transition-colors whitespace-nowrap">
+                    לסקירת הטיוטות ←
+                </span>
+            </div>
+        </a>
+    {/if}
+
     <!-- מוכנות למפה של קהילה בשכונה -->
     {#if s.mapMissing > 0}
         <div class="card p-5 border-amber-500/30 bg-amber-500/5">
@@ -148,6 +170,11 @@
             <div class="text-2xl mb-2" aria-hidden="true">🏷️</div>
             <div class="font-bold text-white">קטגוריות</div>
             <div class="text-xs text-gray-400 mt-1">הוספה, עריכה וסידור קטגוריות</div>
+        </a>
+        <a href="/admin/discovery" class="card p-5 hover:bg-[#1e3260] transition-colors block">
+            <div class="text-2xl mb-2" aria-hidden="true">🛰️</div>
+            <div class="font-bold text-white">גילוי חכם</div>
+            <div class="text-xs text-gray-400 mt-1">איתור גמ"חים חדשים מ-Google ואישור טיוטות</div>
         </a>
         {#if role === 'super_admin'}
             <a href="/admin/admins" class="card p-5 hover:bg-[#1e3260] transition-colors block">

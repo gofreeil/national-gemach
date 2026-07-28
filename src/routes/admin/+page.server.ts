@@ -6,6 +6,7 @@ import { getPinnedGemachim } from '$lib/server/pinned';
 import { hasValidCoords } from '$lib/server/geocode';
 import { getMonthlyVisits } from '$lib/server/visitStats';
 import { listAllForAdmin } from '$lib/server/adsStore';
+import { countDraftGemachim } from '$lib/server/discoveryStore';
 import { rightAds } from '$lib/rightAdsData';
 
 /** תמצית מצב הפרסומות לדשבורד — הפירוט המלא במסך /admin/ads */
@@ -42,13 +43,15 @@ async function buildAdsSummary(): Promise<AdsSummary | null> {
 export const load: PageServerLoad = async ({ locals }) => {
 	const { role } = await getAdminContext(locals);
 
-	const [all, categories, admins, visits, adsSummary] = await Promise.all([
+	const [all, categories, admins, visits, adsSummary, discoveryDrafts] = await Promise.all([
 		getMergedGemachim(),
 		getCategories(),
 		getAdmins(),
 		getMonthlyVisits(12),
 		// מסך הפרסומות הוא לסופר-אדמין בלבד — לאדמין רגיל אין מה להציג ממנו
-		role === 'super_admin' ? buildAdsSummary() : Promise.resolve(null)
+		role === 'super_admin' ? buildAdsSummary() : Promise.resolve(null),
+		// טיוטות שאוטומציית הגילוי ייבאה וממתינות לאישור (לשני התפקידים)
+		countDraftGemachim().catch(() => 0)
 	]);
 
 	const managed = all.filter(g => g.managed);
@@ -58,6 +61,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		visits,
 		adsSummary,
+		discoveryDrafts,
 		stats: {
 			managed: managed.length,
 			pinned: pinned.length,
