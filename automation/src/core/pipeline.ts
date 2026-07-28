@@ -9,6 +9,7 @@ import { emptyStats } from './types.ts';
 import type { Logger } from './logger.ts';
 import type { StateStore } from './stateStore.ts';
 import type { StrapiGateway } from '../strapi/gateway.ts';
+import type { BrowserContext } from 'playwright';
 import type { DiscoverySource, SourceContext } from './source.ts';
 import { BrowserFactory } from './browser.ts';
 import { CandidateNormalizer } from './normalizer.ts';
@@ -73,20 +74,31 @@ export class DiscoveryPipeline {
 			stats.queries = queries.length;
 			logger.info(`נבחרו ${queries.length} שאילתות מתוך מרחב של ${universe.length} (cursor ${cursor} → ${nextCursor})`);
 
-			// --- שלב 3: דפדפן + הקשר משותף למקורות ---
-			const { context, close } = await new BrowserFactory(logger).launch({ headful: spec.headful });
-			closeBrowser = close;
+			// --- שלב 3: הקשר משותף למקורות. הדפדפן עולה רק אם מישהו מבקש
+			// אותו (מקור מבוסס-דפדפן או העשרה) — ריצת DuckDuckGo טהורה לא
+			// פותחת Chromium כלל.
 			const limiter = new RateLimiter(...QUERY_DELAY_MS);
 			const cityDetector = new CityDetector(cities);
 			const normalizer = new CandidateNormalizer(cities);
-			const enricher = new PageEnricher(context, limiter, cityDetector, logger.child('enrich'));
+			let enricher: PageEnricher | null = null;
 			const shouldAbort = this.makeAbortCheck(spec);
 			const markBlocked = (reason: string) => {
 				stats.blocked = true;
 				stats.blockedReason = reason;
 			};
+
+			let browserContext: BrowserContext | null = null;
+			const getBrowser = async (): Promise<BrowserContext> => {
+				if (!browserContext) {
+					const { context, close } = await new BrowserFactory(logger).launch({ headful: spec.headful });
+					browserContext = context;
+					closeBrowser = close;
+				}
+				return browserContext;
+			};
+
 			const ctx: SourceContext = {
-				browser: context, logger, limiter, shouldAbort, headful: spec.headful, markBlocked,
+				getBrowser, logger, limiter, shouldAbort, headful: spec.headful, markBlocked,
 			};
 
 			const catIcons = new Map((spec.categories?.length ? spec.categories : defaultCategories).map((c) => [c.key, c.icon ?? '🤝']));
@@ -108,7 +120,11 @@ export class DiscoveryPipeline {
 						continue;
 					}
 					let candidate = outcome.candidate;
-					if (spec.enrich && !candidate.phone) candidate = await enricher.enrich(candidate);
+					if (spec.enrich && !candidate.phone) {
+						// ההעשרה גולשת לעמוד המועמד ולכן דורשת דפדפן — נוצר כאן בפעם הראשונה
+						enricher ??= new PageEnricher(await getBrowser(), limiter, cityDetector, logger.child('enrich'));
+						candidate = await enricher.enrich(candidate);
+					}
 					stats.candidates++;
 
 					const dup = deduper.check(candidate);

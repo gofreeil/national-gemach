@@ -195,7 +195,7 @@ export async function enqueueScan(opts: {
 				job_status: 'queued',
 				requested_by: opts.requestedBy,
 				requested_at: new Date().toISOString(),
-				sources: ['google-search', 'google-local'],
+				sources: ['duckduckgo'],
 				...(opts.maxQueries ? { max_queries: opts.maxQueries } : {}),
 				...(categories.length > 0
 					? { categories: categories.map((c) => ({ key: c.key, label: c.label, icon: c.icon })) }

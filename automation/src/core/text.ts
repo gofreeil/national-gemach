@@ -12,6 +12,16 @@ export function containsGemach(text: string): boolean {
 	return GEMACH_RE.test(text);
 }
 
+/** האם בשם יש זיהוי מעבר למילה "גמ"ח" עצמה. כותרת כמו "גמ"ח" או "גמחים"
+ *  לבד (נפוץ בעמודי אינדקס) אינה שם של גמ"ח ואי אפשר לזהות לפיה דבר. */
+export function hasIdentityBeyondGemach(name: string): boolean {
+	const rest = normalizeHebrew(name)
+		.replace(/גמ["'`״׳]?ח(ים)?|גמילות\s*חסד(ים)?/g, ' ')
+		.replace(/[^\wא-ת]+/g, ' ')
+		.trim();
+	return rest.length >= 2;
+}
+
 /** נירמול השוואתי: בלי גרשיים, רווחים מכווצים, אותיות סופיות רגילות, lowercase */
 export function normalizeHebrew(text: string): string {
 	return text
@@ -155,7 +165,8 @@ const SITE_SUFFIX_RE = /(\.|www|אתר|מדריך|אינדקס|פורטל|דיר
 /** מנקה כותרת תוצאת חיפוש לשם גמ"ח: מפצל על מפרידי אתרים, מעדיף את
  *  המקטע שמכיל "גמ"ח", ומשמיט מקטע אחרון שנראה כמו שם האתר. */
 export function cleanTitle(title: string): string {
-	let s = title.replace(/\s+/g, ' ').trim();
+	// תבניות SEO שלא עברו רינדור באתר המקור (%%sep%%, %%sitename%%, {{title}})
+	let s = title.replace(/%%[^%]*%%|\{\{[^}]*\}\}/g, ' ').replace(/\s+/g, ' ').trim();
 	const parts = s
 		.split(/\s+[|•·»«]+\s+|\s+[-–—]\s+/)
 		.map((p) => p.trim())

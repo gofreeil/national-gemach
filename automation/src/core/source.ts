@@ -12,7 +12,9 @@ import type { Logger } from './logger.ts';
 import type { RateLimiter } from './rateLimiter.ts';
 
 export interface SourceContext {
-	browser: BrowserContext;
+	/** דפדפן לפי דרישה. מקור מבוסס-fetch (כמו duckduckgo) לא קורא לזה כלל,
+	 *  ואז Chromium בכלל לא עולה — ריצה מהירה יותר ובלי שטח-פנים לאימות. */
+	getBrowser: () => Promise<BrowserContext>;
 	logger: Logger;
 	/** השהיה מנומסת משותפת בין כל הבקשות של הריצה */
 	limiter: RateLimiter;
@@ -36,7 +38,8 @@ export abstract class DiscoverySource {
 	abstract discover(queries: string[], ctx: SourceContext): AsyncGenerator<RawResult>;
 
 	protected async openPage(ctx: SourceContext): Promise<Page> {
-		const page = await ctx.browser.newPage();
+		const browser = await ctx.getBrowser();
+		const page = await browser.newPage();
 		page.setDefaultTimeout(30_000);
 		return page;
 	}

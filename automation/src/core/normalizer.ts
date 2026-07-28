@@ -10,6 +10,7 @@ import {
 	containsGemach,
 	extractPhone,
 	guessCategory,
+	hasIdentityBeyondGemach,
 	normalizePhone,
 } from './text.ts';
 
@@ -30,6 +31,8 @@ export class CandidateNormalizer {
 
 		const name = cleanTitle(raw.title);
 		if (!name || name.length < 3) return { ok: false, reason: 'שם לא תקין' };
+		// כותרת שהיא רק המילה "גמח" (עמודי אינדקס) — אין בה זיהוי
+		if (!hasIdentityBeyondGemach(name)) return { ok: false, reason: 'שם כללי מדי' };
 
 		const phone = raw.phone ? normalizePhone(raw.phone) : extractPhone(fullText);
 		const city = raw.city ?? this.cityDetector.detect(fullText) ?? '';

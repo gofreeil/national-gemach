@@ -19,6 +19,7 @@ import { sleep } from './core/rateLimiter.ts';
 import { createStateStore } from './core/stateStore.ts';
 import { StrapiGateway } from './strapi/gateway.ts';
 import { DiscoveryPipeline } from './core/pipeline.ts';
+import { DuckDuckGoSource } from './sources/duckduckgo.ts';
 import { GoogleSearchSource } from './sources/googleSearch.ts';
 import { GoogleLocalSource } from './sources/googleLocal.ts';
 
@@ -57,7 +58,9 @@ function flagNum(flags: CliArgs['flags'], name: string, fallback: number): numbe
 function buildSpec(flags: CliArgs['flags'], overrides: Partial<ScanSpec> = {}): ScanSpec {
 	const defaultCats: CategoryRef[] = siteCategories.map((c) => ({ key: c.key, label: c.label, icon: c.icon }));
 	return {
-		sources: (flagStr(flags, 'sources') ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+		// ברירת המחדל היא המקור העצמאי בלבד. מקורות Google דורשים דפדפן
+		// ונחסמים ב-CAPTCHA, ולכן הם opt-in מפורש: --sources=google-search
+		sources: (flagStr(flags, 'sources') ?? 'duckduckgo').split(',').map((s) => s.trim()).filter(Boolean),
 		categories: flagStr(flags, 'categories')
 			? defaultCats.filter((c) => flagStr(flags, 'categories')!.split(',').map((s) => s.trim()).includes(c.key))
 			: undefined,
@@ -84,7 +87,7 @@ async function cmdScan(flags: CliArgs['flags']): Promise<void> {
 			gateway,
 			store,
 			logger,
-			sources: [new GoogleSearchSource(), new GoogleLocalSource()],
+			sources: [new DuckDuckGoSource(), new GoogleSearchSource(), new GoogleLocalSource()],
 			cities: siteCities,
 			defaultCategories: siteCategories.map((c) => ({ key: c.key, label: c.label, icon: c.icon })),
 		});
@@ -141,7 +144,7 @@ async function cmdWorker(flags: CliArgs['flags']): Promise<void> {
 						gateway,
 						store,
 						logger,
-						sources: [new GoogleSearchSource(), new GoogleLocalSource()],
+						sources: [new DuckDuckGoSource(), new GoogleSearchSource(), new GoogleLocalSource()],
 						cities: siteCities,
 						defaultCategories: siteCategories.map((c) => ({ key: c.key, label: c.label, icon: c.icon })),
 					});
