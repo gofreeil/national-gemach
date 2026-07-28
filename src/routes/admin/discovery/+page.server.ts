@@ -75,7 +75,7 @@ export const actions: Actions = {
 				message:
 					cloud.reason === 'not_configured'
 						? 'הסריקה נוספה לתור 🛰️ — תתבצע ע"י עובד הגילוי ברגע שיהיה זמין'
-						: 'הסריקה נוספה לתור 🛰️ — הפעלת הענן נכשלה, היא תתבצע ע"י עובד מקומי',
+						: `הסריקה נוספה לתור 🛰️ — הפעלת הענן נכשלה (${cloud.detail ?? 'סיבה לא ידועה'}). היא תתבצע ע"י עובד מקומי.`,
 			};
 		} catch (err) {
 			console.error('discovery scan enqueue failed:', err);
