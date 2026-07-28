@@ -183,17 +183,19 @@ export async function getRawGemachimByStatus(status: string): Promise<StrapiItem
 }
 
 /** קובע את status1 של פריט, עם עדכון אופציונלי של מטא-הגילוי
- *  (extra_fields.discovery). קריאה-מיזוג-כתיבה — לא דורס extra_fields. */
+ *  (extra_fields.discovery). קריאה-מיזוג-כתיבה — לא דורס extra_fields.
+ *
+ *  אם הקריאה נכשלה — זורקים ולא כותבים: PUT עם extra_fields ממוזג מ"ריק"
+ *  היה מוחק את gmach_type/logo/images/tags של הפריט (שדות משותפים עם
+ *  "קהילה בשכונה"). עדיף שהפעולה תיכשל ותוצג לאדמין מאשר איבוד נתונים. */
 export async function setGemachStatus(
     documentId: string,
     status: string,
     discoveryPatch?: Record<string, unknown>,
 ): Promise<void> {
-    let existingExtra: Record<string, unknown> = {};
-    try {
-        const cur = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
-        existingExtra = (cur.data?.extra_fields ?? {}) as Record<string, unknown>;
-    } catch { /* ממשיכים עם extra ריק */ }
+    const cur = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
+    if (!cur.data) throw new Error(`setGemachStatus: הפריט ${documentId} לא נמצא`);
+    const existingExtra = (cur.data.extra_fields ?? {}) as Record<string, unknown>;
 
     const extra = { ...existingExtra };
     if (discoveryPatch) {
@@ -206,13 +208,13 @@ export async function setGemachStatus(
 }
 
 /** מעניק/מסיר את חותמת "מאושר" (extra_fields.verified) — הגמ"ח עבר בדיקת
- *  מערכת. קריאה-מיזוג-כתיבה כדי לא לדרוס שדות אחרים ב-extra_fields. */
+ *  מערכת. קריאה-מיזוג-כתיבה כדי לא לדרוס שדות אחרים ב-extra_fields.
+ *  כמו ב-setGemachStatus: כשל בקריאה → זורקים ולא כותבים, אחרת ה-PUT היה
+ *  מוחק את gmach_type/logo/images/tags (שדות משותפים עם "קהילה בשכונה"). */
 export async function setGemachVerified(documentId: string, verified: boolean): Promise<void> {
-    let existingExtra: Record<string, unknown> = {};
-    try {
-        const cur = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
-        existingExtra = (cur.data?.extra_fields ?? {}) as Record<string, unknown>;
-    } catch { /* ממשיכים עם extra ריק */ }
+    const cur = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
+    if (!cur.data) throw new Error(`setGemachVerified: הפריט ${documentId} לא נמצא`);
+    const existingExtra = (cur.data.extra_fields ?? {}) as Record<string, unknown>;
 
     const extra = { ...existingExtra };
     if (verified) {
