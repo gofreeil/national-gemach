@@ -1,9 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { getAdminContext, requireSuperAdmin } from '$lib/server/admin';
 import { getCategories, saveCategories } from '$lib/server/adminStore';
 import { categories as defaultCategories, type CategoryDef } from '$lib/gemachData';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+	const { role } = await getAdminContext(locals);
+	requireSuperAdmin(role);
 	return { categories: await getCategories() };
 };
 
@@ -30,7 +33,10 @@ function normalizeList(raw: unknown): CategoryDef[] {
 }
 
 export const actions: Actions = {
-	save: async ({ request }) => {
+	save: async ({ locals, request }) => {
+		const { role } = await getAdminContext(locals);
+		requireSuperAdmin(role);
+
 		const raw = (await request.formData()).get('categories') as string;
 		let list: CategoryDef[];
 		try {
@@ -48,7 +54,9 @@ export const actions: Actions = {
 		throw redirect(303, '/admin/categories?flash=saved');
 	},
 
-	reset: async () => {
+	reset: async ({ locals }) => {
+		const { role } = await getAdminContext(locals);
+		requireSuperAdmin(role);
 		try {
 			await saveCategories(defaultCategories);
 		} catch (e) {

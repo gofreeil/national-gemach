@@ -166,17 +166,17 @@
             <div class="font-bold text-white">גמ"חים נעוצים</div>
             <div class="text-xs text-gray-400 mt-1">הרשימה שבראש דף הבית — נעיצה, הסרה וסידור</div>
         </a>
-        <a href="/admin/categories" class="card p-5 hover:bg-[#1e3260] transition-colors block">
-            <div class="text-2xl mb-2" aria-hidden="true">🏷️</div>
-            <div class="font-bold text-white">קטגוריות</div>
-            <div class="text-xs text-gray-400 mt-1">הוספה, עריכה וסידור קטגוריות</div>
-        </a>
         <a href="/admin/discovery" class="card p-5 hover:bg-[#1e3260] transition-colors block">
             <div class="text-2xl mb-2" aria-hidden="true">🛰️</div>
             <div class="font-bold text-white">גילוי חכם</div>
             <div class="text-xs text-gray-400 mt-1">איתור גמ"חים חדשים מ-Google ואישור טיוטות</div>
         </a>
         {#if role === 'super_admin'}
+            <a href="/admin/categories" class="card p-5 hover:bg-[#1e3260] transition-colors block">
+                <div class="text-2xl mb-2" aria-hidden="true">🏷️</div>
+                <div class="font-bold text-white">קטגוריות</div>
+                <div class="text-xs text-gray-400 mt-1">הוספה, עריכה וסידור קטגוריות</div>
+            </a>
             <a href="/admin/admins" class="card p-5 hover:bg-[#1e3260] transition-colors block">
                 <div class="text-2xl mb-2" aria-hidden="true">🔑</div>
                 <div class="font-bold text-white">ניהול אדמינים</div>
