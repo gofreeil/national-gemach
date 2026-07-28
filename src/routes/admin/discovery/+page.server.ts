@@ -13,6 +13,7 @@ import {
 } from '$lib/server/discoveryStore';
 import { deleteGemach } from '$lib/server/db';
 import { getCategories } from '$lib/server/adminStore';
+import { triggerCloudScan } from '$lib/server/githubDispatch';
 
 // מסך "גילוי חכם" — אדמין וסופר-אדמין (שניהם): הפעלת סריקת גילוי,
 // מעקב אחרי תור המשימות, ואישור/דחייה של טיוטות שהאוטומציה ייבאה.
@@ -63,7 +64,19 @@ export const actions: Actions = {
 				requestedBy: by,
 				maxQueries: Number.isFinite(maxQueries) && maxQueries > 0 ? Math.min(maxQueries, 80) : undefined,
 			});
-			return { success: true, message: 'הסריקה נוספה לתור 🛰️ — ה-worker יתחיל אותה ברגע שיהיה זמין' };
+			// מפעיל מיד את הריצה בענן, כך שאין צורך שמחשב כלשהו יהיה דלוק
+			const cloud = await triggerCloudScan();
+			if (cloud.ok) {
+				return { success: true, message: 'הסריקה הופעלה בענן 🛰️ — הטיוטות יופיעו כאן בעוד כמה דקות' };
+			}
+			if (cloud.reason === 'failed') console.error('הפעלת הסריקה בענן נכשלה:', cloud.detail);
+			return {
+				success: true,
+				message:
+					cloud.reason === 'not_configured'
+						? 'הסריקה נוספה לתור 🛰️ — תתבצע ע"י עובד הגילוי ברגע שיהיה זמין'
+						: 'הסריקה נוספה לתור 🛰️ — הפעלת הענן נכשלה, היא תתבצע ע"י עובד מקומי',
+			};
 		} catch (err) {
 			console.error('discovery scan enqueue failed:', err);
 			return fail(502, { error: writeErrorMessage(err, 'יצירת הסריקה') });

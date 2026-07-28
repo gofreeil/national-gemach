@@ -108,7 +108,10 @@ async function cmdWorker(flags: CliArgs['flags']): Promise<void> {
 	const workerId = `${os.hostname()}#${process.pid}`;
 	const intervalSec = flagNum(flags, 'interval', 20);
 	const once = flags.has('once');
-	logger.info(`עובד ${workerId} מאזין לתור (כל ${intervalSec} שניות${once ? ', ריצה בודדת' : ''}). Ctrl+C לעצירה.`);
+	// --drain: מרוקן את כל התור ויוצא (לריצה ב-CI, שם אין טעם להישאר ולהאזין)
+	const drain = flags.has('drain');
+	const mode = drain ? ', ריקון התור' : once ? ', ריצה בודדת' : '';
+	logger.info(`עובד ${workerId} מאזין לתור (כל ${intervalSec} שניות${mode}). Ctrl+C לעצירה.`);
 
 	let stopping = false;
 	process.on('SIGINT', () => {
