@@ -13,7 +13,7 @@
         { href: '/admin/pinned',     label: 'נעוצים',      icon: '📌', exact: false },
         { href: '/admin/categories', label: 'קטגוריות',    icon: '🏷️', exact: false },
         ...(isSuper ? [
-            { href: '/admin/ads',    label: 'אישור פרסומות', icon: '📢', exact: false },
+            { href: '/admin/ads',    label: 'ניהול פרסומות', icon: '📢', exact: false },
             { href: '/admin/admins', label: 'ניהול אדמינים', icon: '🔑', exact: false },
         ] : []),
     ]);

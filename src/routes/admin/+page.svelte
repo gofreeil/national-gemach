@@ -2,6 +2,7 @@
     let { data } = $props();
     const s = $derived(data.stats);
     const role = $derived(data.admin.role as 'super_admin' | 'admin');
+    const adsSum = $derived(data.adsSummary);
 
     const maxVisits = $derived(Math.max(...data.visits.map(v => v.count), 0));
 
@@ -9,6 +10,13 @@
     function fmtMonth(m: string): string {
         const [y, mo] = m.split('-');
         return `${Number(mo)}/${y.slice(2)}`;
+    }
+
+    function fmtDate(iso: string): string {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
 </script>
 
@@ -60,6 +68,37 @@
             </div>
         {/if}
     </div>
+
+    <!-- מצב הפרסומות — תמצית לסופר-אדמין; הפירוט המלא ב-/admin/ads -->
+    {#if adsSum}
+        <a href="/admin/ads" class="card p-5 block transition-colors hover:bg-[#1e3260] {adsSum.pending > 0 ? 'border-amber-500/40 bg-amber-500/5' : ''}">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="font-bold text-white">
+                        📢 פרסומות: {adsSum.occupied}/{adsSum.totalSlots} משבצות תפוסות
+                        {#if adsSum.pending > 0}
+                            <span class="mr-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-black text-amber-300">
+                                ⏳ {adsSum.pending} ממתינות לאישור
+                            </span>
+                        {/if}
+                    </h2>
+                    <p class="text-sm text-gray-400 mt-1">
+                        {#if adsSum.freeNow > 0}
+                            🟢 {adsSum.freeNow === 1 ? 'משבצת אחת פנויה' : `${adsSum.freeNow} משבצות פנויות`} לפרסום כבר עכשיו
+                        {:else if adsSum.nextFreeAt}
+                            🔴 אין משבצות פנויות — הקרובה מתפנה ב-{fmtDate(adsSum.nextFreeAt)}
+                        {:else}
+                            🔴 אין משבצות פנויות
+                        {/if}
+                        · נתוני מפרסמים ולוח תפוסה במסך המלא
+                    </p>
+                </div>
+                <span class="rounded-xl bg-blue-600 hover:bg-blue-500 px-5 py-2.5 text-sm font-bold text-white transition-colors whitespace-nowrap">
+                    לניהול הפרסומות ←
+                </span>
+            </div>
+        </a>
+    {/if}
 
     <!-- מוכנות למפה של קהילה בשכונה -->
     {#if s.mapMissing > 0}
