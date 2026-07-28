@@ -69,9 +69,8 @@
 			<div class="min-w-0">
 				<h3 class="font-black text-white">הפעלת סריקה</h3>
 				<p class="mt-1 text-xs text-gray-400">
-					הסריקה נכנסת לתור ומבוצעת ע"י עובד האוטומציה —
-					<code class="rounded bg-[#1e293b] px-1.5 py-0.5 text-[11px] text-purple-300" dir="ltr">npm run discovery:worker</code>
-					(פירוט ב-automation/README.md).
+					הסריקה רצה בענן ומתחילה מיד עם הלחיצה — אין צורך שמחשב כלשהו יהיה דלוק.
+					סריקה מתבצעת רק כשמבקשים אותה כאן (פירוט ב-automation/README.md).
 				</p>
 			</div>
 			<form
