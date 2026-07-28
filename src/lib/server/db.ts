@@ -36,6 +36,27 @@ const KNOWN_KEYS = new Set(categories.map(c => c.key));
 // דו-כיוונית בין שני האתרים. תת-הקטגוריה נשמרת ב-extra_fields.gmach_type.
 const CATEGORY = 'gemachim';
 
+// ------------------------------------------------------------
+// סטטוס הפריט: status1 ב-Strapi הוא enumeration סגור —
+//   active | inactive | deleted | resolved | pending | rejected | frozen
+// ולכן אי אפשר לכתוב בו 'draft'. מתרגמים בגבול ה-Strapi בלבד (בדיוק כמו
+// adsStore, שמאחסן "מאושר" כ-'active'): שאר הקוד ממשיך לדבר 'draft'.
+// 'pending' נבחר כי הוא פנוי לגמרי בקטגוריית הגמ"חים ותואם את מודל
+// הפרסומות — וכל ערך שאינו 'active' ממילא מוסתר מהאתר הציבורי.
+// ------------------------------------------------------------
+const DRAFT_ITEM_STATUS = 'pending';
+
+/** סטטוס אפליקטיבי → ערך חוקי ב-status1 */
+export function toItemStatus(status: string): string {
+    return status === 'draft' ? DRAFT_ITEM_STATUS : status;
+}
+
+/** status1 → הסטטוס האפליקטיבי שהמסכים מכירים */
+export function fromItemStatus(status1: string | null): string | undefined {
+    if (!status1) return undefined;
+    return status1 === DRAFT_ITEM_STATUS ? 'draft' : status1;
+}
+
 function toStr(v: unknown): string | undefined {
     if (v === null || v === undefined) return undefined;
     const s = String(v).trim();
@@ -111,7 +132,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         sourceId:      toStr(extra.source_id),
         managed:       true,
         ownerId:       includeOwner ? (item.user_id ?? undefined) : undefined,
-        status:        item.status1 ?? undefined,
+        status:        fromItemStatus(item.status1),
         verified:      extra.verified === true || extra.verified === 'true',
     };
 }
@@ -155,7 +176,7 @@ export async function getAllGemachimWithDrafts(): Promise<Gemach[]> {
         const data = await strapiGetAll<StrapiItem>('/api/items', {
             'filters[category][$eq]':    CATEGORY,
             'filters[status1][$in][0]':  'active',
-            'filters[status1][$in][1]':  'draft',
+            'filters[status1][$in][1]':  DRAFT_ITEM_STATUS,
             'sort':                      'createdAt:desc',
         });
         return data.map((item) => mapItemToGemach(item)).sort(sortManaged);
@@ -172,7 +193,7 @@ export async function getRawGemachimByStatus(status: string): Promise<StrapiItem
     try {
         return await strapiGetAll<StrapiItem>('/api/items', {
             'filters[category][$eq]': CATEGORY,
-            'filters[status1][$eq]':  status,
+            'filters[status1][$eq]':  toItemStatus(status),
             'sort':                   'createdAt:desc',
         });
     } catch (e) {
@@ -204,7 +225,7 @@ export async function setGemachStatus(
             : {};
         extra.discovery = { ...prev, ...discoveryPatch };
     }
-    await strapiPut(`/api/items/${documentId}`, { data: { status1: status, extra_fields: extra } });
+    await strapiPut(`/api/items/${documentId}`, { data: { status1: toItemStatus(status), extra_fields: extra } });
 }
 
 /** מעניק/מסיר את חותמת "מאושר" (extra_fields.verified) — הגמ"ח עבר בדיקת

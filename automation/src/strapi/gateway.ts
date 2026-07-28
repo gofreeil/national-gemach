@@ -17,6 +17,23 @@ const GEMACH_CATEGORY = 'gemachim';
 const JOB_CATEGORY = '__ng_discovery_job';
 const PAGE_SIZE = 100;
 
+// status1 ב-Strapi הוא enumeration סגור:
+//   active | inactive | deleted | resolved | pending | rejected | frozen
+// ולכן 'draft'/'queued'/'running' אינם ניתנים לכתיבה. מתרגמים כאן, בגבול
+// ה-Strapi בלבד (זהה ל-toItemStatus ב-src/lib/server/db.ts — שני הצדדים
+// חייבים להסכים על הערך הזה).
+const DRAFT_ITEM_STATUS = 'pending';
+
+/** מצב ה-job האמיתי נשמר ב-extra_fields.job_status; status1 מקבל את הערך
+ *  החוקי הקרוב ביותר, כדי שאפשר יהיה גם לסנן ב-Strapi. */
+const JOB_ITEM_STATUS: Record<string, string> = {
+	queued:    'pending',
+	running:   'pending',
+	done:      'resolved',
+	failed:    'rejected',
+	cancelled: 'inactive',
+};
+
 const REQUEST_ATTEMPTS = 4;
 const REQUEST_TIMEOUT_MS = 30_000;
 const RETRY_DELAY_MS = 1_500;
@@ -173,7 +190,8 @@ export class StrapiGateway {
 		return out;
 	}
 
-	/** יוצר טיוטת גמ"ח (status1='draft') — לא מופיעה באתר עד אישור אדמין.
+	/** יוצר טיוטת גמ"ח (status1='pending') — לא מופיעה באתר, שהמסנן הציבורי
+	 *  שלו מציג רק 'active', עד שאדמין מאשר אותה.
 	 *  שים לב: לא כותבים extra_fields.source_id (שמור לייבוא מהרשימה
 	 *  הסטטית ומשמש לסינון שלה) — מטא-הגילוי חי תחת extra_fields.discovery. */
 	async createDraftGemach(c: Candidate, opts: { icon?: string; runRef: string; requestedBy?: string }): Promise<string> {
@@ -210,7 +228,7 @@ export class StrapiGateway {
 							...(opts.requestedBy ? { requested_by: opts.requestedBy } : {}),
 						},
 					},
-					status1: 'draft',
+					status1: DRAFT_ITEM_STATUS,
 					user_id: `discovery:${c.source}`,
 					publishedAt: new Date().toISOString(),
 				},
@@ -222,55 +240,61 @@ export class StrapiGateway {
 
 	// ---------- תור המשימות (__ng_discovery_job) ----------
 
+	/** מצב ה-job האמיתי חי ב-extra_fields.job_status; ל-status1 יש רק את
+	 *  הערך החוקי הקרוב, ולכן לא ניתן לגזור ממנו queued מול running. */
 	private mapJob(row: StrapiJobItem): DiscoveryJob {
+		const extra = (row.extra_fields ?? {}) as Record<string, unknown>;
+		const jobStatus = typeof extra.job_status === 'string' && extra.job_status
+			? extra.job_status
+			: (row.status1 === 'resolved' ? 'done' : row.status1 === 'rejected' ? 'failed' : 'queued');
 		return {
 			documentId: row.documentId,
-			status: row.status1 ?? '',
+			status: jobStatus,
 			note: row.description ?? '',
-			extra: (row.extra_fields ?? {}) as Record<string, unknown>,
+			extra,
 			createdAt: row.createdAt,
 		};
 	}
 
-	/** ה-job הישן ביותר שממתין בתור (FIFO) */
+	/** ה-job הישן ביותר שממתין בתור (FIFO). ב-Strapi מסננים לפי status1
+	 *  ('pending' = פתוח), ואת ההבחנה queued/running עושים על job_status. */
 	async fetchQueuedJob(): Promise<DiscoveryJob | null> {
 		const params = new URLSearchParams({
 			'filters[category][$eq]': JOB_CATEGORY,
-			'filters[status1][$eq]': 'queued',
+			'filters[status1][$eq]': JOB_ITEM_STATUS.queued,
 			sort: 'createdAt:asc',
-			'pagination[limit]': '1',
+			'pagination[limit]': '10',
 		});
 		try {
 			const res = await this.request<{ data: StrapiJobItem[] }>('GET', `/api/items?${params}`);
-			const row = res.data?.[0];
-			return row ? this.mapJob(row) : null;
+			const row = (res.data ?? []).map((r) => this.mapJob(r)).find((j) => j.status === 'queued');
+			return row ?? null;
 		} catch (e) {
 			this.logger.warn('שליפת תור המשימות נכשלה', e);
 			return null;
 		}
 	}
 
+	/** מצב ה-job האפליקטיבי (queued/running/done/failed/cancelled) */
 	async getJobStatus(documentId: string): Promise<string | null> {
 		try {
-			const res = await this.request<{ data: { status1: string | null } | null }>(
-				'GET',
-				`/api/items/${documentId}?fields[0]=status1`,
-			);
-			return res.data?.status1 ?? null;
+			const res = await this.request<{ data: StrapiJobItem | null }>('GET', `/api/items/${documentId}`);
+			return res.data ? this.mapJob(res.data).status : null;
 		} catch {
 			return null;
 		}
 	}
 
-	/** מיזוג extra_fields (קריאה-מיזוג-כתיבה — PUT מחליף את כל ה-JSON) */
+	/** מיזוג extra_fields (קריאה-מיזוג-כתיבה — PUT מחליף את כל ה-JSON).
+	 *  status הוא המצב האפליקטיבי; הוא נשמר גם ב-job_status וגם מתורגם ל-status1. */
 	private async mergeJob(documentId: string, patch: Record<string, unknown>, status?: string): Promise<void> {
 		this.assertWritable();
 		const cur = await this.request<{ data: StrapiJobItem | null }>('GET', `/api/items/${documentId}`);
 		const existing = (cur.data?.extra_fields ?? {}) as Record<string, unknown>;
 		await this.request('PUT', `/api/items/${documentId}`, {
 			data: {
-				...(status ? { status1: status } : {}),
-				extra_fields: { ...existing, ...patch },
+				...(status ? { status1: JOB_ITEM_STATUS[status] ?? 'pending' } : {}),
+				extra_fields: { ...existing, ...patch, ...(status ? { job_status: status } : {}) },
 			},
 		}, true);
 	}
@@ -286,7 +310,7 @@ export class StrapiGateway {
 		const res = await this.request<{ data: StrapiJobItem | null }>('GET', `/api/items/${documentId}`);
 		const row = res.data;
 		const claimedBy = (row?.extra_fields as Record<string, unknown> | undefined)?.claimed_by;
-		if (row?.status1 !== 'running' || claimedBy !== workerId) {
+		if (!row || this.mapJob(row).status !== 'running' || claimedBy !== workerId) {
 			this.logger.info(`המשימה ${documentId} נתפסה ע"י ${String(claimedBy ?? '?')} — מדלג`);
 			return false;
 		}

@@ -3,7 +3,8 @@
 // ============================================================
 //
 // הצד השני של automation/ (ראו automation/README.md):
-//   - האוטומציה מייבאת גמ"חים חדשים כ-status1='draft' עם מטא-גילוי
+//   - האוטומציה מייבאת גמ"חים חדשים כטיוטה (status1='pending' ב-Strapi,
+//     ראו toItemStatus ב-db.ts) עם מטא-גילוי
 //     ב-extra_fields.discovery — הם לא מופיעים באתר (הפילטר הציבורי
 //     מציג רק 'active') אבל כן במסך /admin/discovery.
 //   - לחיצה על "הפעל סריקה" יוצרת משימה בתור: item בקטגוריה פנימית
@@ -16,6 +17,18 @@ import { getCategories } from './adminStore.js';
 import type { Gemach } from '$lib/gemachData';
 
 const JOB_CATEGORY = '__ng_discovery_job';
+
+// status1 ב-Strapi הוא enumeration סגור (active|inactive|deleted|resolved|
+// pending|rejected|frozen). מצב ה-job נשמר ב-extra_fields.job_status,
+// ו-status1 מקבל את הערך החוקי הקרוב — חייב להיות זהה ל-JOB_ITEM_STATUS
+// שב-automation/src/strapi/gateway.ts.
+const JOB_ITEM_STATUS: Record<JobStatus, string> = {
+	queued:    'pending',
+	running:   'pending',
+	done:      'resolved',
+	failed:    'rejected',
+	cancelled: 'inactive',
+};
 
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
 
@@ -123,10 +136,12 @@ export async function restoreDraft(id: string, decidedBy: string): Promise<void>
 
 function mapJob(row: StrapiJobItem): DiscoveryJobView {
 	const x = (row.extra_fields ?? {}) as Record<string, unknown>;
-	const rawStatus = row.status1 ?? '';
-	const status: JobStatus = ['queued', 'running', 'done', 'failed', 'cancelled'].includes(rawStatus)
+	// status1 הוא enumeration סגור ב-Strapi ולכן לא יכול להחזיק 'queued'/'running';
+	// המצב האמיתי נשמר ב-extra_fields.job_status (ראו automation/src/strapi/gateway.ts).
+	const rawStatus = typeof x.job_status === 'string' ? x.job_status : '';
+	const status: JobStatus = (['queued', 'running', 'done', 'failed', 'cancelled'] as const).includes(rawStatus as JobStatus)
 		? (rawStatus as JobStatus)
-		: 'queued';
+		: (row.status1 === 'resolved' ? 'done' : row.status1 === 'rejected' ? 'failed' : row.status1 === 'inactive' ? 'cancelled' : 'queued');
 	return {
 		id: row.documentId,
 		status,
@@ -175,8 +190,9 @@ export async function enqueueScan(opts: {
 			category: JOB_CATEGORY,
 			description: opts.note ?? '',
 			icon: '🛰️',
-			status1: 'queued',
+			status1: JOB_ITEM_STATUS.queued,
 			extra_fields: {
+				job_status: 'queued',
 				requested_by: opts.requestedBy,
 				requested_at: new Date().toISOString(),
 				sources: ['google-search', 'google-local'],
@@ -195,13 +211,16 @@ export async function enqueueScan(opts: {
 export async function cancelJob(id: string, cancelledBy: string): Promise<boolean> {
 	const res = await strapiGet<{ data: StrapiJobItem | null }>(`/api/items/${id}`);
 	const row = res.data;
-	if (!row || (row.status1 !== 'queued' && row.status1 !== 'running')) return false;
+	if (!row) return false;
+	const cur = mapJob(row);
+	if (cur.status !== 'queued' && cur.status !== 'running') return false;
 	const existing = (row.extra_fields ?? {}) as Record<string, unknown>;
 	await strapiPut(`/api/items/${id}`, {
 		data: {
-			status1: 'cancelled',
+			status1: JOB_ITEM_STATUS.cancelled,
 			extra_fields: {
 				...existing,
+				job_status: 'cancelled',
 				cancelled_at: new Date().toISOString(),
 				cancelled_by: cancelledBy,
 			},
