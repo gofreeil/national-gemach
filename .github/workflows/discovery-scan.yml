@@ -49,9 +49,12 @@ jobs:
         with:
           node-version: '22'
 
+      # --ignore-scripts מדלג על הורדת הדפדפנים של Playwright (~100MB) —
+      # הסריקה כאן מבוססת fetch בלבד. אסור להוסיף --omit=optional:
+      # esbuild (שבו tsx משתמש) מתקין את הבינארי שלו כתלות אופציונלית.
       - name: התקנת תלויות האוטומציה
         working-directory: automation
-        run: npm ci --omit=optional --ignore-scripts
+        run: npm ci --ignore-scripts
 
       - name: בדיקות עצמיות
         working-directory: automation
