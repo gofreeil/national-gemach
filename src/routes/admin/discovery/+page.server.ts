@@ -37,6 +37,20 @@ async function actor(locals: App.Locals): Promise<string> {
 	return user.email || user.name || '';
 }
 
+/** מתרגם כשל כתיבה ל-Strapi להסבר מעשי. המסך הזה לאדמינים בלבד, ולכן
+ *  עדיף להראות את הסיבה האמיתית מאשר "נסו שוב" שלא מוביל לשום מקום —
+ *  הכשל הנפוץ הוא STRAPI_TOKEN חסר/placeholder בסביבה שממנה רץ האתר. */
+function writeErrorMessage(err: unknown, action: string): string {
+	const msg = err instanceof Error ? err.message : String(err);
+	if (/\b(401|403|Forbidden|Unauthorized)\b/i.test(msg)) {
+		return `${action} נדחה ע"י Strapi (אין הרשאת כתיבה). בדקו ש-STRAPI_TOKEN מוגדר בסביבה שממנה רץ האתר — בפיתוח מקומי זה קובץ .env בשורש הפרויקט.`;
+	}
+	if (/\b(404|Route not found)\b/i.test(msg)) {
+		return `${action} נכשל: Strapi לא מכיר את הנתיב המבוקש (בדקו את כתובת ה-API).`;
+	}
+	return `${action} נכשל: ${msg.slice(0, 200)}`;
+}
+
 export const actions: Actions = {
 	scan: async ({ request, locals }) => {
 		const by = await actor(locals);
@@ -52,7 +66,7 @@ export const actions: Actions = {
 			return { success: true, message: 'הסריקה נוספה לתור 🛰️ — ה-worker יתחיל אותה ברגע שיהיה זמין' };
 		} catch (err) {
 			console.error('discovery scan enqueue failed:', err);
-			return fail(502, { error: 'יצירת הסריקה נכשלה — נסו שוב' });
+			return fail(502, { error: writeErrorMessage(err, 'יצירת הסריקה') });
 		}
 	},
 
@@ -68,7 +82,7 @@ export const actions: Actions = {
 				: fail(400, { error: 'המשימה כבר הסתיימה — אין מה לבטל' });
 		} catch (err) {
 			console.error('discovery cancel failed:', err);
-			return fail(502, { error: 'הביטול נכשל — נסו שוב' });
+			return fail(502, { error: writeErrorMessage(err, 'ביטול הסריקה') });
 		}
 	},
 
@@ -82,7 +96,7 @@ export const actions: Actions = {
 			return { success: true, message: 'הגמ"ח אושר ופורסם באתר ✅' };
 		} catch (err) {
 			console.error('discovery approve failed:', err);
-			return fail(502, { error: 'האישור נכשל — נסו שוב' });
+			return fail(502, { error: writeErrorMessage(err, 'אישור הגמ"ח') });
 		}
 	},
 
@@ -97,7 +111,7 @@ export const actions: Actions = {
 			return { success: true, message: 'הטיוטה נדחתה — לא תיובא שוב' };
 		} catch (err) {
 			console.error('discovery reject failed:', err);
-			return fail(502, { error: 'הדחייה נכשלה — נסו שוב' });
+			return fail(502, { error: writeErrorMessage(err, 'דחיית הטיוטה') });
 		}
 	},
 
@@ -111,7 +125,7 @@ export const actions: Actions = {
 			return { success: true, message: 'הפריט הוחזר לטיוטות' };
 		} catch (err) {
 			console.error('discovery restore failed:', err);
-			return fail(502, { error: 'ההחזרה נכשלה — נסו שוב' });
+			return fail(502, { error: writeErrorMessage(err, 'החזרת הפריט') });
 		}
 	},
 
@@ -125,7 +139,7 @@ export const actions: Actions = {
 			return { success: true, message: 'הטיוטה נמחקה (זיכרון האוטומציה ימנע ייבוא חוזר)' };
 		} catch (err) {
 			console.error('discovery remove failed:', err);
-			return fail(502, { error: 'המחיקה נכשלה — נסו שוב' });
+			return fail(502, { error: writeErrorMessage(err, 'מחיקת הטיוטה') });
 		}
 	},
 };

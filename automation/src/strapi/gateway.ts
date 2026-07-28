@@ -39,10 +39,22 @@ export class StrapiGateway {
 		private readonly logger: Logger,
 	) {}
 
-	/** ודא שאפשר לכתוב: יש טוקן והוא ASCII (הדבקה של placeholder עברי נתפסת כאן) */
+	/** ודא שאפשר לכתוב באמת. טוקן אמיתי של Strapi הוא מחרוזת hex ארוכה
+	 *  (100+ תווים), ולכן כל ערך קצר/עברי/עם מילת-מציין נתפס כאן — אחרת
+	 *  הריצה הייתה נראית תקינה וכל ייבוא היה נכשל ב-403 בשקט. */
 	assertWritable(): void {
-		if (!this.token) throw new Error('STRAPI_TOKEN חסר — כתיבה ל-Strapi דורשת טוקן (vercel env pull או .env)');
-		if (/[^\x20-\x7E]/.test(this.token)) throw new Error('STRAPI_TOKEN מכיל תווים לא-ASCII — כנראה placeholder ולא טוקן אמיתי');
+		const t = this.token;
+		if (!t) throw new Error('STRAPI_TOKEN חסר — כתיבה ל-Strapi דורשת טוקן (הוסיפו אותו ל-.env בשורש הפרויקט)');
+		if (/[^\x20-\x7E]/.test(t)) {
+			throw new Error('STRAPI_TOKEN מכיל תווים לא-ASCII — כנראה הודבק טקסט עברי במקום הטוקן');
+		}
+		if (/^(paste|your|xxx|token|changeme|<)/i.test(t) || t.includes('_YOUR_') || t.length < 40) {
+			throw new Error(
+				`STRAPI_TOKEN נראה כמו מציין-מקום ולא כמו טוקן אמיתי (אורך ${t.length}). ` +
+				'העתיקו את הטוקן מ-Vercel (Settings → Environment Variables) או מ-Strapi ' +
+				'(Settings → API Tokens) אל .env בשורש הפרויקט.',
+			);
+		}
 	}
 
 	private headers(withAuth: boolean): Record<string, string> {

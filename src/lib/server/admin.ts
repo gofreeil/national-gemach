@@ -37,6 +37,10 @@ function parseEnvList(raw: string | undefined): string[] {
 const ENV_SUPER = parseEnvList(env.NG_SUPER_ADMINS ?? 'yahavanter@gmail.com');
 const ENV_ADMIN = parseEnvList(env.NG_ADMINS);
 
+// הבעלים — נעילה אישית ולא לפי תפקיד. מסכים מסוימים (קטגוריות) שמורים לו
+// בלבד, גם אם קיימים סופר-אדמינים נוספים. ניתן לעקוף עם NG_OWNER.
+const ENV_OWNER = parseEnvList(env.NG_OWNER ?? 'yahavanter@gmail.com');
+
 /** בונה את קבוצת המזהים המנורמלים של המשתמש הנוכחי */
 function userIdentifiers(user: SessionUserLike): Set<string> {
     const set = new Set<string>();
@@ -99,10 +103,18 @@ export async function isAdmin(user: SessionUserLike | null | undefined): Promise
     return (await resolveRole(user)) !== null;
 }
 
+/** האם זה הבעלים עצמו (ולא סתם סופר-אדמין) */
+export function isOwner(user: SessionUserLike | null | undefined): boolean {
+    if (!user) return false;
+    const ids = userIdentifiers(user);
+    return ENV_OWNER.some(v => matchesAny(ids, v));
+}
+
 /** שולף session מ-locals ומחזיר {user, role}. לשימוש ב-load של /admin. */
 export async function getAdminContext(locals: App.Locals): Promise<{
     user: { id?: string; name: string; email: string; phone?: string };
     role: AdminRole;
+    owner: boolean;
 }> {
     const session = await locals.auth();
     const su = session?.user as (SessionUserLike & { id?: string }) | undefined;
@@ -116,11 +128,17 @@ export async function getAdminContext(locals: App.Locals): Promise<{
             email: su.email ?? '',
             phone: su.phone ?? undefined
         },
-        role
+        role,
+        owner: isOwner(su)
     };
 }
 
 /** מוודא שהמשתמש הוא סופר-אדמין (למסלולי ניהול אדמינים). */
 export function requireSuperAdmin(role: AdminRole): void {
     if (role !== 'super_admin') throw error(403, 'פעולה זו מותרת לסופר-אדמין בלבד');
+}
+
+/** מוודא שהמשתמש הוא הבעלים (למסלולים אישיים — קטגוריות). */
+export function requireOwner(owner: boolean): void {
+    if (!owner) throw error(403, 'פעולה זו מותרת לבעלי האתר בלבד');
 }
