@@ -26,6 +26,10 @@ if ((Test-Path $log) -and ((Get-Item $log).Length -gt 5MB)) {
 # PowerShell 5.1 הפניית stderr של תוכנית חיצונית עוטפת כל שורה ב-ErrorRecord,
 # ועם ErrorActionPreference='Stop' זו שגיאה מטרמינלת. Node כותב הודעות
 # תקינות ל-stderr (למשל ".env not found"), ולכן העובד היה מת מיד בעלייה.
+# מצב משותף ב-Strapi: אותו cursor שמשמש את הסריקה ב-GitHub Actions.
+# בלי זה היו שני מונים נפרדים והשאילתות היו נסרקות פעמיים.
+$env:DISCOVERY_STATE = 'strapi'
+
 $ErrorActionPreference = 'Continue'
 & cmd /c "node --env-file-if-exists=../.env --env-file-if-exists=.env --import tsx src/cli.ts worker --apply >> ""$log"" 2>&1"
 $code = $LASTEXITCODE
