@@ -70,13 +70,13 @@
                 </div>
             </a>
             <div class="flex flex-shrink-0 items-center gap-1.5">
-                <!-- פאנל ניהול (מורשים בלבד) -->
+                <!-- ניהול (מורשים בלבד) — נפרס בתוך האזור האישי -->
                 {#if adminRole}
                     <a
-                        href="/admin"
+                        href="/profile#admin"
                         class="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white transition-colors"
-                        aria-label="פאנל ניהול"
-                        title="פאנל ניהול"
+                        aria-label="ניהול — באזור האישי"
+                        title="ניהול — באזור האישי"
                     >
                         <span aria-hidden="true">🛠️</span>
                     </a>
@@ -167,12 +167,12 @@
                     </div>
                 {/if}
 
-                <!-- פאנל ניהול (מורשים בלבד) -->
+                <!-- ניהול (מורשים בלבד) — נפרס בתוך האזור האישי -->
                 {#if adminRole}
                     <a
-                        href="/admin"
+                        href="/profile#admin"
                         class="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-3 py-2 text-sm font-bold text-white transition-all shadow-lg"
-                        title={adminRole === 'super_admin' ? 'פאנל ניהול (סופר-אדמין)' : 'פאנל ניהול'}
+                        title={adminRole === 'super_admin' ? 'ניהול באזור האישי (סופר-אדמין)' : 'ניהול באזור האישי'}
                     >
                         <span aria-hidden="true">🛠️</span>
                         <span class="hidden sm:inline">ניהול</span>
