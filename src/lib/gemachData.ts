@@ -11,7 +11,13 @@ export interface Gemach {
     link?: string;
     notes?: string;
     address?: string;
+    /** שעות פעילות. JSON מובנה (ראו $lib/openingHours) או טקסט חופשי ברשומות ישנות */
     hours?: string;
+    /** קומה / מספר דירה / הוראות הגעה — משותפים עם "קהילה בשכונה"
+     *  (extra_fields.floor / apartment / arrival_notes) */
+    floor?: string;
+    apartment?: string;
+    arrivalNotes?: string;
     /** קואורדינטות למפה של "קהילה בשכונה". נגזרות אוטומטית מהכתובת/עיר בעת שמירה. */
     lat?: number | null;
     lng?: number | null;

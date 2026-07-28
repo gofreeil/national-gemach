@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { Gemach, CategoryDef } from '$lib/gemachData';
     import TagEditor from './TagEditor.svelte';
+    import OpeningHoursEditor from './OpeningHoursEditor.svelte';
     import { imageDrop } from '$lib/imageDrop';
     import { compressImage, dataUriWeightKb, MAX_GALLERY_IMAGES, MAX_TOTAL_IMAGE_KB } from '$lib/imageCompress';
 
@@ -246,6 +247,38 @@
             placeholder="קרית משה" />
     </div>
 
+    <!-- כתובת -->
+    <div>
+        <label for="f-address" class="block text-sm font-bold text-gray-300 mb-1">כתובת</label>
+        <input id="f-address" name="address" value={gemach?.address ?? ''}
+            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+            placeholder="רחוב ומספר" />
+    </div>
+
+    <!-- קומה ודירה — רוב הגמ"חים פועלים מדירה פרטית, ובלי זה המבקר עומד בלובי -->
+    <div class="grid grid-cols-2 gap-3">
+        <div>
+            <label for="f-floor" class="block text-sm font-bold text-gray-300 mb-1">קומה</label>
+            <input id="f-floor" name="floor" value={gemach?.floor ?? ''}
+                class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                placeholder="3" />
+        </div>
+        <div>
+            <label for="f-apartment" class="block text-sm font-bold text-gray-300 mb-1">מספר דירה</label>
+            <input id="f-apartment" name="apartment" value={gemach?.apartment ?? ''}
+                class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                placeholder="5" />
+        </div>
+    </div>
+
+    <!-- הוראות הגעה -->
+    <div class="md:col-span-2">
+        <label for="f-arrival" class="block text-sm font-bold text-gray-300 mb-1">הוראות הגעה</label>
+        <input id="f-arrival" name="arrival_notes" value={gemach?.arrivalNotes ?? ''}
+            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+            placeholder="כניסה מהחצר האחורית, קוד בשער, חניה ברחוב הסמוך..." />
+    </div>
+
     <!-- טלפון -->
     <div>
         <label for="f-phone" class="block text-sm font-bold text-gray-300 mb-1">טלפון</label>
@@ -259,23 +292,13 @@
         <label for="f-contact" class="block text-sm font-bold text-gray-300 mb-1">איש קשר</label>
         <input id="f-contact" name="contact" value={gemach?.contact ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-            placeholder="שם / תפקיד" />
+            placeholder="שם האחראי/ת על הגמ&quot;ח" />
     </div>
 
-    <!-- כתובת -->
-    <div>
-        <label for="f-address" class="block text-sm font-bold text-gray-300 mb-1">כתובת</label>
-        <input id="f-address" name="address" value={gemach?.address ?? ''}
-            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-            placeholder="רחוב ומספר" />
-    </div>
-
-    <!-- שעות -->
-    <div>
-        <label for="f-hours" class="block text-sm font-bold text-gray-300 mb-1">שעות פעילות</label>
-        <input id="f-hours" name="hours" value={gemach?.hours ?? ''}
-            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-            placeholder="א-ה 9:00-13:00" />
+    <!-- שעות פעילות — לוח ימים/שעות מובנה, בפורמט המשותף עם "קהילה בשכונה" -->
+    <div class="md:col-span-2">
+        <span class="block text-sm font-bold text-gray-300 mb-1">שעות פעילות</span>
+        <OpeningHoursEditor value={gemach?.hours ?? ''} name="hours" />
     </div>
 
     <!-- קישור -->

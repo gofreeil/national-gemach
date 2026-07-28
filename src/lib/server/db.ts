@@ -98,6 +98,9 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         notes:         toStr(extra.notes),
         address:       item.address ?? undefined,
         hours:         toStr(extra.hours),
+        floor:         toStr(extra.floor),
+        apartment:     toStr(extra.apartment),
+        arrivalNotes:  toStr(extra.arrival_notes),
         lat:           typeof item.lat === 'number' ? item.lat : null,
         lng:           typeof item.lng === 'number' ? item.lng : null,
         icon:          item.icon ?? undefined,
@@ -259,7 +262,10 @@ export interface CreateGemachInput {
     phone?: string;
     contact?: string;
     description?: string;
-    hours?: string;
+    hours?: string;         // JSON של $lib/openingHours, או טקסט חופשי ישן
+    floor?: string;
+    apartment?: string;
+    arrivalNotes?: string;
     icon?: string;
     image?: string;         // כתובת https או data URI — נשמר ב-extra_fields.logo
     link?: string;
@@ -281,6 +287,10 @@ function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     if (input.hours)      extra.hours   = input.hours;
     if (input.link)       extra.link    = input.link;
     if (input.notes)      extra.notes   = input.notes;
+    // שמות המפתחות זהים ל"קהילה בשכונה" — אותו פריט נערך בשני האתרים
+    if (input.floor)        extra.floor         = input.floor;
+    if (input.apartment)    extra.apartment     = input.apartment;
+    if (input.arrivalNotes) extra.arrival_notes = input.arrivalNotes;
     const logo = input.image || input.logoBase64;
     if (logo)             extra.logo    = logo;
     if (input.images && input.images.length > 0) extra.images = input.images;
@@ -354,9 +364,12 @@ export async function updateGemach(
 
     const mergedExtra = { ...existingExtra, ...buildExtra(input) };
     // אם השדות רוקנו — מוחקים אותם מה-extra הממוזג
-    if (!input.hours)    delete mergedExtra.hours;
-    if (!input.link)     delete mergedExtra.link;
-    if (!input.notes)    delete mergedExtra.notes;
+    if (!input.hours)        delete mergedExtra.hours;
+    if (!input.link)         delete mergedExtra.link;
+    if (!input.notes)        delete mergedExtra.notes;
+    if (!input.floor)        delete mergedExtra.floor;
+    if (!input.apartment)    delete mergedExtra.apartment;
+    if (!input.arrivalNotes) delete mergedExtra.arrival_notes;
     if (!input.featured) delete mergedExtra.featured;
     // תמונה שרוקנה: מסמנים במחרוזת ריקה (ולא במחיקה) כדי שגם גלריית `images`
     // של "קהילה בשכונה" לא תחזיר את התמונה מהדלת האחורית.

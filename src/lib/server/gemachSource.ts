@@ -37,6 +37,7 @@ export function toListItem(g: Gemach): ListGemach {
         description: withoutPhones(g.description) ?? '',
         contact: withoutPhones(g.contact),
         notes: withoutPhones(g.notes),
+        arrivalNotes: withoutPhones(g.arrivalNotes),
         hasPhone: Boolean(phone),
     };
 }

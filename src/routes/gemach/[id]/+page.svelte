@@ -6,6 +6,7 @@
     import AdminGemachMenu from '$lib/components/AdminGemachMenu.svelte';
     import VerifiedStamp from '$lib/components/VerifiedStamp.svelte';
     import { runInterstitial, gatedNav } from '$lib/adGate';
+    import { formatOpeningHoursLines, isOpenNow, toSchemaOpeningHours } from '$lib/openingHours';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -44,6 +45,22 @@
         [gemach.address, gemach.neighborhood, gemach.city].filter(Boolean).join(', ')
     );
 
+    /** קומה ודירה — לא נכנסים ל-fullAddress כדי לא לשבש את קישור הניווט */
+    const floorLine = $derived(
+        [
+            gemach.floor ? `קומה ${gemach.floor}` : '',
+            gemach.apartment ? `דירה ${gemach.apartment}` : '',
+        ].filter(Boolean).join(' · ')
+    );
+
+    /** שעות פעילות: שורה לכל קבוצת ימים. טקסט חופשי ישן חוזר כשורה אחת. */
+    const hoursLines = $derived(formatOpeningHoursLines(gemach.hours));
+
+    /** "פתוח עכשיו" נחשב רק בדפדפן — חישוב בשרת היה נעול לשעון של השרת
+     *  ומייצר אי-התאמה בהידרציה. null = אין שעות מובנות, אין מה להסיק. */
+    let openNow = $state<boolean | null>(null);
+    $effect(() => { openNow = isOpenNow(gemach.hours); });
+
     /** טלפון לחיוג/ואטסאפ: ספרות בלבד, עם קידומת בינלאומית לוואטסאפ */
     const phoneDigits = $derived((gemach.phone ?? '').replace(/\D/g, ''));
     const waPhone = $derived(
@@ -72,6 +89,9 @@
         },
         ...(typeof gemach.lat === 'number' && typeof gemach.lng === 'number'
             ? { geo: { '@type': 'GeoCoordinates', latitude: gemach.lat, longitude: gemach.lng } }
+            : {}),
+        ...(toSchemaOpeningHours(gemach.hours).length > 0
+            ? { openingHoursSpecification: toSchemaOpeningHours(gemach.hours) }
             : {}),
     }));
 </script>
@@ -264,11 +284,31 @@
                             {/if}
                         </div>
                     {/if}
-                    {#if gemach.hours}
-                        <div class="flex gap-1.5"><dt class="text-gray-400 flex-shrink-0">שעות פעילות:</dt><dd class="text-white font-bold">{gemach.hours}</dd></div>
+                    {#if hoursLines.length > 0}
+                        <div class="flex gap-1.5">
+                            <dt class="text-gray-400 flex-shrink-0">שעות פעילות:</dt>
+                            <dd class="text-white font-bold">
+                                {#each hoursLines as line (line)}
+                                    <span class="block">{line}</span>
+                                {/each}
+                                {#if openNow !== null}
+                                    <span class="mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-bold {openNow
+                                        ? 'bg-green-500/15 text-green-300'
+                                        : 'bg-gray-500/15 text-gray-400'}">
+                                        {openNow ? '● פתוח עכשיו' : '● סגור עכשיו'}
+                                    </span>
+                                {/if}
+                            </dd>
+                        </div>
                     {/if}
                     {#if fullAddress}
                         <div class="flex gap-1.5"><dt class="text-gray-400 flex-shrink-0">כתובת:</dt><dd class="text-white font-bold">{fullAddress}</dd></div>
+                    {/if}
+                    {#if floorLine}
+                        <div class="flex gap-1.5"><dt class="text-gray-400 flex-shrink-0">קומה ודירה:</dt><dd class="text-white font-bold">{floorLine}</dd></div>
+                    {/if}
+                    {#if gemach.arrivalNotes}
+                        <div class="flex gap-1.5 sm:col-span-2"><dt class="text-gray-400 flex-shrink-0">הוראות הגעה:</dt><dd class="text-white font-bold">{gemach.arrivalNotes}</dd></div>
                     {/if}
                 </dl>
 
