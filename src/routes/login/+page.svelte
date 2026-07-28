@@ -19,6 +19,25 @@
 		}
 	}
 
+	// קודי השגיאה של Auth.js מגיעים באנגלית ב-?error= — מתרגמים למשהו שאפשר לפעול לפיו
+	function errorText(code: string): string {
+		switch (code) {
+			case 'sso_failed':
+				return 'לא הצלחנו לזהות אותך דרך "יוצאים לחירות". נסו שוב, או התחברו עם אימייל וסיסמה.';
+			case 'Configuration':
+			case 'OAuthSignin':
+				return 'דרך ההתחברות הזו אינה זמינה כרגע באתר. התחברו דרך "יוצאים לחירות" או עם אימייל וסיסמה.';
+			case 'OAuthCallback':
+				return 'ההתחברות מול הספק החיצוני נקטעה. נסו שוב.';
+			case 'OAuthAccountNotLinked':
+				return 'האימייל הזה כבר רשום אצלנו בדרך התחברות אחרת — התחברו באותה דרך שבה נרשמתם.';
+			case 'AccessDenied':
+				return 'ההתחברות נדחתה. ייתכן שביטלתם את האישור אצל הספק.';
+			default:
+				return 'שגיאה בהתחברות. נסו שוב.';
+		}
+	}
+
 	function oauth(provider: 'google' | 'facebook') {
 		loading = provider;
 		signIn(provider, { callbackUrl: withWelcome(data.redirectTo || '/') });
@@ -75,10 +94,10 @@
 
 		{#if err || data.error}
 			<div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
-				{err ??
-					(data.error === 'sso_failed'
-						? 'לא הצלחנו לזהות אותך דרך "יוצאים לחירות". נסו שוב, או התחברו עם אימייל וסיסמה.'
-						: 'שגיאה בהתחברות. נסו שוב.')}
+				{err ?? errorText(data.error ?? '')}
+				{#if !err && data.error && data.error !== 'sso_failed'}
+					<span class="mt-1 block text-xs text-red-400/60" dir="ltr">({data.error})</span>
+				{/if}
 			</div>
 		{/if}
 
@@ -99,22 +118,24 @@
 		<!-- שלב שני: מי שכבר רשום — מתחבר באחת מהדרכים -->
 		<div class="mb-4 flex items-center gap-3">
 			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
-			<span class="whitespace-nowrap text-xs font-bold text-gray-300">כבר רשומים? התחברו</span>
+			<span class="whitespace-nowrap text-base font-black text-white">כבר רשומים? התחברו</span>
 			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
 		</div>
 
 		<!-- 1. יוצאים לחירות -->
+		<p class="text-center text-sm leading-relaxed text-gray-200">
+			רשומים כבר באחד האתרים של יוצאים לחירות?<br />
+			נזהה אתכם אוטומטית — לחצו כאן:
+		</p>
+		<div class="sso-arrow text-center text-2xl leading-none text-amber-400" aria-hidden="true">↓</div>
 		<button
 			type="button"
 			onclick={communitySSO}
-			class="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-3.5 font-bold text-white transition hover:from-amber-400 hover:to-pink-500"
+			class="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-3.5 font-bold text-white transition hover:from-amber-400 hover:to-pink-500"
 		>
 			<span class="text-xl" aria-hidden="true">🕊️</span>
 			<span>התחבר דרך "יוצאים לחירות"</span>
 		</button>
-		<p class="mb-3 mt-2 text-center text-xs leading-relaxed text-gray-500">
-			רשומים כבר בקהילה, בשכונה או באתר אחר של יוצאים לחירות? נזהה אתכם אוטומטית.
-		</p>
 
 		{#if ssoOffsite}
 			<div class="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-xs leading-relaxed text-amber-200">
@@ -130,6 +151,7 @@
 		{/if}
 
 		<!-- 2. Google -->
+		{#if data.oauth?.google}
 		<button
 			type="button"
 			onclick={() => oauth('google')}
@@ -144,8 +166,10 @@
 			</svg>
 			המשך עם Google
 		</button>
+		{/if}
 
 		<!-- 3. Facebook -->
+		{#if data.oauth?.facebook}
 		<button
 			type="button"
 			onclick={() => oauth('facebook')}
@@ -157,11 +181,12 @@
 			</svg>
 			המשך עם Facebook
 		</button>
+		{/if}
 
 		<!-- 4. אימייל וסיסמה (למי שנרשם כך) -->
 		<div class="my-4 flex items-center gap-3">
 			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
-			<span class="whitespace-nowrap text-xs text-gray-500">או עם אימייל וסיסמה</span>
+			<span class="whitespace-nowrap text-base font-bold text-gray-200">או עם אימייל וסיסמה</span>
 			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
 		</div>
 
@@ -192,3 +217,27 @@
 		</form>
 	</div>
 </div>
+
+<style>
+	/* חץ שמוביל את העין מהטקסט אל כפתור "יוצאים לחירות" */
+	.sso-arrow {
+		margin: 0.25rem 0;
+		animation: sso-arrow-bounce 1.4s ease-in-out infinite;
+	}
+
+	@keyframes sso-arrow-bounce {
+		0%,
+		100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(5px);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.sso-arrow {
+			animation: none;
+		}
+	}
+</style>

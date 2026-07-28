@@ -42,15 +42,20 @@
 				</button>
 			</form>
 		{:else}
-			<div class="mb-4 text-5xl">🔒</div>
-			<h1 class="mb-2 text-2xl font-black text-yellow-300">עדיין אינך ברשימה</h1>
-			<p class="mb-6 text-sm leading-relaxed text-gray-400">
-				לא זיהינו אותך במערכת של יוצאים לחירות. אפשר להירשם כאן ישירות, או דרך אתר הקהילה.
+			<div class="mb-4 text-5xl">👤</div>
+			<h1 class="mb-2 text-2xl font-black text-yellow-300">עדיין אין לכם חשבון</h1>
+			<p class="mb-6 text-base leading-relaxed text-gray-300">
+				לא מצאנו אתכם ברשימת המשתמשים של יוצאים לחירות. ההרשמה לוקחת דקה,
+				ומשם אתם מזוהים בכל אתרי הרשת — בלי להירשם שוב.
 			</p>
-			<div class="flex flex-col gap-2.5">
-				<a href="/register" class="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 py-3 font-black text-white hover:opacity-90">✨ הרשמה לאתר</a>
-				<a href="https://community.gofreeil.com/" class="rounded-xl border border-emerald-500/30 bg-[#1c2f5a] py-3 font-bold text-emerald-200 hover:bg-[#243a6e]">🕊️ הרשמה בקהילת יוצאים לחירות</a>
-				<a href="/login" class="mt-1 text-sm text-gray-400 underline hover:text-gray-200">חזרה להתחברות</a>
+			<div class="flex flex-col gap-3">
+				<a
+					href="/register?redirect={encodeURIComponent(data.returnTo || '/')}"
+					class="rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 py-3.5 font-black text-white transition hover:from-blue-500 hover:to-purple-500"
+				>
+					הרשמה לחשבון חדש
+				</a>
+				<a href="/login" class="text-sm text-gray-400 underline hover:text-gray-200">חזרה להתחברות</a>
 			</div>
 		{/if}
 	</div>

@@ -74,10 +74,19 @@ const providers = [
 	})
 ];
 
-if (AUTH_GOOGLE_ID && AUTH_GOOGLE_SECRET) {
+/**
+ * אילו ספקי OAuth באמת רשומים. דף ההתחברות קורא מכאן כדי לא להציג כפתור
+ * לספק שלא הוגדר — לחיצה עליו הייתה מחזירה את המשתמש עם שגיאה סתומה.
+ */
+export const oauthEnabled = {
+	google: Boolean(AUTH_GOOGLE_ID && AUTH_GOOGLE_SECRET),
+	facebook: Boolean(AUTH_FACEBOOK_ID && AUTH_FACEBOOK_SECRET)
+};
+
+if (oauthEnabled.google) {
 	providers.unshift(Google({ clientId: AUTH_GOOGLE_ID, clientSecret: AUTH_GOOGLE_SECRET }) as never);
 }
-if (AUTH_FACEBOOK_ID && AUTH_FACEBOOK_SECRET) {
+if (oauthEnabled.facebook) {
 	providers.unshift(Facebook({ clientId: AUTH_FACEBOOK_ID, clientSecret: AUTH_FACEBOOK_SECRET }) as never);
 }
 

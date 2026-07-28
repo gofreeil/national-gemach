@@ -75,44 +75,44 @@
 			</svg>
 		</button>
 
-		<div class="min-h-full flex items-start md:items-center justify-center px-4 py-14">
-			<div class="w-full max-w-md text-center">
+		<div class="min-h-full flex items-start md:items-center justify-center px-3 py-8 sm:px-4 sm:py-12">
+			<div class="w-full max-w-none sm:max-w-3xl lg:max-w-5xl text-center">
 				{#if kind === 'new'}
 					<img
 						src="/images/logo.png"
 						alt="הגמ&quot;ח הארצי"
-						class="mx-auto w-20 h-20 rounded-full object-cover bg-white ring-2 ring-purple-400/40 shadow-lg mb-4"
+						class="mx-auto w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover bg-white ring-2 ring-purple-400/40 shadow-lg mb-4"
 					/>
-					<h2 class="flex items-center justify-center gap-2 text-white font-black text-2xl mb-3">
+					<h2 class="flex items-center justify-center gap-2 text-white font-black text-3xl sm:text-4xl mb-3">
 						<span class="text-xl" aria-hidden="true">🎉</span>
 						<span>ברוכים המצטרפים</span>
 					</h2>
-					<p class="text-gray-200 text-base leading-relaxed max-w-xl mx-auto mb-5">
+					<p class="text-gray-200 text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto mb-6">
 						נרשמת כמשתמש בגמ"ח הארצי וברשת יוצאים לחירות. אתה מוכר כעת בכל האתרים שלנו ללא צורך הזדהות נוספת.
 					</p>
-					<p class="text-purple-200 text-sm md:text-base font-bold tracking-wide mb-4">
+					<p class="text-purple-200 text-base sm:text-lg font-bold tracking-wide mb-4">
 						יוצאים לחירות מוכיחים שעולם חדש הוא אפשרי
 					</p>
 				{:else}
-					<div class="text-6xl mb-4">👋</div>
-					<h2 class="text-white font-black text-2xl mb-3">
+					<div class="text-7xl sm:text-8xl mb-4">👋</div>
+					<h2 class="text-white font-black text-3xl sm:text-4xl mb-3">
 						ברוכים השבים, {userName.trim() || 'משתמש'}!
 					</h2>
-					<p class="text-gray-200 text-base leading-relaxed max-w-xl mx-auto mb-5">
+					<p class="text-gray-200 text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto mb-6">
 						סייע לנו לקדם את החברה שלנו ליותר סולידרית, אחראית וחופשיה!
 					</p>
 				{/if}
 				<!-- לוגואים של כל האתרים ברשת (הרשימה הקנונית המלאה, כולל האתר
 				     הנוכחי) — מוצגים בשני המצבים (מצטרפים + שבים). flex-wrap עם
 				     מרכוז כדי שהשורה האחרונה (חלקית) תתמרכז ולא תישאר צמודה לצד -->
-				<div class="flex flex-wrap justify-center gap-2.5">
+				<div class="flex flex-wrap justify-center gap-2 sm:gap-3">
 					{#each networkSites as site (site.id)}
 						<a
 							href={site.href}
 							target="_blank"
 							rel="noopener noreferrer"
 							title={site.title}
-							class="group flex flex-col items-center gap-1.5 rounded-xl bg-[#16264d] hover:bg-[#213569] border border-[#3b5794] {kind === 'new' ? 'hover:border-purple-400/40' : 'hover:border-emerald-400/40'} p-2 transition-all hover:-translate-y-0.5 grow-0 basis-[calc(33.333%-0.47rem)] sm:basis-[calc(25%-0.52rem)] md:basis-[calc(20%-0.55rem)]"
+							class="group flex flex-col items-center gap-2 rounded-xl bg-[#16264d] hover:bg-[#213569] border border-[#3b5794] {kind === 'new' ? 'hover:border-purple-400/40' : 'hover:border-emerald-400/40'} p-2 sm:p-3 transition-all hover:-translate-y-0.5 grow-0 basis-[calc(33.333%-0.34rem)] sm:basis-[calc(25%-0.57rem)] lg:basis-[calc(20%-0.6rem)]"
 						>
 							<div class="w-full aspect-[4/3] overflow-hidden rounded-lg bg-gradient-to-br {site.color}">
 								<img
@@ -122,7 +122,7 @@
 									class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
 								/>
 							</div>
-							<span class="text-[11px] leading-tight font-semibold text-gray-200 line-clamp-2 text-center">{site.title}</span>
+							<span class="text-xs sm:text-sm leading-tight font-semibold text-gray-200 line-clamp-2 text-center">{site.title}</span>
 						</a>
 					{/each}
 				</div>
