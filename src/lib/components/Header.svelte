@@ -63,13 +63,13 @@
                     />
                 </div>
                 <div class="min-w-0">
-                    <h1 class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight">
+                    <h1 class="truncate bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight">
                         הגמ"ח הארצי
                     </h1>
-                    <p class="text-xs text-gray-100 leading-tight">כל הגמחים בארץ בכף ידך</p>
+                    <p class="truncate text-xs text-gray-100 leading-tight">כל הגמחים בארץ בכף ידך</p>
                 </div>
             </a>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-shrink-0 items-center gap-1.5">
                 <!-- פאנל ניהול (מורשים בלבד) -->
                 {#if adminRole}
                     <a
@@ -81,7 +81,38 @@
                         <span aria-hidden="true">🛠️</span>
                     </a>
                 {/if}
-                <!-- התחברות / אזור אישי -->
+                <!-- Language (ימין) -->
+                <div class="relative lang-dropdown">
+                    <button
+                        onclick={() => showLangDropdown = !showLangDropdown}
+                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
+                        aria-label="בחר שפה"
+                    >
+                        <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
+                    </button>
+                    {#if showLangDropdown}
+                        <div class="absolute right-0 mt-2 w-36 rounded-lg bg-[#1c2f5a] border border-[#3b5794] shadow-xl z-50">
+                            {#each languages as lang}
+                                <button
+                                    class="flex w-full items-center gap-3 px-3 py-2 text-white hover:bg-[#213569] transition-colors"
+                                    onclick={() => changeLang(lang.code)}
+                                >
+                                    <span class="fi fi-{lang.flag}" style="font-size:1.1rem"></span>
+                                    <span class="text-sm">{lang.name}</span>
+                                </button>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+                <!-- הוספת גמ"ח (אמצע) -->
+                <a
+                    href="/gemach/add"
+                    class="flex h-9 items-center rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-2.5 text-xs font-bold text-white shadow-lg transition-opacity hover:opacity-90"
+                    title="הוספת גמ&quot;ח"
+                >
+                    + גמ"ח
+                </a>
+                <!-- התחברות / אזור אישי (שמאל) -->
                 {#if user}
                     <a
                         href="/profile"
@@ -98,32 +129,9 @@
                         aria-label="התחברות / אזור אישי"
                         title="התחברות"
                     >
-                        <span aria-hidden="true">🕊️</span>
+                        <span aria-hidden="true">👤</span>
                     </a>
                 {/if}
-                <!-- Language -->
-                <div class="relative lang-dropdown">
-                    <button
-                        onclick={() => showLangDropdown = !showLangDropdown}
-                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
-                        aria-label="בחר שפה"
-                    >
-                        <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
-                    </button>
-                    {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-36 rounded-lg bg-[#1c2f5a] border border-[#3b5794] shadow-xl z-50">
-                            {#each languages as lang}
-                                <button
-                                    class="flex w-full items-center gap-3 px-3 py-2 text-white hover:bg-[#213569] transition-colors"
-                                    onclick={() => changeLang(lang.code)}
-                                >
-                                    <span class="fi fi-{lang.flag}" style="font-size:1.1rem"></span>
-                                    <span class="text-sm">{lang.name}</span>
-                                </button>
-                            {/each}
-                        </div>
-                    {/if}
-                </div>
             </div>
         </div>
 
@@ -172,7 +180,43 @@
                     </a>
                 {/if}
 
-                <!-- התחברות / אזור אישי -->
+                <!-- Language (ימין) -->
+                <div class="relative lang-dropdown">
+                    <button
+                        onclick={() => showLangDropdown = !showLangDropdown}
+                        class="flex items-center gap-2 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-2 text-white transition-colors"
+                        aria-label="בחר שפה"
+                    >
+                        <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
+                        <span class="text-sm">{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.name || 'עברית'}</span>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    {#if showLangDropdown}
+                        <div class="absolute right-0 mt-2 w-40 rounded-lg bg-[#1c2f5a] border border-[#3b5794] shadow-xl z-50">
+                            {#each languages as lang}
+                                <button
+                                    class="flex w-full items-center gap-3 px-4 py-2 text-white hover:bg-[#213569] transition-colors"
+                                    onclick={() => changeLang(lang.code)}
+                                >
+                                    <span class="fi fi-{lang.flag}" style="font-size:1.2rem"></span>
+                                    <span class="text-sm">{lang.name}</span>
+                                </button>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- Add Gemach button (אמצע) -->
+                <a
+                    href="/gemach/add"
+                    class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm hover:opacity-90 transition-opacity shadow-lg"
+                >
+                    + הוסף גמח
+                </a>
+
+                <!-- התחברות / אזור אישי (שמאל) -->
                 {#if user}
                     <a
                         href="/profile"
@@ -187,46 +231,10 @@
                         href="/login?redirect=/profile"
                         class="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 px-3 py-2 text-sm font-bold text-white transition-all"
                     >
-                        <span>🕊️</span>
+                        <span aria-hidden="true">👤</span>
                         <span class="hidden sm:inline">התחברות</span>
                     </a>
                 {/if}
-
-                <!-- Add Gemach button -->
-                <a
-                    href="/gemach/add"
-                    class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm hover:opacity-90 transition-opacity shadow-lg"
-                >
-                    + הוסף גמח
-                </a>
-
-                <!-- Language -->
-                <div class="relative lang-dropdown">
-                    <button
-                        onclick={() => showLangDropdown = !showLangDropdown}
-                        class="flex items-center gap-2 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-2 text-white transition-colors"
-                        aria-label="בחר שפה"
-                    >
-                        <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
-                        <span class="text-sm">{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.name || 'עברית'}</span>
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    {#if showLangDropdown}
-                        <div class="absolute left-0 mt-2 w-40 rounded-lg bg-[#1c2f5a] border border-[#3b5794] shadow-xl z-50">
-                            {#each languages as lang}
-                                <button
-                                    class="flex w-full items-center gap-3 px-4 py-2 text-white hover:bg-[#213569] transition-colors"
-                                    onclick={() => changeLang(lang.code)}
-                                >
-                                    <span class="fi fi-{lang.flag}" style="font-size:1.2rem"></span>
-                                    <span class="text-sm">{lang.name}</span>
-                                </button>
-                            {/each}
-                        </div>
-                    {/if}
-                </div>
             </div>
         </div>
     </div>

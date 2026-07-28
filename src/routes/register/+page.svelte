@@ -15,7 +15,7 @@
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
 	<div class="w-full max-w-md rounded-3xl border border-[#3b5794] bg-[#16264d] p-8 shadow-2xl">
 		<div class="mb-6 text-center">
-			<div class="mb-3 text-4xl">🕊️</div>
+			<div class="mb-3 text-4xl">👤</div>
 			<h1 class="text-2xl font-black text-white">הרשמה</h1>
 			<p class="mt-1 text-sm text-gray-400">הצטרפו למערכת המאוחדת של יוצאים לחירות</p>
 		</div>
