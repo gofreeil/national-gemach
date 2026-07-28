@@ -4,6 +4,8 @@
 
     const role = $derived(data.admin.role as 'super_admin' | 'admin');
     const isSuper = $derived(role === 'super_admin');
+    // הבעלים בלבד — לא כל סופר-אדמין
+    const isOwner = $derived(Boolean(data.admin.owner));
 
     const nav = $derived([
         { href: '/admin',            label: 'סקירה',       icon: '📊', exact: true },
@@ -13,9 +15,11 @@
         { href: '/admin/pinned',     label: 'נעוצים',      icon: '📌', exact: false },
         { href: '/admin/discovery',  label: 'גילוי חכם',   icon: '🛰️', exact: false },
         ...(isSuper ? [
-            { href: '/admin/categories', label: 'קטגוריות', icon: '🏷️', exact: false },
             { href: '/admin/ads',    label: 'ניהול פרסומות', icon: '📢', exact: false },
             { href: '/admin/admins', label: 'ניהול אדמינים', icon: '🔑', exact: false },
+        ] : []),
+        ...(isOwner ? [
+            { href: '/admin/categories', label: 'קטגוריות', icon: '🏷️', exact: false },
         ] : []),
     ]);
 

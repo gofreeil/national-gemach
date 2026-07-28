@@ -2,6 +2,7 @@
     let { data } = $props();
     const s = $derived(data.stats);
     const role = $derived(data.admin.role as 'super_admin' | 'admin');
+    const isOwner = $derived(Boolean(data.admin.owner));
     const adsSum = $derived(data.adsSummary);
 
     const maxVisits = $derived(Math.max(...data.visits.map(v => v.count), 0));
@@ -171,12 +172,14 @@
             <div class="font-bold text-white">גילוי חכם</div>
             <div class="text-xs text-gray-400 mt-1">איתור גמ"חים חדשים מ-Google ואישור טיוטות</div>
         </a>
-        {#if role === 'super_admin'}
+        {#if isOwner}
             <a href="/admin/categories" class="card p-5 hover:bg-[#1e3260] transition-colors block">
                 <div class="text-2xl mb-2" aria-hidden="true">🏷️</div>
                 <div class="font-bold text-white">קטגוריות</div>
                 <div class="text-xs text-gray-400 mt-1">הוספה, עריכה וסידור קטגוריות</div>
             </a>
+        {/if}
+        {#if role === 'super_admin'}
             <a href="/admin/admins" class="card p-5 hover:bg-[#1e3260] transition-colors block">
                 <div class="text-2xl mb-2" aria-hidden="true">🔑</div>
                 <div class="font-bold text-white">ניהול אדמינים</div>
