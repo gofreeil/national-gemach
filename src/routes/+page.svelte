@@ -484,15 +484,11 @@
             </h2>
         </div>
 
-        <!-- "מיזמים חשובים לציבור" נפתח בבאנר של פינת האבדות — מיזם ארצי של
-             הרשת, ולכן הוא יושב מעל התוצאות ולא בתוך רשימת הגמ"חים -->
-        {#if selectedCategory === 'initiatives'}
-            <div class="mb-5">
-                <AvedotBanner />
-            </div>
-        {/if}
-
         {#if filteredGemachim.length === 0}
+            <!-- גם בלי תוצאות, "מיזמים חשובים לציבור" עדיין מציג את פינת האבדות -->
+            {#if selectedCategory === 'initiatives'}
+                <div class="mb-5"><AvedotBanner /></div>
+            {/if}
             <!-- קופסה כהה: טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
             <div class="mx-auto max-w-md rounded-2xl border border-[#3b5794] bg-[#16264d] px-6 py-12 text-center text-gray-300 shadow-lg">
                 <div class="text-5xl mb-4" aria-hidden="true">🔍</div>
@@ -504,6 +500,11 @@
             </div>
         {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- פינת האבדות ראשונה ברשת התוצאות של "מיזמים חשובים לציבור" —
+                     משבצת רגילה בגודל כרטיס, לא באנר-על מעל הרשימה -->
+                {#if selectedCategory === 'initiatives'}
+                    <AvedotBanner />
+                {/if}
                 {#each filteredGemachim as gemach (gemach.id)}
                     <GemachCard {gemach} {categories} />
                 {/each}
