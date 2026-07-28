@@ -162,11 +162,17 @@ async function cmdWorker(flags: CliArgs['flags']): Promise<void> {
 						logger.error('המשימה נכשלה', e);
 					}
 				}
-			} else if (once) {
+			} else if (once || drain) {
 				logger.info('אין משימות בתור.');
 				break;
 			}
 			if (once) break;
+			// drain (ריצה ב-CI): לרוקן ולצאת, לא להישאר ולהאזין.
+			// אם נמצאה משימה אך התפיסה נכשלה — יוצאים במקום להסתובב בלולאה חמה.
+			if (drain) {
+				if (!didWork) break;
+				continue;
+			}
 			// ריצה שהסתיימה → בודקים מיד אם יש עוד בתור; אחרת ממתינים
 			if (!didWork) await sleep(intervalSec * 1000);
 		}
