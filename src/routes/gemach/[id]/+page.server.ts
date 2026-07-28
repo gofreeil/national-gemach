@@ -5,10 +5,19 @@ import { findGemachById, getMergedGemachim, toListItem } from '$lib/server/gemac
 import { getPinnedIdsResolved } from '$lib/server/pinned';
 import { getGemachOwnerId } from '$lib/server/db';
 import { isGemachOwner } from '$lib/server/ownership';
+import { resolveRole } from '$lib/server/admin';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
     const [gemach, categories] = await Promise.all([findGemachById(params.id), getCategories()]);
     if (!gemach) throw error(404, 'הגמ"ח המבוקש לא נמצא במאגר');
+
+    // טיוטה גלויה רק לאדמין (שרואה אותה עם באנר "טיוטה") — לכל השאר 404,
+    // כאילו הגמ"ח לא קיים, כדי שהחזרה-לטיוטה באמת תוריד אותו מהאוויר.
+    if (gemach.status === 'draft') {
+        const session = await locals.auth();
+        const role = await resolveRole(session?.user);
+        if (!role) throw error(404, 'הגמ"ח המבוקש לא נמצא במאגר');
+    }
 
     // "גמ"חים נוספים" — אותה קטגוריה, ואם אין מספיק אז אותה עיר
     const all = await getMergedGemachim();

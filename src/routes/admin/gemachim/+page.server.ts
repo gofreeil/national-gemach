@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getAllGemachim, deleteGemach, patchGemachOrder } from '$lib/server/db';
+import { getAllGemachimWithDrafts, deleteGemach, patchGemachOrder, setGemachStatus, setGemachVerified } from '$lib/server/db';
 import { getCategories } from '$lib/server/adminStore';
 import { getPinnedIdsResolved, pinGemach, unpinGemach } from '$lib/server/pinned';
 import type { Gemach } from '$lib/gemachData';
@@ -11,7 +11,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
-	const [all, categories] = await Promise.all([getAllGemachim(), getCategories()]);
+	// כולל טיוטות — מוצגות עם תג "טיוטה" וכפתור פרסום
+	const [all, categories] = await Promise.all([getAllGemachimWithDrafts(), getCategories()]);
 	// מצב הנעיצה מגיע מרשימת הנעוצים (/admin/pinned) — היא מקור האמת
 	const pinnedIds = await getPinnedIdsResolved(all);
 
@@ -49,7 +50,7 @@ function effOrder(g: Gemach, idx: number): number {
 }
 
 async function reorder(id: string, dir: 'up' | 'down') {
-	const list = await getAllGemachim(); // כבר ממויין לפי התצוגה
+	const list = await getAllGemachimWithDrafts(); // כבר ממויין לפי התצוגה
 	const i = list.findIndex(g => g.id === id);
 	if (i < 0) return;
 
@@ -94,5 +95,29 @@ export const actions: Actions = {
 		if (!id) return fail(400, { error: 'חסר מזהה' });
 		try { await deleteGemach(id); } catch (e) { console.error(e); return fail(500, { error: 'המחיקה נכשלה' }); }
 		return { success: true, deleted: id };
+	},
+	/** פרסום / החזרה לטיוטה — לפי הערך בשדה status */
+	setStatus: async ({ request, locals }) => {
+		const fd = await request.formData();
+		const id = fd.get('id') as string;
+		const status = fd.get('status') as string;
+		if (!id || !['active', 'draft'].includes(status)) return fail(400, { error: 'קלט לא תקין' });
+		const session = await locals.auth();
+		const actor = session?.user?.email || session?.user?.name || 'admin';
+		try {
+			await setGemachStatus(id, status, status === 'active'
+				? { approved_at: new Date().toISOString(), approved_by: actor, rejection_reason: '' }
+				: { drafted_at: new Date().toISOString(), drafted_by: actor });
+		} catch (e) { console.error(e); return fail(500, { error: 'עדכון הסטטוס נכשל' }); }
+		return { success: true };
+	},
+	/** הענקה/הסרה של חותמת "מאושר" (בדיקת מערכת) */
+	toggleVerified: async ({ request }) => {
+		const fd = await request.formData();
+		const id = fd.get('id') as string;
+		const verified = fd.get('verified') === 'true';
+		if (!id) return fail(400, { error: 'חסר מזהה' });
+		try { await setGemachVerified(id, verified); } catch (e) { console.error(e); return fail(500, { error: 'עדכון החותמת נכשל' }); }
+		return { success: true };
 	}
 };

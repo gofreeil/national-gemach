@@ -8,7 +8,7 @@ import type { Gemach } from '$lib/gemachData';
 import { categories } from '$lib/gemachData';
 import { resolveGemachCoords, hasValidCoords } from './geocode';
 
-interface StrapiItem {
+export interface StrapiItem {
     id: number;
     documentId: string;
     label: string;
@@ -62,7 +62,7 @@ function pickGallery(extra: Record<string, unknown>): string[] {
 /** ממפה item של Strapi לסכמת Gemach של האתר הארצי.
  *  includeOwner=true חושף את user_id ל-ownerId — רק לשליפת פריט בודד לעריכה,
  *  לעולם לא ברשימות (user_id עשוי להיות מייל ואסור לדלוף לציבור). */
-function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach {
+export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach {
     const extra = (item.extra_fields ?? {}) as Record<string, unknown>;
     const rawType = (extra.gmach_type ?? '').toString().trim();
 
@@ -108,6 +108,8 @@ function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach {
         sourceId:      toStr(extra.source_id),
         managed:       true,
         ownerId:       includeOwner ? (item.user_id ?? undefined) : undefined,
+        status:        item.status1 ?? undefined,
+        verified:      extra.verified === true || extra.verified === 'true',
     };
 }
 
@@ -140,6 +142,84 @@ export async function getAllGemachim(): Promise<Gemach[]> {
         console.error('[national-gemach] getAllGemachim failed:', e);
         return [];
     }
+}
+
+/** כמו getAllGemachim אבל כולל גם טיוטות ('draft') — לרשימת הניהול בפאנל,
+ *  שם האדמין רואה טיוטה עם תג ויכול לפרסם/להחזיר. 'rejected' לא נכלל —
+ *  הוא שייך למסך הגילוי בלבד. */
+export async function getAllGemachimWithDrafts(): Promise<Gemach[]> {
+    try {
+        const data = await strapiGetAll<StrapiItem>('/api/items', {
+            'filters[category][$eq]':    CATEGORY,
+            'filters[status1][$in][0]':  'active',
+            'filters[status1][$in][1]':  'draft',
+            'sort':                      'createdAt:desc',
+        });
+        return data.map((item) => mapItemToGemach(item)).sort(sortManaged);
+    } catch (e) {
+        if (e instanceof StrapiContentTypeError) return [];
+        console.error('[national-gemach] getAllGemachimWithDrafts failed:', e);
+        return [];
+    }
+}
+
+/** גמ"חים לפי סטטוס, כ-items גולמיים (למסך הגילוי בפאנל — שצריך גם את
+ *  extra_fields.discovery). 'draft' = טיוטות מהאוטומציה, 'rejected' = נדחו. */
+export async function getRawGemachimByStatus(status: string): Promise<StrapiItem[]> {
+    try {
+        return await strapiGetAll<StrapiItem>('/api/items', {
+            'filters[category][$eq]': CATEGORY,
+            'filters[status1][$eq]':  status,
+            'sort':                   'createdAt:desc',
+        });
+    } catch (e) {
+        if (e instanceof StrapiContentTypeError) return [];
+        console.error('[national-gemach] getRawGemachimByStatus failed:', e);
+        return [];
+    }
+}
+
+/** קובע את status1 של פריט, עם עדכון אופציונלי של מטא-הגילוי
+ *  (extra_fields.discovery). קריאה-מיזוג-כתיבה — לא דורס extra_fields. */
+export async function setGemachStatus(
+    documentId: string,
+    status: string,
+    discoveryPatch?: Record<string, unknown>,
+): Promise<void> {
+    let existingExtra: Record<string, unknown> = {};
+    try {
+        const cur = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
+        existingExtra = (cur.data?.extra_fields ?? {}) as Record<string, unknown>;
+    } catch { /* ממשיכים עם extra ריק */ }
+
+    const extra = { ...existingExtra };
+    if (discoveryPatch) {
+        const prev = (typeof extra.discovery === 'object' && extra.discovery !== null)
+            ? extra.discovery as Record<string, unknown>
+            : {};
+        extra.discovery = { ...prev, ...discoveryPatch };
+    }
+    await strapiPut(`/api/items/${documentId}`, { data: { status1: status, extra_fields: extra } });
+}
+
+/** מעניק/מסיר את חותמת "מאושר" (extra_fields.verified) — הגמ"ח עבר בדיקת
+ *  מערכת. קריאה-מיזוג-כתיבה כדי לא לדרוס שדות אחרים ב-extra_fields. */
+export async function setGemachVerified(documentId: string, verified: boolean): Promise<void> {
+    let existingExtra: Record<string, unknown> = {};
+    try {
+        const cur = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
+        existingExtra = (cur.data?.extra_fields ?? {}) as Record<string, unknown>;
+    } catch { /* ממשיכים עם extra ריק */ }
+
+    const extra = { ...existingExtra };
+    if (verified) {
+        extra.verified = true;
+        extra.verified_at = new Date().toISOString();
+    } else {
+        delete extra.verified;
+        delete extra.verified_at;
+    }
+    await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: extra } });
 }
 
 /** מחזיר גמ"ח בודד לפי documentId (לעריכה בפאנל / ע"י הבעלים). כולל ownerId. */

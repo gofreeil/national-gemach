@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { Gemach, ListGemach } from '$lib/gemachData';
-import { getAllGemachim } from './db';
+import { getAllGemachimWithDrafts } from './db';
 import { staticGemachim } from '$lib/staticGemachim';
 
 // מספר טלפון שנכתב בתוך שדה טקסט חופשי (תיאור / איש קשר / הערות) מוסתר גם
@@ -44,20 +44,26 @@ export function toListItem(g: Gemach): ListGemach {
 /**
  * כל הגמ"חים להצגה: מה שב-Strapi (מנוהל/נערך בפאנל) ואחריו הרשימה הסטטית
  * בניכוי פריטים שכבר יובאו — התאמה לפי sourceId ↔ id הסטטי, כדי שלא יופיעו פעמיים.
+ * טיוטות לא נכללות — אבל כן חוסמות את התאום הסטטי שלהן, אחרת "החזר לטיוטה"
+ * על פריט שיובא היה מחיה את הגרסה הסטטית הישנה מהדלת האחורית.
  */
 export async function getMergedGemachim(): Promise<Gemach[]> {
-    const strapiGemachim = await getAllGemachim();
+    const strapiGemachim = await getAllGemachimWithDrafts();
     const importedIds = new Set(strapiGemachim.map(g => g.sourceId).filter(Boolean));
+    const activeStrapi = strapiGemachim.filter(g => g.status !== 'draft');
     const remainingStatic = staticGemachim.filter(g => !importedIds.has(g.id));
-    return [...strapiGemachim, ...remainingStatic];
+    return [...activeStrapi, ...remainingStatic];
 }
 
 /**
  * גמ"ח בודד לדף הפריט. מחפש קודם לפי המזהה שבו הפריט מוצג (documentId של
  * Strapi או id סטטי), ואז לפי sourceId — כדי שקישורים ישנים לפריט סטטי
  * ימשיכו לעבוד גם אחרי שיובא ל-DB וקיבל documentId חדש.
+ * כולל טיוטות — הקורא (דף הגמ"ח) אחראי להסתיר טיוטה ממי שאינו אדמין.
  */
 export async function findGemachById(id: string): Promise<Gemach | null> {
-    const all = await getMergedGemachim();
+    const strapiAll = await getAllGemachimWithDrafts();
+    const importedIds = new Set(strapiAll.map(g => g.sourceId).filter(Boolean));
+    const all = [...strapiAll, ...staticGemachim.filter(g => !importedIds.has(g.id))];
     return all.find(g => g.id === id) ?? all.find(g => g.sourceId === id) ?? null;
 }

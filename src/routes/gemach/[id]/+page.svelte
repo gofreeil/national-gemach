@@ -3,6 +3,8 @@
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
     import PhoneIcon from '$lib/components/PhoneIcon.svelte';
     import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+    import AdminGemachMenu from '$lib/components/AdminGemachMenu.svelte';
+    import VerifiedStamp from '$lib/components/VerifiedStamp.svelte';
     import { runInterstitial, gatedNav } from '$lib/adGate';
     import type { PageData } from './$types';
 
@@ -99,6 +101,12 @@
         ]}
     />
 
+    {#if gemach.status === 'draft'}
+        <div class="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-200">
+            📝 הגמ"ח בטיוטה — מוצג רק לך (אדמין). אפשר לפרסם אותו מתפריט הניהול ⚙️.
+        </div>
+    {/if}
+
     {#if justUpdated}
         <div class="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200">
             ✅ הגמ"ח עודכן בהצלחה
@@ -162,7 +170,13 @@
                         </div>
                     {/if}
                     <div class="flex-1 min-w-0">
-                        <h1 class="text-xl md:text-2xl font-black text-white leading-tight">{gemach.name}</h1>
+                        <div class="flex items-start justify-between gap-3">
+                            <h1 class="text-xl md:text-2xl font-black text-white leading-tight">{gemach.name}</h1>
+                            <div class="flex flex-shrink-0 items-center gap-2.5">
+                                {#if gemach.verified}<VerifiedStamp size="md" />{/if}
+                                <AdminGemachMenu {gemach} redirectOnDelete="/gemachim" />
+                            </div>
+                        </div>
                         <div class="flex items-center gap-2 mt-1.5 flex-wrap">
                             <a href="/?category={gemach.category}"
                                 class="text-xs bg-blue-900/50 text-blue-300 px-2.5 py-1 rounded-full border border-blue-500/30 hover:bg-blue-900/80 transition-colors">
@@ -220,7 +234,20 @@
                 <!-- פרטים — שורות קומפקטיות במקום כרטיס נפרד -->
                 <dl class="mt-3.5 pt-3.5 border-t border-[#3b5794] grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
                     {#if gemach.contact}
-                        <div class="flex gap-1.5"><dt class="text-gray-400 flex-shrink-0">איש קשר:</dt><dd class="text-white font-bold">{gemach.contact}</dd></div>
+                        <div class="flex gap-1.5">
+                            <dt class="text-gray-400 flex-shrink-0">איש קשר:</dt>
+                            {#if phoneRevealed || !gemach.phone}
+                                <dd class="text-white font-bold">{gemach.contact}</dd>
+                            {:else}
+                                <!-- איש הקשר נחשף יחד עם הטלפון — אותה לחיצה, אותה פרסומת -->
+                                <dd>
+                                    <button type="button" onclick={revealPhone}
+                                        class="inline-flex items-center gap-1.5 font-bold text-green-400 hover:text-green-300 transition-colors">
+                                        👤 גלה איש קשר
+                                    </button>
+                                </dd>
+                            {/if}
+                        </div>
                     {/if}
                     {#if gemach.phone}
                         <div class="flex gap-1.5">

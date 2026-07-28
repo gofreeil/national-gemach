@@ -9,6 +9,8 @@
     //      לחיצה עוברת קודם בפרסומת-הביניים. אין קישורים מתחרים בפנים.
     // ============================================================
     import GemachAvatar from './GemachAvatar.svelte';
+    import AdminGemachMenu from './AdminGemachMenu.svelte';
+    import VerifiedStamp from './VerifiedStamp.svelte';
     import { gatedNav } from '$lib/adGate';
     import type { ListGemach, CategoryDef } from '$lib/gemachData';
 
@@ -37,11 +39,18 @@
     // שנכתבו בתוך הטקסט (toListItem ב-gemachSource.ts).
 </script>
 
+<!-- בלי overflow-hidden — התפריט הנפתח של האדמין חייב לגלוש מחוץ לכרטיס;
+     פינות התמונה מעוגלות ממילא בקונטיינר פנימי משלה -->
 <article
-    class="overflow-hidden rounded-2xl border {pinned
+    class="relative rounded-2xl border {pinned
         ? 'border-amber-500/30'
         : 'border-[#3b5794]'} bg-[#16264d] transition-all hover:border-[#4c6cb0] hover:bg-[#1e3260]"
 >
+    <!-- כפתור ניהול לאדמין — צף מעל הקישור של הכרטיס, בפינת התמונה -->
+    <div class="absolute left-2 top-2 z-20">
+        <AdminGemachMenu {gemach} />
+    </div>
+
     <a {href} onclick={(e) => gatedNav(e, href)} class="group flex items-stretch gap-4 p-4">
         <div class="min-w-0 flex-1">
             <svelte:element
@@ -52,6 +61,7 @@
             </svelte:element>
 
             <div class="mt-1 flex flex-wrap items-center gap-2">
+                {#if gemach.verified}<VerifiedStamp />{/if}
                 <span class="rounded-full border border-blue-500/30 bg-blue-900/50 px-2 py-0.5 text-xs text-blue-300">
                     {categoryLabel}
                 </span>

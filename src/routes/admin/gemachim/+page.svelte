@@ -2,6 +2,7 @@
     import { enhance } from '$app/forms';
     import { page } from '$app/stores';
     import GemachAvatar from '$lib/components/GemachAvatar.svelte';
+    import VerifiedStamp from '$lib/components/VerifiedStamp.svelte';
 
     let { data } = $props();
 
@@ -85,6 +86,10 @@
                         <div class="flex items-center gap-2 flex-wrap">
                             {#if pinned.has(g.id)}<span class="text-amber-400" title="נעוץ בדף הבית">📌</span>{/if}
                             <h3 class="font-bold text-white truncate">{g.name}</h3>
+                            {#if g.status === 'draft'}
+                                <span class="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">טיוטה</span>
+                            {/if}
+                            {#if g.verified}<VerifiedStamp />{/if}
                         </div>
                         <div class="flex items-center gap-2 mt-1 flex-wrap text-xs text-gray-400">
                             <span class="bg-blue-900/40 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/20">{catLabel(g.category)}</span>
@@ -101,6 +106,18 @@
 
                     <!-- פעולות -->
                     <div class="flex flex-col sm:flex-row items-center gap-1.5 flex-shrink-0">
+                        <form method="POST" action="?/setStatus" use:enhance>
+                            <input type="hidden" name="id" value={g.id} />
+                            <input type="hidden" name="status" value={g.status === 'draft' ? 'active' : 'draft'} />
+                            <button class="w-8 h-8 rounded-lg {g.status === 'draft' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-[#16264d] text-gray-400 hover:bg-[#243a6e]'} transition-colors"
+                                title={g.status === 'draft' ? 'פרסם באתר' : 'החזר לטיוטה'}>{g.status === 'draft' ? '🚀' : '📝'}</button>
+                        </form>
+                        <form method="POST" action="?/toggleVerified" use:enhance>
+                            <input type="hidden" name="id" value={g.id} />
+                            <input type="hidden" name="verified" value={g.verified ? 'false' : 'true'} />
+                            <button class="w-8 h-8 rounded-lg {g.verified ? 'bg-emerald-500/20 text-emerald-300' : 'bg-[#16264d] text-gray-400 hover:bg-[#243a6e]'} transition-colors"
+                                title={g.verified ? 'הסר חותמת &quot;מאושר&quot;' : 'הענק חותמת &quot;מאושר&quot; (עבר בדיקת מערכת)'}>🏅</button>
+                        </form>
                         <form method="POST" action="?/togglePin" use:enhance>
                             <input type="hidden" name="id" value={g.id} />
                             <input type="hidden" name="pinned" value={pinned.has(g.id) ? 'false' : 'true'} />
