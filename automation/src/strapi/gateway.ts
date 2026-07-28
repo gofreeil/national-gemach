@@ -10,11 +10,45 @@
 
 import type { Candidate, DiscoveryJob, ExistingEntry } from '../core/types.ts';
 import type { Logger } from '../core/logger.ts';
+import { sleep } from '../core/rateLimiter.ts';
 
 const STRAPI_URL = 'https://api.gofreeil.com';
 const GEMACH_CATEGORY = 'gemachim';
 const JOB_CATEGORY = '__ng_discovery_job';
 const PAGE_SIZE = 100;
+
+const REQUEST_ATTEMPTS = 4;
+const REQUEST_TIMEOUT_MS = 30_000;
+const RETRY_DELAY_MS = 1_500;
+const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+
+/** קוד הסטטוס מתוך הודעת שגיאה בפורמט "Strapi GET /path → 503: ..." */
+function statusOf(err: Error): number {
+	const m = /→ (\d{3}):/.exec(err.message);
+	return m ? Number(m[1]) : 0;
+}
+
+/** כשל רשת (ניתוק/timeout/DNS) — להבדיל מתשובת HTTP תקינה עם שגיאה */
+function isRetryableNetworkError(err: unknown): boolean {
+	if (!(err instanceof Error)) return false;
+	const code = (err as { cause?: { code?: string } }).cause?.code ?? '';
+	return (
+		err.name === 'TimeoutError' ||
+		/fetch failed|network|socket|terminated/i.test(err.message) ||
+		/^(UND_ERR_|ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN)/.test(code)
+	);
+}
+
+/** הופך כשל רשת גולמי להסבר בעברית — סטאק של undici לא אומר כלום למשתמש */
+function describeConnectionError(err: unknown, what: string): Error {
+	if (isRetryableNetworkError(err)) {
+		return new Error(
+			`אין תקשורת ל-Strapi (${what}) אחרי ${REQUEST_ATTEMPTS} ניסיונות. ` +
+			'בדקו חיבור לאינטרנט ונסו שוב — ייתכן שהשרת עמוס זמנית.',
+		);
+	}
+	return err instanceof Error ? err : new Error(String(err));
+}
 
 interface StrapiItemLight {
 	documentId: string;
@@ -64,17 +98,43 @@ export class StrapiGateway {
 		};
 	}
 
+	/**
+	 * בקשה ל-Strapi עם ניסיונות חוזרים. השרת נוטה לאיטיות התחברות רגעית,
+	 * ותקרת ה-connect של undici היא 10 שניות — בלי retry ניתוק אחד מפיל
+	 * ריצה שלמה (למשל בבניית אינדקס הכפילויות, עוד לפני שהדפדפן נפתח).
+	 * חוזרים רק על כשלי רשת ועל סטטוסים חולפים; 4xx נכשל מיד.
+	 */
 	private async request<T>(method: string, path: string, body?: unknown, auth = false): Promise<T> {
-		const res = await fetch(`${STRAPI_URL}${path}`, {
-			method,
-			headers: this.headers(auth),
-			...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-		});
-		if (!res.ok) {
-			const text = await res.text().catch(() => '');
-			throw new Error(`Strapi ${method} ${path} → ${res.status}: ${text.slice(0, 300)}`);
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= REQUEST_ATTEMPTS; attempt++) {
+			try {
+				const res = await fetch(`${STRAPI_URL}${path}`, {
+					method,
+					headers: this.headers(auth),
+					...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+				});
+				if (!res.ok) {
+					const text = await res.text().catch(() => '');
+					const err = new Error(`Strapi ${method} ${path} → ${res.status}: ${text.slice(0, 300)}`);
+					if (!RETRYABLE_STATUS.has(res.status) || attempt === REQUEST_ATTEMPTS) throw err;
+					lastError = err;
+				} else {
+					return (await res.json()) as T;
+				}
+			} catch (e) {
+				// שגיאת HTTP לא-חוזרת (403/404/...) כבר נזרקה למעלה
+				if (e instanceof Error && e.message.startsWith('Strapi ') && !isRetryableNetworkError(e)) {
+					if (!RETRYABLE_STATUS.has(statusOf(e)) || attempt === REQUEST_ATTEMPTS) throw e;
+				}
+				lastError = e;
+				if (attempt === REQUEST_ATTEMPTS) break;
+			}
+			const wait = RETRY_DELAY_MS * attempt;
+			this.logger.warn(`Strapi ${method} ${path} נכשל (ניסיון ${attempt}/${REQUEST_ATTEMPTS}) — מנסה שוב בעוד ${wait}ms`);
+			await sleep(wait);
 		}
-		return (await res.json()) as T;
+		throw describeConnectionError(lastError, `${method} ${path}`);
 	}
 
 	// ---------- גמ"חים ----------
