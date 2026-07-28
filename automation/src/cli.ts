@@ -81,7 +81,7 @@ async function cmdScan(flags: CliArgs['flags']): Promise<void> {
 	const spec = buildSpec(flags);
 	if (!spec.apply) logger.info('ריצה יבשה — שום דבר לא ייכתב. הוסיפו --apply לייבוא אמיתי.');
 	const gateway = new StrapiGateway(readEnv('STRAPI_TOKEN'), logger.child('strapi'));
-	const store = await createStateStore(logger);
+	const store = await createStateStore(logger, gateway);
 	try {
 		const pipeline = new DiscoveryPipeline({
 			gateway,
@@ -116,7 +116,7 @@ async function cmdWorker(flags: CliArgs['flags']): Promise<void> {
 		stopping = true;
 	});
 
-	const store = await createStateStore(logger);
+	const store = await createStateStore(logger, gateway);
 	try {
 		while (!stopping) {
 			// רק ריצה שהושלמה מדלגת על ההמתנה (כדי לרוקן תור). כישלון תפיסה
@@ -173,14 +173,14 @@ async function cmdWorker(flags: CliArgs['flags']): Promise<void> {
 }
 
 async function cmdMigrate(): Promise<void> {
-	const store = await createStateStore(logger);
+	const store = await createStateStore(logger, new StrapiGateway(readEnv('STRAPI_TOKEN'), logger.child('strapi')));
 	await store.init();
 	logger.info('הסכמה מוכנה.');
 	await store.close();
 }
 
 async function cmdStatus(): Promise<void> {
-	const store = await createStateStore(logger);
+	const store = await createStateStore(logger, new StrapiGateway(readEnv('STRAPI_TOKEN'), logger.child('strapi')));
 	await store.init();
 	const s = await store.summary();
 	console.log('\n===== מצב אוטומציית הגילוי =====');

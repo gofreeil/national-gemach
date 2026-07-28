@@ -1,0 +1,81 @@
+name: גילוי גמ"חים
+
+# סריקת הגילוי רצה כאן ולא על מחשב אישי: GitHub נותן דקות חינם למאגר
+# ציבורי, ולכן הסריקה זמינה תמיד — גם כשכל המחשבים כבויים.
+#
+# שתי דרכי הפעלה:
+#   schedule  — סריקה יזומה לפי לוח זמנים (בלי שאף אחד לוחץ)
+#   dispatch  — הרצה ידנית מלשונית Actions, עם היקף לבחירה
+#
+# משימות שאדמין יוצר בפאנל (/admin/discovery) נשלפות מהתור בתחילת כל
+# ריצה, כך שלחיצה על הכפתור עובדת גם כשאין אף עובד מקומי.
+#
+# הסריקה לא צריכה דפדפן (המקור הוא DuckDuckGo ב-fetch), ולכן הריצה
+# קלה ומהירה. המצב (cursor + טביעות) נשמר ב-Strapi, כי כל ריצה כאן
+# מתחילה ממכונה נקייה.
+
+on:
+  schedule:
+    # כל 6 שעות (UTC). לשינוי תדירות — ערכו את השורה הזו.
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      queries:
+        description: 'כמה שאילתות לסרוק'
+        required: false
+        default: '20'
+      imports:
+        description: 'תקרת טיוטות לייבוא'
+        required: false
+        default: '40'
+
+# ריצה אחת בכל רגע — שתי סריקות במקביל היו מבזבזות שאילתות על אותו cursor
+concurrency:
+  group: discovery-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
+      # אין דיסק מתמיד ב-runner — המצב נשמר בפריט Strapi
+      DISCOVERY_STATE: strapi
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: התקנת תלויות האוטומציה
+        working-directory: automation
+        run: npm ci --omit=optional --ignore-scripts
+
+      - name: בדיקות עצמיות
+        working-directory: automation
+        run: npm run selftest
+
+      - name: ביצוע משימות שממתינות בתור
+        if: ${{ env.STRAPI_TOKEN != '' }}
+        working-directory: automation
+        run: node --import tsx src/cli.ts worker --apply --once
+
+      - name: סריקה מתוזמנת
+        if: ${{ env.STRAPI_TOKEN != '' && github.event_name == 'schedule' }}
+        working-directory: automation
+        run: node --import tsx src/cli.ts scan --apply --queries=20 --imports=40
+
+      - name: סריקה ידנית
+        if: ${{ env.STRAPI_TOKEN != '' && github.event_name == 'workflow_dispatch' }}
+        working-directory: automation
+        run: |
+          node --import tsx src/cli.ts scan --apply \
+            --queries=${{ inputs.queries }} --imports=${{ inputs.imports }}
+
+      - name: אזהרה כשאין טוקן
+        if: ${{ env.STRAPI_TOKEN == '' }}
+        run: |
+          echo "::warning::הסוד STRAPI_TOKEN לא מוגדר במאגר — הסריקה דולגה."
+          echo "להגדרה: Settings → Secrets and variables → Actions → New repository secret"

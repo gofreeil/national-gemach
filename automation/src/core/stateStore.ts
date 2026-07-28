@@ -46,12 +46,20 @@ export abstract class StateStore {
 	abstract close(): Promise<void>;
 }
 
-/** DATABASE_URL מוגדר → Postgres; אחרת קובץ מקומי (עם אזהרה) */
-export async function createStateStore(logger: Logger): Promise<StateStore> {
+/** בחירת מימוש: DATABASE_URL → Postgres · CI/בקשה מפורשת → Strapi · אחרת קובץ.
+ *  ב-CI אין דיסק מתמיד, ולכן אחסון-קובץ היה מאפס את ה-cursor בכל ריצה. */
+export async function createStateStore(logger: Logger, gateway?: unknown): Promise<StateStore> {
 	const url = readEnv('DATABASE_URL')?.trim();
 	if (url) {
 		const { PostgresStateStore } = await import('../db/postgresStateStore.ts');
 		return new PostgresStateStore(url, logger.child('pg'));
+	}
+	const wantStrapi = (readEnv('DISCOVERY_STATE') ?? '').toLowerCase() === 'strapi'
+		|| (!!readEnv('CI') && !!gateway);
+	if (wantStrapi && gateway) {
+		const { StrapiStateStore } = await import('../db/strapiStateStore.ts');
+		logger.info('אחסון המצב: Strapi (ריצה ללא דיסק מתמיד)');
+		return new StrapiStateStore(gateway as never, logger.child('strapi-state'));
 	}
 	logger.warn('DATABASE_URL לא מוגדר — משתמש באחסון קובץ מקומי (automation/state). ל-scale מומלץ Postgres, ראו README.');
 	const { FileStateStore } = await import('../db/fileStateStore.ts');

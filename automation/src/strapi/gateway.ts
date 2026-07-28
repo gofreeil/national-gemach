@@ -15,6 +15,7 @@ import { sleep } from '../core/rateLimiter.ts';
 const STRAPI_URL = 'https://api.gofreeil.com';
 const GEMACH_CATEGORY = 'gemachim';
 const JOB_CATEGORY = '__ng_discovery_job';
+const STATE_CATEGORY = '__ng_discovery_state';
 const PAGE_SIZE = 100;
 
 // status1 ב-Strapi הוא enumeration סגור:
@@ -89,6 +90,9 @@ interface StrapiJobItem {
 }
 
 export class StrapiGateway {
+	/** documentId של פריט המצב, נלמד בטעינה הראשונה */
+	private stateDocumentId: string | null = null;
+
 	constructor(
 		private readonly token: string | undefined,
 		private readonly logger: Logger,
@@ -240,6 +244,47 @@ export class StrapiGateway {
 			true,
 		);
 		return res.data.documentId;
+	}
+
+	// ---------- מצב תפעולי (__ng_discovery_state) ----------
+
+	/** הפריט היחיד שמחזיק את מצב האוטומציה (cursor + טביעות). נועד לריצה
+	 *  ב-CI, שבה אין דיסק מתמיד ואין Postgres. מחזיר null אם עוד לא נוצר. */
+	async loadDiscoveryState<T>(): Promise<T | null> {
+		const params = new URLSearchParams({
+			'filters[category][$eq]': STATE_CATEGORY,
+			'pagination[limit]': '1',
+		});
+		try {
+			const res = await this.request<{ data: StrapiJobItem[] }>('GET', `/api/items?${params}`);
+			const row = res.data?.[0];
+			if (!row) return null;
+			this.stateDocumentId = row.documentId;
+			const payload = (row.extra_fields ?? {})['state'];
+			return (payload ?? null) as T | null;
+		} catch (e) {
+			this.logger.warn('טעינת מצב האוטומציה נכשלה — מתחילים ממצב ריק', e);
+			return null;
+		}
+	}
+
+	async saveDiscoveryState(state: unknown): Promise<void> {
+		this.assertWritable();
+		const body = {
+			label: 'discovery-state',
+			category: STATE_CATEGORY,
+			description: '[SYSTEM] מצב אוטומציית הגילוי — נכתב ע"י automation/',
+			icon: '🧭',
+			status1: 'active',
+			extra_fields: { state, updated_at: new Date().toISOString() },
+			publishedAt: new Date().toISOString(),
+		};
+		if (this.stateDocumentId) {
+			await this.request('PUT', `/api/items/${this.stateDocumentId}`, { data: body }, true);
+			return;
+		}
+		const res = await this.request<{ data: { documentId: string } }>('POST', '/api/items', { data: body }, true);
+		this.stateDocumentId = res.data.documentId;
 	}
 
 	// ---------- תור המשימות (__ng_discovery_job) ----------
