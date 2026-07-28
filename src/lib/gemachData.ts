@@ -60,7 +60,7 @@ const CAT_IMG = (name: string) => `/images/categories/${name}.webp`;
 export const categories: CategoryDef[] = [
     { key: 'clothing', label: 'ביגוד', icon: '👕', image: CAT_IMG('clothing') },
     { key: 'baby', label: 'תינוקות', icon: '🍼', image: CAT_IMG('baby') },
-    { key: 'books', label: 'ספרים', icon: '📚', image: CAT_IMG('judaica_books') },
+    { key: 'books', label: 'ספרים', icon: '📚', image: CAT_IMG('books') },
     { key: 'furniture', label: 'ריהוט', icon: '🪑', image: CAT_IMG('furniture') },
     { key: 'medical', label: 'ציוד רפואי', icon: '🏥', image: CAT_IMG('medical') },
     { key: 'food', label: 'מזון', icon: '🥫', image: CAT_IMG('food') },
