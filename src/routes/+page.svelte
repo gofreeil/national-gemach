@@ -2,6 +2,7 @@
     import { untrack } from 'svelte';
     import { cities } from '$lib/gemachData';
     import GemachCard from '$lib/components/GemachCard.svelte';
+    import AvedotBanner from '$lib/components/AvedotBanner.svelte';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -482,6 +483,14 @@
                 נמצאו <span class="text-blue-400">{filteredGemachim.length}</span> גמחים
             </h2>
         </div>
+
+        <!-- "מיזמים חשובים לציבור" נפתח בבאנר של פינת האבדות — מיזם ארצי של
+             הרשת, ולכן הוא יושב מעל התוצאות ולא בתוך רשימת הגמ"חים -->
+        {#if selectedCategory === 'initiatives'}
+            <div class="mb-5">
+                <AvedotBanner />
+            </div>
+        {/if}
 
         {#if filteredGemachim.length === 0}
             <!-- קופסה כהה: טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
