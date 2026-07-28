@@ -57,7 +57,7 @@
             {/if}
         </div>
     {:else}
-        <p class="text-xs text-gray-500">
+        <p class="text-xs text-gray-400">
             מציג {data.items.length} מתוך {data.total} · עמוד {data.page}/{data.pages}.
             📌 נועץ בראש דף הבית (<a href="/admin/pinned" class="text-blue-400 hover:underline">ניהול הרשימה</a>) · ▲▼ סידור ידני.
         </p>
@@ -93,7 +93,7 @@
                         </div>
                         {#if g.tags.length}
                             <div class="flex gap-1 mt-1.5 flex-wrap">
-                                {#each g.tags.slice(0, 6) as t (t)}<span class="text-[11px] text-gray-500 bg-[#16264d] px-1.5 py-0.5 rounded">{t}</span>{/each}
+                                {#each g.tags.slice(0, 6) as t (t)}<span class="text-[11px] text-gray-400 bg-[#16264d] px-1.5 py-0.5 rounded">{t}</span>{/each}
                                 {#if g.tags.length > 6}<span class="text-[11px] text-gray-600">+{g.tags.length - 6}</span>{/if}
                             </div>
                         {/if}

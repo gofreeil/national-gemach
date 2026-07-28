@@ -165,7 +165,7 @@
             <p class="font-bold">אין גמ"חים להצגה{data.onlyMissing ? ' — הכל מושלם!' : ''}.</p>
         </div>
     {:else}
-        <p class="text-xs text-gray-500">מציג {data.items.length} מתוך {data.total} · עמוד {data.page}/{data.pages}</p>
+        <p class="text-xs text-gray-400">מציג {data.items.length} מתוך {data.total} · עמוד {data.page}/{data.pages}</p>
 
         <div class="space-y-2">
             {#each data.items as g (g.id)}
@@ -208,7 +208,7 @@
                             </div>
 
                             <div class="flex items-center justify-between gap-2 flex-wrap">
-                                <span class="text-[11px] text-gray-500" dir="ltr">
+                                <span class="text-[11px] text-gray-400" dir="ltr">
                                     {#if g._ready}📍 {Number(g.lat).toFixed(5)}, {Number(g.lng).toFixed(5)}{:else}— ללא קואורדינטות —{/if}
                                 </span>
                                 <button class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-opacity">

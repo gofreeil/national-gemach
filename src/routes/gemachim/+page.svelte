@@ -46,7 +46,8 @@
     </div>
 
     {#if data.items.length === 0}
-        <div class="text-center py-16 text-gray-300">
+        <!-- קופסה כהה — טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
+        <div class="mx-auto max-w-md rounded-2xl border border-[#3b5794] bg-[#16264d] px-6 py-12 text-center text-gray-300 shadow-lg">
             <div class="text-5xl mb-4" aria-hidden="true">📭</div>
             <p class="text-lg font-bold">אין גמ"חים להצגה</p>
         </div>

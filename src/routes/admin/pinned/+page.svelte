@@ -56,7 +56,7 @@
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="text-amber-400 text-sm" aria-hidden="true">📌</span>
                             <h3 class="font-bold text-white truncate">{g.name}</h3>
-                            {#if !g.managed}<span class="text-[11px] text-gray-500 bg-[#16264d] px-1.5 py-0.5 rounded">רשימה סטטית</span>{/if}
+                            {#if !g.managed}<span class="text-[11px] text-gray-400 bg-[#16264d] px-1.5 py-0.5 rounded">רשימה סטטית</span>{/if}
                         </div>
                         <div class="flex items-center gap-2 mt-1 flex-wrap text-xs text-gray-400">
                             <span class="bg-blue-900/40 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/20">{catLabel(g.category)}</span>
@@ -90,11 +90,11 @@
         </form>
 
         {#if !data.q}
-            <p class="text-xs text-gray-500">הקלד חיפוש כדי למצוא גמ"ח לנעיצה.</p>
+            <p class="text-xs text-gray-400">הקלד חיפוש כדי למצוא גמ"ח לנעיצה.</p>
         {:else if data.results.length === 0}
             <p class="text-sm text-gray-400">לא נמצאו תוצאות (או שכולן כבר נעוצות).</p>
         {:else}
-            <p class="text-xs text-gray-500">
+            <p class="text-xs text-gray-400">
                 {#if data.resultsTotal > data.results.length}
                     מציג {data.results.length} מתוך {data.resultsTotal} תוצאות — צמצם את החיפוש לראות את השאר.
                 {:else}
