@@ -2,11 +2,12 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { resolveRole } from '$lib/server/admin';
 import { setGemachStatus, setGemachVerified, deleteGemach, getGemachById } from '$lib/server/db';
+import { pinGemach, unpinGemach } from '$lib/server/pinned';
 
 // פעולות תפריט הניהול המהיר שמופיע על כל גמ"ח באתר (כרטיסים + דף הגמ"ח)
-// כשהגולש הוא אדמין: פרסום/החזרה לטיוטה, חותמת "מאושר" ומחיקה — בלי
-// להיכנס לפאנל. עריכה היא קישור רגיל ל-/admin/gemachim/[id].
-const ACTIONS = new Set(['publish', 'draft', 'verify', 'unverify', 'delete']);
+// כשהגולש הוא אדמין: פרסום/החזרה לטיוטה, חותמת "מאושר", נעיצה בראש דף
+// הבית ומחיקה — בלי להיכנס לפאנל. עריכה היא קישור רגיל ל-/admin/gemachim/[id].
+const ACTIONS = new Set(['publish', 'draft', 'verify', 'unverify', 'pin', 'unpin', 'delete']);
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
     const session = await locals.auth();
@@ -48,6 +49,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
                 break;
             case 'unverify':
                 await setGemachVerified(params.id, false);
+                break;
+            // הנעיצה נשמרת ב-config.pinned (ולא בדגל featured) — pinned.ts
+            // מסנכרן את הדגל בעצמו לפריטים מנוהלים
+            case 'pin':
+                await pinGemach(params.id);
+                break;
+            case 'unpin':
+                await unpinGemach(params.id);
                 break;
             case 'delete':
                 await deleteGemach(params.id);

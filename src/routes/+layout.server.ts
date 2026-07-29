@@ -1,6 +1,7 @@
 import type { LayoutServerLoad } from './$types';
 import { env } from '$env/dynamic/private';
 import { resolveRole } from '$lib/server/admin';
+import { getPinnedIds } from '$lib/server/adminStore';
 import { getVisitorCount } from '$lib/server/visitorStats';
 
 // חושף את הסשן (אם יש) לכל הדפים — כדי שההאדר יציג מצב מחובר/כפתור התחברות,
@@ -22,9 +23,16 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		phone: (u as { phone?: string }).phone
 	});
 
+	// מזהי הנעוצים — רק לאדמין, כדי שתפריט הניהול שעל הכרטיס ידע להציג "נעץ"
+	// או "הסר מהנעוצים". קריאה למטמון של config (20 שנ'), בלי סבב נוסף ל-Strapi.
+	// null = הרשימה מעולם לא נשמרה; אז התפריט נופל חזרה לדגל featured, בדיוק
+	// כמו getPinnedIdsResolved בשרת.
+	const pinnedIds = adminRole ? ((await getPinnedIds()) ?? null) : null;
+
 	return {
 		user: { id: u.id, name: u.name ?? '', email: u.email ?? '' },
 		adminRole,
+		pinnedIds,
 		visitors,
 		gaId
 	};

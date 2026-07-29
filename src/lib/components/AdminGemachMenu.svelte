@@ -4,7 +4,8 @@
     // ------------------------------------------------------------
     // מוצג רק לאדמין מחובר (adminRole מה-layout) ורק על פריטים מנוהלים
     // ב-Strapi. מאפשר "על המקום", בלי להיכנס לפאנל:
-    //   ✏️ עריכה · ✅ פרסום / 📝 החזרה לטיוטה · 🏅 חותמת "מאושר" · 🗑️ מחיקה
+    //   ✏️ עריכה · ✅ פרסום / 📝 החזרה לטיוטה · 🏅 חותמת "מאושר" ·
+    //   📌 נעיצה בראש דף הבית · 🗑️ מחיקה
     // הפעולות עוברות דרך POST /api/admin/gemachim/[id] (מאומת בשרת).
     // ============================================================
     import { page } from '$app/stores';
@@ -15,13 +16,33 @@
         redirectOnDelete
     }: {
         /** צריך רק את השדות האלה — עובד גם עם Gemach וגם עם ListGemach */
-        gemach: { id: string; name: string; managed?: boolean; status?: string; verified?: boolean };
+        gemach: {
+            id: string;
+            name: string;
+            managed?: boolean;
+            status?: string;
+            verified?: boolean;
+            featured?: boolean;
+            sourceId?: string;
+        };
         /** לאן לנווט אחרי מחיקה (בדף הגמ"ח עצמו — כי הדף כבר לא קיים) */
         redirectOnDelete?: string;
     } = $props();
 
     const isAdmin = $derived(Boolean($page.data.adminRole));
     const isDraft = $derived(gemach.status === 'draft');
+
+    /** מזהי הנעוצים מה-layout (לאדמין בלבד). null = הרשימה מעולם לא נשמרה. */
+    const pinnedIds = $derived($page.data.pinnedIds as string[] | null | undefined);
+
+    // הבדיקה חוזרת על ההיגיון של getPinnedIdsResolved: רשימה שמורה קובעת,
+    // ובהיעדרה נופלים חזרה לדגל featured הישן. גם sourceId נבדק — רשימה
+    // שנשמרה לפני שפריט סטטי יובא ל-DB מצביעה על המזהה הסטטי שלו.
+    const isPinned = $derived(
+        Array.isArray(pinnedIds)
+            ? pinnedIds.includes(gemach.id) || (!!gemach.sourceId && pinnedIds.includes(gemach.sourceId))
+            : Boolean(gemach.featured)
+    );
 
     let open = $state(false);
     let busy = $state(false);
@@ -31,7 +52,7 @@
         if (open && wrapper && !wrapper.contains(e.target as Node)) open = false;
     }
 
-    async function run(action: 'publish' | 'draft' | 'verify' | 'unverify' | 'delete') {
+    async function run(action: 'publish' | 'draft' | 'verify' | 'unverify' | 'pin' | 'unpin' | 'delete') {
         if (busy) return;
         if (action === 'delete' && !confirm(`למחוק את "${gemach.name}"? הפעולה בלתי הפיכה.`)) return;
         busy = true;
@@ -98,6 +119,20 @@
                     <button type="button" role="menuitem" disabled={busy} onclick={() => run('verify')}
                         class="flex w-full items-center gap-2 px-3 py-2 text-right text-emerald-300 transition-colors hover:bg-[#1c2f5a] disabled:opacity-50"
                     >🏅 אשר — חותמת "מאושר"</button>
+                {/if}
+
+                <!-- נעיצה רק לפריט שמפורסם: טיוטה ממילא אינה על הלוח, והמאגר
+                     שממנו pinGemach שולף אינו כולל טיוטות — הנעיצה הייתה נכשלת -->
+                {#if !isDraft}
+                    {#if isPinned}
+                        <button type="button" role="menuitem" disabled={busy} onclick={() => run('unpin')}
+                            class="flex w-full items-center gap-2 px-3 py-2 text-right text-gray-300 transition-colors hover:bg-[#1c2f5a] disabled:opacity-50"
+                        >📌 הסר מהנעוצים</button>
+                    {:else}
+                        <button type="button" role="menuitem" disabled={busy} onclick={() => run('pin')}
+                            class="flex w-full items-center gap-2 px-3 py-2 text-right text-amber-300 transition-colors hover:bg-[#1c2f5a] disabled:opacity-50"
+                        >📌 נעץ לראש דף הבית</button>
+                    {/if}
                 {/if}
 
                 <div class="my-1 border-t border-[#3b5794]"></div>
