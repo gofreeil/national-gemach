@@ -78,13 +78,12 @@
         return m;
     });
 
-    /** המובילות ראשונות · שובר שוויון יציב לפי הסדר שנקבע בפאנל הניהול */
+    /** הסדר שנקבע בפאנל הניהול הוא סדר התצוגה. "אחר" תמיד אחרון. */
     let railCategories = $derived.by((): RailCat[] =>
         categories
-            .map((cat, i) => ({ cat, i, count: countByCat.get(cat.key) ?? 0 }))
+            .map((cat, i) => ({ cat, i }))
             .sort((a, b) =>
                 (a.cat.key === OTHER_KEY ? 1 : 0) - (b.cat.key === OTHER_KEY ? 1 : 0) ||
-                b.count - a.count ||
                 a.i - b.i
             )
             .map((r) => ({
@@ -92,7 +91,7 @@
                 label: r.cat.label,
                 icon: r.cat.icon,
                 image: r.cat.image,
-                count: r.count
+                count: countByCat.get(r.cat.key) ?? 0
             }))
     );
 
@@ -706,7 +705,7 @@
                     class="cat-nav"
                     aria-controls="cat-rail"
                     aria-disabled={atStart}
-                    aria-label="חזרה לקטגוריות המובילות"
+                    aria-label="חזרה לתחילת רשימת הקטגוריות"
                     onclick={() => { if (!atStart) nudge(-1); }}
                 >
                     <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true" fill="none"
