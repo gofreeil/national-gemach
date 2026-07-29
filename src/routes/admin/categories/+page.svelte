@@ -3,6 +3,7 @@
     import { page } from '$app/stores';
     import type { CategoryDef } from '$lib/gemachData';
     import { compressTileImage, dataUriWeightKb, MAX_CATEGORY_IMAGES_KB } from '$lib/imageCompress';
+    import { imageDrop } from '$lib/imageDrop';
 
     let { data, form } = $props();
 
@@ -14,9 +15,6 @@
     const flash = $derived($page.url.searchParams.get('flash'));
 
     /* ═══════════ תמונת האריח ═══════════ */
-    // קלט קבצים אחד לכל השורות; pendingIndex זוכר לאיזו קטגוריה הקובץ נבחר.
-    let fileInput = $state<HTMLInputElement | null>(null);
-    let pendingIndex = -1;
     let busy = $state(false);
     let imgError = $state('');
 
@@ -24,25 +22,33 @@
     const previewOf = (src?: string) =>
         src && /^(data:image\/|https:\/\/|\/)/i.test(src.trim()) ? src.trim() : '';
 
-    function pickImage(i: number) {
-        pendingIndex = i;
-        imgError = '';
-        fileInput?.click();
-    }
-
-    async function onFileChosen(e: Event) {
-        const input = e.currentTarget as HTMLInputElement;
-        const file = input.files?.[0];
-        input.value = '';                       // בחירת אותו קובץ שוב תירה onchange
-        if (!file || pendingIndex < 0) return;
+    /** מקבל קבצים משני המסלולים — גרירה לתוך האריח, או בחירה מהדיאלוג */
+    async function setImage(i: number, files: File[]) {
+        const file = files.find(f => f.type.startsWith('image/'));
+        if (!file) return;
         busy = true;
+        imgError = '';
         try {
-            list[pendingIndex].image = await compressTileImage(file);
+            list[i].image = await compressTileImage(file);
         } catch {
             imgError = 'לא הצלחנו לקרוא את הקובץ. נסה תמונה אחרת (JPG/PNG/WebP).';
         }
         busy = false;
-        pendingIndex = -1;
+    }
+
+    function onFilePicked(e: Event, i: number) {
+        const input = e.currentTarget as HTMLInputElement;
+        const files = Array.from(input.files ?? []);
+        input.value = '';                       // בחירת אותו קובץ שוב תירה onchange
+        setImage(i, files);
+    }
+
+    /** הדבקה (Ctrl+V) של תמונה מהלוח — הדרך הקצרה לצילום מסך או תמונה מהדפדפן */
+    function onPaste(e: ClipboardEvent, i: number) {
+        const files = Array.from(e.clipboardData?.files ?? []);
+        if (!files.length) return;
+        e.preventDefault();
+        setImage(i, files);
     }
 
     /** משקל התמונות שהועלו כקבצים — כתובות חיצוניות/מקומיות לא נשקלות */
@@ -80,13 +86,11 @@
     <p class="text-sm text-gray-400">
         הקטגוריות משמשות לסינון ולתצוגה באתר. הסדר כאן קובע את סדר ההצגה.
         מפתח של קטגוריה קיימת נעול — שינויו ינתק את הגמ"חים המשויכים אליה.
-        לחיצה על התמונה מחליפה את תמונת האריח בדף הבית; היא נחתכת אוטומטית לריבוע.
+        תמונת האריח בדף הבית: גרור תמונה אל הריבוע, הדבק אותה עם Ctrl+V, או לחץ
+        לבחירת קובץ. היא נחתכת אוטומטית לריבוע.
     </p>
 
     {#if imgError}<div class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{imgError}</div>{/if}
-
-    <!-- קלט קבצים יחיד לכל השורות -->
-    <input type="file" accept="image/*" class="hidden" bind:this={fileInput} onchange={onFileChosen} />
 
     <div class="space-y-2">
         {#each list as cat, i (i)}
@@ -97,16 +101,20 @@
                     <button type="button" onclick={() => move(i, 1)} disabled={i === list.length - 1}
                         class="w-6 h-6 rounded bg-[#16264d] hover:bg-[#243a6e] text-gray-300 text-xs disabled:opacity-30">▼</button>
                 </div>
-                <!-- תצוגה מקדימה של האריח = כפתור העלאה -->
-                <button type="button" onclick={() => pickImage(i)} disabled={busy}
-                    title="החלף תמונת אריח" aria-label="החלף תמונת אריח ל{cat.label || 'קטגוריה'}"
-                    class="h-11 w-11 shrink-0 overflow-hidden rounded-lg border-2 border-[#3b5794] bg-[#0f1c3d] hover:border-purple-500 transition-colors disabled:opacity-50">
+                <!-- תצוגה מקדימה של האריח = יעד גרירה + כפתור העלאה + הדבקה -->
+                <label use:imageDrop={(files) => setImage(i, files)}
+                    onpaste={(e) => onPaste(e, i)}
+                    title="גרור תמונה לכאן, הדבק עם Ctrl+V, או לחץ לבחירת קובץ"
+                    class="relative flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-[#4c6cb0] bg-[#0f1c3d] transition-colors hover:border-purple-500 focus-within:border-purple-500">
                     {#if previewOf(cat.image)}
                         <img src={previewOf(cat.image)} alt="" class="h-full w-full object-cover" />
                     {:else}
-                        <span class="text-lg leading-none">🖼️</span>
+                        <span class="text-lg leading-none" aria-hidden="true">🖼️</span>
                     {/if}
-                </button>
+                    <input type="file" accept="image/*" class="hidden" disabled={busy}
+                        aria-label="תמונת אריח ל{cat.label || 'קטגוריה'}"
+                        onchange={(e) => onFilePicked(e, i)} />
+                </label>
                 <input bind:value={cat.icon} maxlength="4" aria-label="אייקון"
                     class="w-14 text-center rounded-lg border border-[#3b5794] bg-[#1e293b] px-2 py-2 text-lg focus:border-purple-500 focus:outline-none" />
                 <input bind:value={cat.label} placeholder="שם הקטגוריה" aria-label="שם"
