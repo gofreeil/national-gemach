@@ -222,22 +222,5 @@
 	/* חץ שמוביל את העין מהטקסט אל כפתור "יוצאים לחירות" */
 	.sso-arrow {
 		margin: 0.25rem 0;
-		animation: sso-arrow-bounce 1.4s ease-in-out infinite;
-	}
-
-	@keyframes sso-arrow-bounce {
-		0%,
-		100% {
-			transform: translateY(0);
-		}
-		50% {
-			transform: translateY(5px);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.sso-arrow {
-			animation: none;
-		}
 	}
 </style>
