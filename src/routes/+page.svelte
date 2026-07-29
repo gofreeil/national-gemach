@@ -63,6 +63,7 @@
         electronics: 1.20,    // מסגרת קרם דקה בקצה הימני
         judaism: 1.14,        // judaism.webp — הבהרה רכה בקצוות סביב הטלית
         initiatives: 1.00,    // initiatives.webp — חיתוך ידני סביב הסמל, זום יקצץ אותו
+        money: 1.00,          // money.webp — חותמת "כשר ללא ריבית" צמודה לפינה, זום יחתוך אותה
     };
     const zoomFor = (key: string) => CAT_ZOOM[key] ?? 1.06;
 
