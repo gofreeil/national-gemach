@@ -1,0 +1,48 @@
+# הגמ"ח הארצי — https://gemach.gofreeil.com
+# סריקה מלאה של התוכן הציבורי (דף הבית, כל הגמ"חים, דפי גמ"ח),
+# חסימה של אזורים אישיים/ניהוליים ושל ה-API.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /auth/
+Disallow: /login
+Disallow: /register
+Disallow: /profile
+Disallow: /gemach/claim
+Disallow: /advertise/manage
+Disallow: /advertise/builder
+
+# בוטים של AI (ChatGPT, Claude, Perplexity, Gemini) — מורשים לסרוק ולצטט
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+Sitemap: https://gemach.gofreeil.com/sitemap.xml

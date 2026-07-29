@@ -1,6 +1,8 @@
 <script lang="ts">
     import { page as pageStore } from '$app/stores';
     import GemachCard from '$lib/components/GemachCard.svelte';
+    import JsonLd from '$lib/components/JsonLd.svelte';
+    import { SITE_NAME, DEFAULT_OG_IMAGE, canonical, collectionSchema, breadcrumbSchema } from '$lib/seo';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -26,12 +28,61 @@
         if (pages > 1) push(pages);
         return out;
     });
+
+    /* ═══ SEO ═══
+       canonical של עמוד מעומד מצביע על העמוד עצמו (ולא על העמוד הראשון) —
+       כך כל 20 הגמ"חים שבו נסרקים, ו-rel=prev/next קושר את הסדרה.
+       הכותרת נושאת את מספר העמוד כדי שלא יהיו כותרות כפולות. */
+    const pagePath = $derived(data.page > 1 ? `/gemachim?page=${data.page}` : '/gemachim');
+    const pageTitle = $derived(
+        data.page > 1
+            ? `כל הגמ"חים בישראל — עמוד ${data.page} מתוך ${data.pages} | ${SITE_NAME}`
+            : `כל הגמ"חים בישראל — רשימה מלאה של ${data.total} גמ"חים | ${SITE_NAME}`,
+    );
+    const pageDescription = $derived(
+        `רשימת כל ${data.total} הגמ"חים במאגר הארצי — ציוד רפואי, ריהוט, שמלות, כלי אירוח, ציוד לתינוקות, כלים ומזון, בכל הארץ. שם הגמ"ח, העיר, הנושא והטלפון בכל דף גמ"ח.` +
+            (data.pages > 1 ? ` עמוד ${data.page} מתוך ${data.pages}.` : ''),
+    );
+
+    const schemas = $derived([
+        breadcrumbSchema([
+            { name: 'דף הבית', path: '/' },
+            { name: 'כל הגמ"חים', path: '/gemachim' },
+        ]),
+        collectionSchema({
+            name: 'כל הגמ"חים בישראל',
+            description: pageDescription,
+            path: pagePath,
+            numberOfItems: data.total,
+            items: data.items.map((g) => ({ name: g.name, path: `/gemach/${g.id}` })),
+        }),
+    ]);
 </script>
 
 <svelte:head>
-    <title>כל הגמ"חים – הגמ"ח הארצי</title>
-    <meta name="description" content="רשימת כל הגמ&quot;חים במאגר הארצי, עם עימוד לפי עמודים" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDescription} />
+    <link rel="canonical" href={canonical(pagePath)} />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    {#if data.page > 1}
+        <link rel="prev" href={canonical(data.page - 1 > 1 ? `/gemachim?page=${data.page - 1}` : '/gemachim')} />
+    {/if}
+    {#if data.page < data.pages}
+        <link rel="next" href={canonical(`/gemachim?page=${data.page + 1}`)} />
+    {/if}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:url" content={canonical(pagePath)} />
+    <meta property="og:image" content={DEFAULT_OG_IMAGE} />
+    <meta property="og:locale" content="he_IL" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDescription} />
 </svelte:head>
+
+<JsonLd data={schemas} />
 
 <section class="px-3 md:px-4 py-6 max-w-5xl mx-auto">
     <div class="flex flex-wrap items-end justify-between gap-3 mb-5">

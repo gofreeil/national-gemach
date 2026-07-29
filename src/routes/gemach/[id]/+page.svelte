@@ -7,6 +7,7 @@
     import VerifiedStamp from '$lib/components/VerifiedStamp.svelte';
     import { runInterstitial, gatedNav } from '$lib/adGate';
     import { formatOpeningHoursLines, isOpenNow, toSchemaOpeningHours } from '$lib/openingHours';
+    import { SITE_NAME, SITE_URL, SITE_LOGO, DEFAULT_OG_IMAGE, breadcrumbSchema } from '$lib/seo';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -67,44 +68,77 @@
         phoneDigits.startsWith('0') ? `972${phoneDigits.slice(1)}` : phoneDigits
     );
 
-    const canonical = $derived(`https://gemach.gofreeil.com/gemach/${gemach.id}`);
+    const canonical = $derived(`${SITE_URL}/gemach/${gemach.id}`);
+    const pageTitle = $derived(`${gemach.name} — גמ"ח ${categoryLabel} ב${gemach.city} | ${SITE_NAME}`);
+    /** תיאור למנועי חיפוש: התיאור שהגמ"ח כתב, ואם אין — משפט שנבנה מהנושא,
+     *  העיר והכתובת, כדי שלא ייווצרו תיאורים כפולים בין דפי גמ"ח. */
     const metaDescription = $derived(
-        (gemach.description || `גמ"ח ${categoryLabel} ב${gemach.city}`).slice(0, 155)
+        (gemach.description
+            ? `${gemach.description} · גמ"ח ${categoryLabel} ב${gemach.city}`
+            : `גמ"ח ${categoryLabel} ב${gemach.city}${gemach.address ? `, ${gemach.address}` : ''} — פרטי הגמ"ח, שעות פעילות וטלפון במאגר הגמ"חים הארצי.`
+        ).slice(0, 300)
+    );
+    /** טיוטה מוצגת לאדמין בלבד (ראו +page.server.ts) — ולכן גם אסור שתיכנס לאינדקס */
+    const robotsValue = $derived(
+        gemach.status === 'draft' ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1'
     );
 
-    // Schema.org — מאפשר לגוגל להציג את הגמ"ח כעסק מקומי עם כתובת וטלפון
-    const jsonLd = $derived(JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'LocalBusiness',
-        name: gemach.name,
-        description: gemach.description || undefined,
-        url: canonical,
-        telephone: gemach.phone || undefined,
-        image: gemach.image || undefined,
-        address: {
-            '@type': 'PostalAddress',
-            streetAddress: gemach.address || undefined,
-            addressLocality: gemach.city,
-            addressCountry: 'IL',
+    // Schema.org — מאפשר לגוגל להציג את הגמ"ח כעסק מקומי עם כתובת, טלפון ושעות,
+    // ומקשר אותו למאגר (isPartOf) ולתנועת האם (parentOrganization) כישות אחת.
+    const jsonLd = $derived(JSON.stringify([
+        {
+            '@context': 'https://schema.org',
+            '@type': 'LocalBusiness',
+            '@id': `${canonical}#gemach`,
+            name: gemach.name,
+            alternateName: `גמ"ח ${categoryLabel} ב${gemach.city}`,
+            description: gemach.description || `גמ"ח ${categoryLabel} ב${gemach.city}`,
+            url: canonical,
+            telephone: gemach.phone || undefined,
+            image: gemach.image || SITE_LOGO,
+            inLanguage: 'he-IL',
+            address: {
+                '@type': 'PostalAddress',
+                streetAddress: gemach.address || undefined,
+                addressLocality: gemach.city,
+                addressRegion: gemach.neighborhood || undefined,
+                addressCountry: 'IL',
+            },
+            areaServed: { '@type': 'City', name: gemach.city },
+            knowsAbout: [`גמ"ח ${categoryLabel}`, 'גמילות חסדים', 'השאלת ציוד'],
+            ...(gemach.tags?.length ? { keywords: gemach.tags.join(', ') } : {}),
+            ...(typeof gemach.lat === 'number' && typeof gemach.lng === 'number'
+                ? { geo: { '@type': 'GeoCoordinates', latitude: gemach.lat, longitude: gemach.lng } }
+                : {}),
+            ...(toSchemaOpeningHours(gemach.hours).length > 0
+                ? { openingHoursSpecification: toSchemaOpeningHours(gemach.hours) }
+                : {}),
+            isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL },
         },
-        ...(typeof gemach.lat === 'number' && typeof gemach.lng === 'number'
-            ? { geo: { '@type': 'GeoCoordinates', latitude: gemach.lat, longitude: gemach.lng } }
-            : {}),
-        ...(toSchemaOpeningHours(gemach.hours).length > 0
-            ? { openingHoursSpecification: toSchemaOpeningHours(gemach.hours) }
-            : {}),
-    }));
+        breadcrumbSchema([
+            { name: 'דף הבית', path: '/' },
+            { name: 'כל הגמ"חים', path: '/gemachim' },
+            { name: gemach.name, path: `/gemach/${gemach.id}` },
+        ]),
+    ]).replace(/</g, '\\u003c'));
 </script>
 
 <svelte:head>
-    <title>{gemach.name} – גמ"ח {categoryLabel} ב{gemach.city} | הגמ"ח הארצי</title>
+    <title>{pageTitle}</title>
     <meta name="description" content={metaDescription} />
     <link rel="canonical" href={canonical} />
+    <meta name="robots" content={robotsValue} />
     <meta property="og:title" content={`${gemach.name} – גמ"ח ${categoryLabel} ב${gemach.city}`} />
     <meta property="og:description" content={metaDescription} />
     <meta property="og:url" content={canonical} />
     <meta property="og:type" content="website" />
-    {#if gemach.image}<meta property="og:image" content={gemach.image} />{/if}
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:locale" content="he_IL" />
+    <meta property="og:image" content={gemach.image || DEFAULT_OG_IMAGE} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={`${gemach.name} – גמ"ח ${categoryLabel} ב${gemach.city}`} />
+    <meta name="twitter:description" content={metaDescription} />
+    <meta name="twitter:image" content={gemach.image || DEFAULT_OG_IMAGE} />
     {@html `<script type="application/ld+json">${jsonLd}<` + `/script>`}
 </svelte:head>
 
