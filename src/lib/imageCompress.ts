@@ -55,6 +55,50 @@ export function compressImage(file: File): Promise<string> {
     });
 }
 
+/** צלע הריבוע של תמונת אריח קטגוריה. האריח מוצג ב-108px — 384 מכסה גם 3x. */
+const TILE_EDGE = 384;
+
+/**
+ * תקרת משקל כוללת לכל תמונות הקטגוריות.
+ *
+ * כולן נשמרות כ-data URI בתוך רשומת ההגדרות היחידה (__ng_config), ולכן חלה
+ * עליהן אותה תקרת 1MB של koa-body שמפילה בקשות ב-413 בלי הסבר. עוצרים
+ * בהרבה מתחת, עם מקום לשאר ההגדרות שיושבות באותה רשומה.
+ */
+export const MAX_CATEGORY_IMAGES_KB = 600;
+
+/**
+ * קורא קובץ תמונה, חותך ממנו ריבוע-מרכז וממזער אותו לגודל אריח.
+ * חיתוך ולא רק הקטנה: האריח ממילא מציג ריבוע-מרכז (object-fit: cover),
+ * ושמירת הריבוע בלבד חוסכת שליש מהמשקל ברשומת ההגדרות.
+ */
+export function compressTileImage(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('read'));
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = () => reject(new Error('image'));
+            img.onload = () => {
+                const side = Math.min(img.width, img.height);
+                if (!side) { reject(new Error('image')); return; }
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = Math.min(TILE_EDGE, side);
+                const ctx = canvas.getContext('2d');
+                if (!ctx) { reject(new Error('canvas')); return; }
+                ctx.drawImage(
+                    img,
+                    (img.width - side) / 2, (img.height - side) / 2, side, side,
+                    0, 0, canvas.width, canvas.height
+                );
+                resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
+            };
+            img.src = String(reader.result);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 /** משקל מקורב ב-KB של data URI (base64 מנפח את המקור ב-~1/3) */
 export function dataUriWeightKb(src: string): number {
     if (!src.startsWith('data:')) return 0;

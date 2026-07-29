@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getAdminContext, requireOwner } from '$lib/server/admin';
 import { getCategories, saveCategories } from '$lib/server/adminStore';
 import { categories as defaultCategories, type CategoryDef } from '$lib/gemachData';
+import { MAX_CATEGORY_IMAGES_KB } from '$lib/imageCompress';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { owner } = await getAdminContext(locals);
@@ -12,6 +13,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 function slugify(s: string): string {
 	return s.trim().replace(/\s+/g, '-').toLowerCase();
+}
+
+/** תמונת אריח קבילה: קובץ שהועלה (data URI), כתובת https, או נתיב מקומי ב-static */
+const SAFE_IMAGE = /^(data:image\/|https:\/\/|\/)/i;
+
+/** משקל מקורב ב-KB של data URI. גרסת-שרת של dataUriWeightKb (שם — צד לקוח בלבד) */
+function dataUriKb(src: string): number {
+	if (!src.startsWith('data:')) return 0;
+	return Math.round((src.slice(src.indexOf(',') + 1).length * 0.75) / 1024);
 }
 
 function normalizeList(raw: unknown): CategoryDef[] {
@@ -27,7 +37,15 @@ function normalizeList(raw: unknown): CategoryDef[] {
 		key = slugify(key);
 		if (seen.has(key)) continue;
 		seen.add(key);
-		out.push({ key, label, icon: String(o.icon ?? '').trim() || '📦' });
+		// התמונה נשמרת ככל שדה אחר. בלי זה כל שמירה בפאנל הייתה מוחקת את
+		// תמונות האריחים ומחזירה את הקטגוריות לאימוג'י.
+		const image = String(o.image ?? '').trim();
+		out.push({
+			key,
+			label,
+			icon: String(o.icon ?? '').trim() || '📦',
+			...(SAFE_IMAGE.test(image) ? { image } : {}),
+		});
 	}
 	return out;
 }
@@ -45,6 +63,14 @@ export const actions: Actions = {
 			return fail(400, { error: 'נתוני הקטגוריות אינם תקינים' });
 		}
 		if (list.length === 0) return fail(400, { error: 'חייבת להישאר לפחות קטגוריה אחת' });
+		// כל התמונות יושבות באותה רשומת הגדרות — חריגה מהתקרה מוחזרת מ-Strapi
+		// כ-413 בלי הסבר, ולכן חוסמים כאן עם הודעה שאומרת מה לעשות.
+		const imagesKb = list.reduce((sum, c) => sum + dataUriKb(c.image ?? ''), 0);
+		if (imagesKb > MAX_CATEGORY_IMAGES_KB) {
+			return fail(400, {
+				error: `תמונות הקטגוריות שוקלות ${imagesKb}KB, מעל התקרה של ${MAX_CATEGORY_IMAGES_KB}KB. הסר תמונה או שתיים ונסה שוב.`,
+			});
+		}
 		try {
 			await saveCategories(list);
 		} catch (e) {

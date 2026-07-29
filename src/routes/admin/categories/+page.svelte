@@ -2,6 +2,7 @@
     import { enhance } from '$app/forms';
     import { page } from '$app/stores';
     import type { CategoryDef } from '$lib/gemachData';
+    import { compressTileImage, dataUriWeightKb, MAX_CATEGORY_IMAGES_KB } from '$lib/imageCompress';
 
     let { data, form } = $props();
 
@@ -11,6 +12,42 @@
 
     let saving = $state(false);
     const flash = $derived($page.url.searchParams.get('flash'));
+
+    /* ═══════════ תמונת האריח ═══════════ */
+    // קלט קבצים אחד לכל השורות; pendingIndex זוכר לאיזו קטגוריה הקובץ נבחר.
+    let fileInput = $state<HTMLInputElement | null>(null);
+    let pendingIndex = -1;
+    let busy = $state(false);
+    let imgError = $state('');
+
+    /** מוצג בתצוגה המקדימה רק מה שהדפדפן אכן יכול לטעון */
+    const previewOf = (src?: string) =>
+        src && /^(data:image\/|https:\/\/|\/)/i.test(src.trim()) ? src.trim() : '';
+
+    function pickImage(i: number) {
+        pendingIndex = i;
+        imgError = '';
+        fileInput?.click();
+    }
+
+    async function onFileChosen(e: Event) {
+        const input = e.currentTarget as HTMLInputElement;
+        const file = input.files?.[0];
+        input.value = '';                       // בחירת אותו קובץ שוב תירה onchange
+        if (!file || pendingIndex < 0) return;
+        busy = true;
+        try {
+            list[pendingIndex].image = await compressTileImage(file);
+        } catch {
+            imgError = 'לא הצלחנו לקרוא את הקובץ. נסה תמונה אחרת (JPG/PNG/WebP).';
+        }
+        busy = false;
+        pendingIndex = -1;
+    }
+
+    /** משקל התמונות שהועלו כקבצים — כתובות חיצוניות/מקומיות לא נשקלות */
+    const imagesKb = $derived(list.reduce((sum, c) => sum + dataUriWeightKb(c.image ?? ''), 0));
+    const overCap = $derived(imagesKb > MAX_CATEGORY_IMAGES_KB);
 
     function add() {
         list = [...list, { key: '', label: '', icon: '📦' }];
@@ -43,26 +80,56 @@
     <p class="text-sm text-gray-400">
         הקטגוריות משמשות לסינון ולתצוגה באתר. הסדר כאן קובע את סדר ההצגה.
         מפתח של קטגוריה קיימת נעול — שינויו ינתק את הגמ"חים המשויכים אליה.
+        לחיצה על התמונה מחליפה את תמונת האריח בדף הבית; היא נחתכת אוטומטית לריבוע.
     </p>
+
+    {#if imgError}<div class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{imgError}</div>{/if}
+
+    <!-- קלט קבצים יחיד לכל השורות -->
+    <input type="file" accept="image/*" class="hidden" bind:this={fileInput} onchange={onFileChosen} />
 
     <div class="space-y-2">
         {#each list as cat, i (i)}
-            <div class="card p-3 flex items-center gap-2">
+            <div class="card p-3 flex flex-wrap items-center gap-2">
                 <div class="flex flex-col gap-1">
                     <button type="button" onclick={() => move(i, -1)} disabled={i === 0}
                         class="w-6 h-6 rounded bg-[#16264d] hover:bg-[#243a6e] text-gray-300 text-xs disabled:opacity-30">▲</button>
                     <button type="button" onclick={() => move(i, 1)} disabled={i === list.length - 1}
                         class="w-6 h-6 rounded bg-[#16264d] hover:bg-[#243a6e] text-gray-300 text-xs disabled:opacity-30">▼</button>
                 </div>
+                <!-- תצוגה מקדימה של האריח = כפתור העלאה -->
+                <button type="button" onclick={() => pickImage(i)} disabled={busy}
+                    title="החלף תמונת אריח" aria-label="החלף תמונת אריח ל{cat.label || 'קטגוריה'}"
+                    class="h-11 w-11 shrink-0 overflow-hidden rounded-lg border-2 border-[#3b5794] bg-[#0f1c3d] hover:border-purple-500 transition-colors disabled:opacity-50">
+                    {#if previewOf(cat.image)}
+                        <img src={previewOf(cat.image)} alt="" class="h-full w-full object-cover" />
+                    {:else}
+                        <span class="text-lg leading-none">🖼️</span>
+                    {/if}
+                </button>
                 <input bind:value={cat.icon} maxlength="4" aria-label="אייקון"
                     class="w-14 text-center rounded-lg border border-[#3b5794] bg-[#1e293b] px-2 py-2 text-lg focus:border-purple-500 focus:outline-none" />
                 <input bind:value={cat.label} placeholder="שם הקטגוריה" aria-label="שם"
-                    class="flex-1 rounded-lg border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
+                    class="flex-1 min-w-40 rounded-lg border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none" />
                 <input bind:value={cat.key} placeholder="key" aria-label="מפתח" dir="ltr"
                     readonly={existingKeys.has(cat.key)}
                     class="w-32 rounded-lg border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-gray-400 text-sm focus:border-purple-500 focus:outline-none text-left {existingKeys.has(cat.key) ? 'opacity-60' : ''}" />
                 <button type="button" onclick={() => remove(i)} disabled={list.length <= 1}
                     class="w-8 h-8 rounded-lg bg-red-900/30 text-red-300 hover:bg-red-900/60 transition-colors disabled:opacity-30" title="הסר">🗑️</button>
+
+                <!-- כתובת התמונה: לעריכה ידנית של נתיב מקומי או קישור https -->
+                <div class="flex w-full items-center gap-2">
+                    <input bind:value={cat.image} dir="ltr" aria-label="כתובת תמונת האריח"
+                        placeholder="/images/categories/example.webp או https://..."
+                        class="flex-1 rounded-lg border border-[#3b5794] bg-[#111e3f] px-3 py-1.5 text-xs text-gray-300 placeholder-gray-600 focus:border-purple-500 focus:outline-none text-left" />
+                    {#if cat.image?.startsWith('data:')}
+                        <span class="shrink-0 text-xs text-gray-400">קובץ · {dataUriWeightKb(cat.image)}KB</span>
+                    {/if}
+                    {#if cat.image}
+                        <button type="button" onclick={() => (list[i].image = '')}
+                            class="shrink-0 rounded-lg bg-[#1c2f5a] px-2 py-1.5 text-xs text-gray-300 hover:bg-[#2a4379] transition-colors">נקה</button>
+                    {/if}
+                </div>
             </div>
         {/each}
     </div>
@@ -72,10 +139,17 @@
         ➕ הוסף קטגוריה
     </button>
 
+    {#if imagesKb > 0}
+        <p class="text-xs {overCap ? 'text-red-300' : 'text-gray-500'}">
+            תמונות שהועלו: {imagesKb}KB מתוך {MAX_CATEGORY_IMAGES_KB}KB
+            {#if overCap}— חורג מהתקרה, הסר תמונה אחת או שתיים כדי לשמור{/if}
+        </p>
+    {/if}
+
     <div class="flex items-center gap-3 pt-3 border-t border-[#3b5794]">
         <form method="POST" action="?/save" use:enhance={() => { saving = true; return async ({ update }) => { await update(); saving = false; }; }}>
             <input type="hidden" name="categories" value={payload} />
-            <button type="submit" disabled={saving}
+            <button type="submit" disabled={saving || busy || overCap}
                 class="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 font-bold text-white transition hover:opacity-90 disabled:opacity-60">
                 {saving ? 'שומר...' : 'שמור קטגוריות'}
             </button>
