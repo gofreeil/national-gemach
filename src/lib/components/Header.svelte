@@ -61,9 +61,12 @@
                     />
                 </div>
                 <div class="min-w-0">
-                    <h1 class="truncate bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight">
+                    <!-- שם המותג בכותרת הוא <p> ולא <h1>: ה-h1 שייך לכותרת הייחודית של כל דף
+                         (שם הגמ"ח בדף גמ"ח, כותרת המאגר בדף הבית). h1 גלובלי זהה בכל
+                         הדפים היה מטשטש לגוגל במה כל דף עוסק. -->
+                    <p class="truncate bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight">
                         הגמ"ח הארצי
-                    </h1>
+                    </p>
                     <p class="truncate text-xs text-gray-100 leading-tight">כל הגמחים בארץ בכף ידך</p>
                 </div>
             </a>
@@ -135,9 +138,9 @@
                     />
                 </div>
                 <div class="brand-text">
-                    <h1 class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent">
+                    <p class="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-3xl font-black text-transparent">
                         הגמ"ח הארצי
-                    </h1>
+                    </p>
                     <p class="text-gray-100 text-base font-bold">
                         כל הגמחים בארץ בכף ידך
                     </p>

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import Seo from '$lib/components/Seo.svelte';
     // תנאי הפרסום — מקושרים מדף "פרסמו אצלנו" ומקופסת התשלום בבילדר,
     // לפני שהמפרסם בוחר מסלול ומשלם.
     import { adPlans } from '$lib/adPlans';
@@ -7,10 +8,11 @@
     const email = 'freedomhasbegun@gmail.com';
 </script>
 
-<svelte:head>
-    <title>תנאי פרסום | הגמ"ח הארצי</title>
-    <meta name="description" content="תנאי הפרסום באתר הגמ&quot;ח הארצי — מה מותר ומה אסור לפרסם, תשלום מראש לפי מסלול, אישור מנהל, ותנאי ההסרה." />
-</svelte:head>
+<Seo
+    title='תנאי הפרסום באתר הגמ"ח הארצי'
+    description='תנאי הפרסום באתר הגמ"ח הארצי — מה מותר ומה אסור לפרסם, תשלום מראש לפי מסלול, אישור מנהל, ותנאי ההסרה.'
+    path="/advertise/terms"
+/>
 
 <div class="mx-auto max-w-3xl px-4 py-8 md:py-12" dir="rtl">
     <div class="rounded-3xl border border-[#3b5794] bg-[#16264d] shadow-2xl overflow-hidden">

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import Seo from '$lib/components/Seo.svelte';
 	import { enhance } from '$app/forms';
 	import GemachFormFields from '$lib/components/admin/GemachFormFields.svelte';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
@@ -11,10 +12,12 @@
 	const initial = $derived(form?.values ?? null);
 </script>
 
-<svelte:head>
-	<title>הוספת גמ"ח – הגמ"ח הארצי</title>
-	<meta name="robots" content="noindex" />
-</svelte:head>
+<Seo
+    title='הוספת גמ"ח למאגר הארצי — רישום חינם'
+    description='מפעילים גמ"ח? הוסיפו אותו למאגר הגמ"חים הארצי בחינם — שם, נושא, עיר, כתובת, שעות פעילות וטלפון — וקבלו דף אינדקס שמופיע בגוגל.'
+    path="/gemach/add"
+    noindex
+/>
 
 <div class="px-3 md:px-4 py-6 max-w-3xl mx-auto" dir="rtl">
 	<Breadcrumbs

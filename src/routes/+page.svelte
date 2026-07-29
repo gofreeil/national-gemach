@@ -4,10 +4,10 @@
     import GemachCard from '$lib/components/GemachCard.svelte';
     import AvedotBanner from '$lib/components/AvedotBanner.svelte';
     import JsonLd from '$lib/components/JsonLd.svelte';
+    import Seo from '$lib/components/Seo.svelte';
     import {
         SITE_NAME,
         SITE_DESCRIPTION,
-        canonical,
         websiteSchema,
         organizationSchema,
         serviceSchema,
@@ -424,15 +424,12 @@
     ]);
 </script>
 
-<svelte:head>
-    <link rel="canonical" href={canonical('/')} />
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-    <meta
-        name="keywords"
-        content='גמ"ח, גמחים, מאגר גמחים, אינדקס גמחים, גמ"ח ציוד רפואי, גמ"ח שמלות, גמ"ח ריהוט, גמ"ח כלי אירוח, גמ"ח תינוקות, גמ"ח הלוואות, גמילות חסדים'
-    />
-</svelte:head>
-
+<Seo
+    title='הגמ"ח הארצי — כל הגמ"חים בישראל במקום אחד, לפי עיר ולפי נושא'
+    description={SITE_DESCRIPTION}
+    path="/"
+    keywords='גמ"ח, גמחים, מאגר גמחים, אינדקס גמחים, גמ"ח ציוד רפואי, גמ"ח שמלות, גמ"ח ריהוט, גמ"ח כלי אירוח, גמ"ח תינוקות, גמ"ח הלוואות, גמילות חסדים'
+/>
 <JsonLd data={schemas} />
 
 <!-- Hero Section -->

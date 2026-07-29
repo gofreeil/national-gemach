@@ -7,6 +7,7 @@
     import VerifiedStamp from '$lib/components/VerifiedStamp.svelte';
     import { runInterstitial, gatedNav } from '$lib/adGate';
     import { formatOpeningHoursLines, isOpenNow, toSchemaOpeningHours } from '$lib/openingHours';
+    import Seo from '$lib/components/Seo.svelte';
     import { SITE_NAME, SITE_URL, SITE_LOGO, DEFAULT_OG_IMAGE, breadcrumbSchema } from '$lib/seo';
     import type { PageData } from './$types';
 
@@ -78,10 +79,8 @@
             : `גמ"ח ${categoryLabel} ב${gemach.city}${gemach.address ? `, ${gemach.address}` : ''} — פרטי הגמ"ח, שעות פעילות וטלפון במאגר הגמ"חים הארצי.`
         ).slice(0, 300)
     );
-    /** טיוטה מוצגת לאדמין בלבד (ראו +page.server.ts) — ולכן גם אסור שתיכנס לאינדקס */
-    const robotsValue = $derived(
-        gemach.status === 'draft' ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1'
-    );
+    /* טיוטה מוצגת לאדמין בלבד (ראו +page.server.ts) — ולכן היא מקבלת noindex
+       דרך רכיב <Seo> למטה, ולא נכנסת לאינדקס של גוגל. */
 
     // Schema.org — מאפשר לגוגל להציג את הגמ"ח כעסק מקומי עם כתובת, טלפון ושעות,
     // ומקשר אותו למאגר (isPartOf) ולתנועת האם (parentOrganization) כישות אחת.
@@ -123,22 +122,22 @@
     ]).replace(/</g, '\\u003c'));
 </script>
 
+<Seo
+    title={pageTitle}
+    description={metaDescription}
+    path={`/gemach/${gemach.id}`}
+    image={gemach.image || DEFAULT_OG_IMAGE}
+    noindex={gemach.status === 'draft'}
+    keywords={[
+        `גמ"ח ${categoryLabel}`,
+        `גמ"ח ב${gemach.city}`,
+        gemach.name,
+        'גמילות חסדים',
+        ...(gemach.tags ?? []),
+    ].filter(Boolean).join(', ')}
+/>
+
 <svelte:head>
-    <title>{pageTitle}</title>
-    <meta name="description" content={metaDescription} />
-    <link rel="canonical" href={canonical} />
-    <meta name="robots" content={robotsValue} />
-    <meta property="og:title" content={`${gemach.name} – גמ"ח ${categoryLabel} ב${gemach.city}`} />
-    <meta property="og:description" content={metaDescription} />
-    <meta property="og:url" content={canonical} />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content={SITE_NAME} />
-    <meta property="og:locale" content="he_IL" />
-    <meta property="og:image" content={gemach.image || DEFAULT_OG_IMAGE} />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={`${gemach.name} – גמ"ח ${categoryLabel} ב${gemach.city}`} />
-    <meta name="twitter:description" content={metaDescription} />
-    <meta name="twitter:image" content={gemach.image || DEFAULT_OG_IMAGE} />
     {@html `<script type="application/ld+json">${jsonLd}<` + `/script>`}
 </svelte:head>
 

@@ -33,30 +33,17 @@
 </script>
 
 <svelte:head>
+    <!-- כותרת גיבוי בלבד: כל דף ציבורי דורס אותה דרך <Seo> ($lib/components/Seo.svelte) -->
     <title>הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</title>
-    <meta name="description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
 
     <link rel="icon" href="/images/logo.png" type="image/png" />
     <link rel="shortcut icon" href="/images/logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="/images/logo.png" />
 
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="הגמ&quot;ח הארצי" />
-    <meta property="og:title" content="הגמ&quot;ח הארצי – כל הגמחים בארץ בכף ידך" />
-    <meta property="og:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
-    <meta property="og:image" content="https://gemach.gofreeil.com/images/logo.png" />
-    <meta property="og:image:secure_url" content="https://gemach.gofreeil.com/images/logo.png" />
-    <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:width" content="1254" />
-    <meta property="og:image:height" content="1254" />
-    <meta property="og:image:alt" content="הגמ&quot;ח הארצי – לוגו" />
-    <meta property="og:url" content="https://gemach.gofreeil.com/" />
-    <meta property="og:locale" content="he_IL" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="הגמ&quot;ח הארצי – כל הגמחים בארץ בכף ידך" />
-    <meta name="twitter:description" content="מאגר הגמחים הארצי – חפש גמחים לפי שם, עניין או עיר בכל רחבי הארץ" />
-    <meta name="twitter:image" content="https://gemach.gofreeil.com/images/logo.png" />
+    <!-- תגי Open Graph ו-Twitter מוגדרים פר-דף ברכיב <Seo>. תג גלובלי כאן היה
+         מקדים את הפר-דפי ב-HTML, וכל שיתוף של דף גמ"ח בוואטסאפ היה מציג את שם
+         האתר ואת כתובת דף הבית במקום את הגמ"ח עצמו. גם מידות התמונה יצאו מכאן:
+         לדף גמ"ח יש תמונה משלו, ומידות קשיחות היו משקרות לגביה. -->
 
     <meta name="theme-color" content="#874b90" />
 </svelte:head>

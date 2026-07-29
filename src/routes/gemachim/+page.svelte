@@ -2,7 +2,8 @@
     import { page as pageStore } from '$app/stores';
     import GemachCard from '$lib/components/GemachCard.svelte';
     import JsonLd from '$lib/components/JsonLd.svelte';
-    import { SITE_NAME, DEFAULT_OG_IMAGE, canonical, collectionSchema, breadcrumbSchema } from '$lib/seo';
+    import Seo from '$lib/components/Seo.svelte';
+    import { SITE_NAME, canonical, collectionSchema, breadcrumbSchema } from '$lib/seo';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -59,27 +60,22 @@
     ]);
 </script>
 
+<Seo
+    title={pageTitle}
+    description={pageDescription}
+    path={pagePath}
+    keywords='כל הגמחים, רשימת גמחים, מאגר גמחים, גמ"ח לפי עיר, גמ"ח לפי נושא'
+/>
+
 <svelte:head>
-    <title>{pageTitle}</title>
-    <meta name="description" content={pageDescription} />
-    <link rel="canonical" href={canonical(pagePath)} />
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <!-- rel=prev/next קושר את עמודי העימוד לסדרה אחת — אין לזה מקום ברכיב Seo
+         הכללי, כי רק דף מעומד צריך אותם -->
     {#if data.page > 1}
         <link rel="prev" href={canonical(data.page - 1 > 1 ? `/gemachim?page=${data.page - 1}` : '/gemachim')} />
     {/if}
     {#if data.page < data.pages}
         <link rel="next" href={canonical(`/gemachim?page=${data.page + 1}`)} />
     {/if}
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content={SITE_NAME} />
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={pageDescription} />
-    <meta property="og:url" content={canonical(pagePath)} />
-    <meta property="og:image" content={DEFAULT_OG_IMAGE} />
-    <meta property="og:locale" content="he_IL" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={pageTitle} />
-    <meta name="twitter:description" content={pageDescription} />
 </svelte:head>
 
 <JsonLd data={schemas} />
