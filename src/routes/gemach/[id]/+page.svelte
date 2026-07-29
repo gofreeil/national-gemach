@@ -70,13 +70,21 @@
     );
 
     const canonical = $derived(`${SITE_URL}/gemach/${gemach.id}`);
-    const pageTitle = $derived(`${gemach.name} — גמ"ח ${categoryLabel} ב${gemach.city} | ${SITE_NAME}`);
+
+    /** המקום להצגה בכותרות ובתיאורים. 18 מהגמ"חים במאגר בלי עיר, וברשומות
+     *  אחדות העיר ריקה והשכונה מחזיקה את שם העיר — ולכן חיבור ישיר של
+     *  "ב{city}" הפיק כותרות שבורות כמו 'גמ"ח ריהוט ב | הגמ"ח הארצי'. */
+    const placeName = $derived((gemach.city || gemach.neighborhood || '').trim());
+    /** "ב<מקום>" רק כשיש מקום; אחרת מחרוזת ריקה שנעלמת מהמשפט */
+    const inPlace = $derived(placeName ? ` ב${placeName}` : '');
+
+    const pageTitle = $derived(`${gemach.name} — גמ"ח ${categoryLabel}${inPlace} | ${SITE_NAME}`);
     /** תיאור למנועי חיפוש: התיאור שהגמ"ח כתב, ואם אין — משפט שנבנה מהנושא,
      *  העיר והכתובת, כדי שלא ייווצרו תיאורים כפולים בין דפי גמ"ח. */
     const metaDescription = $derived(
         (gemach.description
-            ? `${gemach.description} · גמ"ח ${categoryLabel} ב${gemach.city}`
-            : `גמ"ח ${categoryLabel} ב${gemach.city}${gemach.address ? `, ${gemach.address}` : ''} — פרטי הגמ"ח, שעות פעילות וטלפון במאגר הגמ"חים הארצי.`
+            ? `${gemach.description} · גמ"ח ${categoryLabel}${inPlace}`
+            : `גמ"ח ${categoryLabel}${inPlace}${gemach.address ? `, ${gemach.address}` : ''} — פרטי הגמ"ח, שעות פעילות וטלפון במאגר הגמ"חים הארצי.`
         ).slice(0, 300)
     );
     /* טיוטה מוצגת לאדמין בלבד (ראו +page.server.ts) — ולכן היא מקבלת noindex
@@ -90,8 +98,8 @@
             '@type': 'LocalBusiness',
             '@id': `${canonical}#gemach`,
             name: gemach.name,
-            alternateName: `גמ"ח ${categoryLabel} ב${gemach.city}`,
-            description: gemach.description || `גמ"ח ${categoryLabel} ב${gemach.city}`,
+            alternateName: `גמ"ח ${categoryLabel}${inPlace}`,
+            description: gemach.description || `גמ"ח ${categoryLabel}${inPlace}`,
             url: canonical,
             telephone: gemach.phone || undefined,
             image: gemach.image || SITE_LOGO,
@@ -99,11 +107,13 @@
             address: {
                 '@type': 'PostalAddress',
                 streetAddress: gemach.address || undefined,
-                addressLocality: gemach.city,
+                // בלי עיר לא מוצהר addressLocality ריק — שדה ריק ב-schema
+                // נחשב נתון שגוי, ועדיף להשמיט אותו
+                addressLocality: placeName || undefined,
                 addressRegion: gemach.neighborhood || undefined,
                 addressCountry: 'IL',
             },
-            areaServed: { '@type': 'City', name: gemach.city },
+            ...(placeName ? { areaServed: { '@type': 'City', name: placeName } } : {}),
             knowsAbout: [`גמ"ח ${categoryLabel}`, 'גמילות חסדים', 'השאלת ציוד'],
             ...(gemach.tags?.length ? { keywords: gemach.tags.join(', ') } : {}),
             ...(typeof gemach.lat === 'number' && typeof gemach.lng === 'number'
@@ -130,7 +140,7 @@
     noindex={gemach.status === 'draft'}
     keywords={[
         `גמ"ח ${categoryLabel}`,
-        `גמ"ח ב${gemach.city}`,
+        placeName ? `גמ"ח ב${placeName}` : '',
         gemach.name,
         'גמילות חסדים',
         ...(gemach.tags ?? []),
@@ -235,7 +245,9 @@
                                 class="text-xs bg-blue-900/50 text-blue-300 px-2.5 py-1 rounded-full border border-blue-500/30 hover:bg-blue-900/80 transition-colors">
                                 {categoryLabel}
                             </a>
-                            <span class="text-xs text-gray-400">📍 {fullAddress || gemach.city}</span>
+                            {#if fullAddress || placeName}
+                                <span class="text-xs text-gray-400">📍 {fullAddress || placeName}</span>
+                            {/if}
                             {#if data.pinned}
                                 <span class="text-xs text-amber-300" aria-label="גמ&quot;ח נעוץ בדף הבית">📌 נעוץ</span>
                             {/if}

@@ -31,6 +31,12 @@
 
     const href = $derived(`/gemach/${gemach.id}`);
 
+    /** שורת המיקום — רק החלקים שקיימים בפועל. במאגר יש רשומות בלי עיר, ורשומות
+     *  שבהן העיר ריקה והשכונה מחזיקה את שם העיר. */
+    const locationLine = $derived(
+        [gemach.city, gemach.neighborhood].map((s) => s?.trim()).filter(Boolean).join(' – ')
+    );
+
     const categoryLabel = $derived(
         categories.find(c => c.key === gemach.category)?.label ?? gemach.category
     );
@@ -65,9 +71,12 @@
                 <span class="rounded-full border border-blue-500/30 bg-blue-900/50 px-2 py-0.5 text-xs text-blue-300">
                     {categoryLabel}
                 </span>
-                <span class="text-xs text-gray-400">
-                    📍 {gemach.city}{gemach.neighborhood ? ` – ${gemach.neighborhood}` : ''}
-                </span>
+                <!-- המיקום נבנה מהחלקים הלא-ריקים בלבד. חיבור ישיר של עיר ושכונה
+                     הדפיס "📍 – רעננה" ברשומות שבהן העיר ריקה והשכונה מחזיקה את
+                     שם העיר, ו-"📍 " ריק ברשומות בלי מיקום כלל. -->
+                {#if locationLine}
+                    <span class="text-xs text-gray-400">📍 {locationLine}</span>
+                {/if}
             </div>
 
             {#if gemach.description}
