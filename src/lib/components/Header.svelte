@@ -5,11 +5,9 @@
     // משתמש מחובר (מגיע מ-+layout.server דרך +layout.svelte); null = אנונימי
     let {
         user = null,
-        adminRole = null,
         visitors = null
     }: {
         user?: { name: string; email: string } | null;
-        adminRole?: 'super_admin' | 'admin' | null;
         visitors?: { count: number; label: string } | null;
     } = $props();
 
@@ -70,17 +68,7 @@
                 </div>
             </a>
             <div class="flex flex-shrink-0 items-center gap-1.5">
-                <!-- ניהול (מורשים בלבד) — נפרס בתוך האזור האישי -->
-                {#if adminRole}
-                    <a
-                        href="/profile#admin"
-                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white transition-colors"
-                        aria-label="ניהול — באזור האישי"
-                        title="ניהול — באזור האישי"
-                    >
-                        <span aria-hidden="true">🛠️</span>
-                    </a>
-                {/if}
+                <!-- אין כאן כפתור ניהול — הפאנל פרוס בתוך האזור האישי (/profile) -->
                 <!-- Language (ימין) -->
                 <div class="relative lang-dropdown">
                     <button
@@ -167,18 +155,7 @@
                     </div>
                 {/if}
 
-                <!-- ניהול (מורשים בלבד) — נפרס בתוך האזור האישי -->
-                {#if adminRole}
-                    <a
-                        href="/profile#admin"
-                        class="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-3 py-2 text-sm font-bold text-white transition-all shadow-lg"
-                        title={adminRole === 'super_admin' ? 'ניהול באזור האישי (סופר-אדמין)' : 'ניהול באזור האישי'}
-                    >
-                        <span aria-hidden="true">🛠️</span>
-                        <span class="hidden sm:inline">ניהול</span>
-                        {#if adminRole === 'super_admin'}<span class="text-amber-300" aria-hidden="true">★</span>{/if}
-                    </a>
-                {/if}
+                <!-- אין כאן כפתור ניהול — הפאנל פרוס בתוך האזור האישי (/profile) -->
 
                 <!-- Language (ימין) -->
                 <div class="relative lang-dropdown">

@@ -75,7 +75,7 @@
 <AdInterstitial />
 
 <div class="site-bg min-h-screen flex flex-col">
-    <Header user={data.user} adminRole={data.adminRole} visitors={data.visitors} />
+    <Header user={data.user} visitors={data.visitors} />
 
     <div class="layout-container flex-grow">
         <RightAdBanner />

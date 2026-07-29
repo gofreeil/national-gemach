@@ -49,12 +49,12 @@
 			</div>
 		</section>
 
-		<!-- פאנל הניהול, פרוס בתוך האזור האישי. כפתור "ניהול" בהדר מוביל לכאן
-		     (/profile#admin) — :target מדגיש את הפאנל בהגעה. -->
+		<!-- פאנל הניהול חי כאן, ולא ככפתור נפרד בהדר. id="admin" נשאר כעוגן
+		     לקישור ישיר (/profile#admin). -->
 		{#if role}
 			<section
 				id="admin"
-				class="admin-panel scroll-mt-28 rounded-3xl border border-emerald-500/30 bg-[#16264d] p-5 shadow-2xl sm:p-6"
+				class="scroll-mt-28 rounded-3xl border border-emerald-500/30 bg-[#16264d] p-5 shadow-2xl sm:p-6"
 			>
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
@@ -87,17 +87,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	/* הגעה מכפתור "ניהול" שבהדר (#admin) — הבהוב טבעת קצר שמכוון את העין לפאנל */
-	.admin-panel:target {
-		animation: admin-focus 1.4s ease-out;
-	}
-	@keyframes admin-focus {
-		from { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.55); }
-		to   { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.admin-panel:target { animation: none; }
-	}
-</style>

@@ -4,8 +4,8 @@ import { resolveRole } from '$lib/server/admin';
 import { getVisitorCount } from '$lib/server/visitorStats';
 
 // חושף את הסשן (אם יש) לכל הדפים — כדי שההאדר יציג מצב מחובר/כפתור התחברות,
-// את תפקיד הניהול (adminRole) לקישור לפאנל, את מונה הגולשים (מ-config, מטמון —
-// בלי קריאה ל-GA), ואת מזהה ה-GA להטענת gtag בצד-הלקוח.
+// את תפקיד הניהול (adminRole) לפאנל שבאזור האישי ולתפריט האדמין שעל הכרטיסים,
+// את מונה הגולשים (מ-config, מטמון — בלי קריאה ל-GA), ואת מזהה ה-GA להטענת gtag.
 export const load: LayoutServerLoad = async ({ locals }) => {
 	const session = await locals.auth();
 	const u = session?.user;
