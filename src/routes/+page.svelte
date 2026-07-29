@@ -12,7 +12,6 @@
         organizationSchema,
         serviceSchema,
         collectionSchema,
-        faqSchema,
     } from '$lib/seo';
     import type { PageData } from './$types';
 
@@ -383,31 +382,9 @@
 
     /* ═══════════ SEO ═══════════
        דף הבית הוא דף הכניסה הראשי מגוגל וממנועי ה-AI. הכותרת והתיאור
-       יורשים מה-layout; כאן נוספים canonical, JSON-LD (WebSite, Organization,
-       Service, CollectionPage עם הגמ"חים, FAQ) וטקסט/שו"ת גלוי לציטוט. */
-    const faqs = [
-        {
-            q: 'מה זה גמ"ח?',
-            a: 'גמ"ח (גמילות חסדים) הוא ארגון התנדבותי שמשאיל או נותן בחינם ציוד, כספים או שירותים לכל מי שצריך — למשל גמ"ח ציוד רפואי שמשאיל כיסא גלגלים, גמ"ח שמלות לחתונה, גמ"ח כלי אירוח או גמ"ח הלוואות. אין רווח ואין תיווך: מקבלים, מחזירים, ועוזרים לבא אחרינו.',
-        },
-        {
-            q: 'איך מוצאים גמ"ח קרוב לבית?',
-            a: 'מקלידים בשדה החיפוש את מה שצריך ("ציוד רפואי", "שמלות", "כלי אירוח") ובוחרים עיר במסנן הערים. אפשר גם לגלול את מסילת הקטגוריות ולראות את כל הגמ"חים בנושא. בדף הגמ"ח מופיעים הכתובת, שעות הפעילות והטלפון.',
-        },
-        {
-            q: 'האם השימוש באתר בתשלום?',
-            a: 'לא. החיפוש באתר חינמי לחלוטין, וגם רישום גמ"ח למאגר הוא בחינם וללא עלות. האתר הוא חלק מפעילות התנועה החברתית "יוצאים לחירות".',
-        },
-        {
-            q: 'אני מפעיל גמ"ח — איך מוסיפים אותו למאגר?',
-            a: 'לוחצים על "הוסף גמח חינם", ממלאים שם, נושא, עיר, כתובת, שעות פעילות וטלפון — והגמ"ח מקבל דף אינדקס משלו שמופיע בגוגל ובחיפוש באתר. אין עלות ואין התחייבות.',
-        },
-        {
-            q: 'האם צריך להירשם או להשאיר פרטים כדי לראות טלפון של גמ"ח?',
-            a: 'לא. הטלפון נחשף בלחיצה על "גלה טלפון" בדף הגמ"ח, בלי הרשמה ובלי השארת פרטים.',
-        },
-    ];
-
+       יורשים מה-layout; כאן נוספים canonical ו-JSON-LD (WebSite, Organization,
+       Service, CollectionPage עם הגמ"חים). ההסבר המלא והשו"ת עברו ל-/info
+       (כפתור "מידע" בהאדר), ושם יושב גם ה-FAQPage — ליד השו"ת שהוא מתאר. */
     const schemas = $derived([
         websiteSchema(),
         organizationSchema(),
@@ -422,7 +399,6 @@
                 path: `/gemach/${g.id}`,
             })),
         }),
-        faqSchema(faqs),
     ]);
 </script>
 
@@ -544,6 +520,19 @@
         {/if}
     </div>
 </section>
+
+<!-- כותרת סקשן משותפת: שלושת שלבי דף הבית (נעוצים · חדשים · כל השאר) נושאים אותו
+     אייקון-גלולה, אותה טיפוגרפיה ואותו חוט זהב, כדי שייקראו כרצף אחד ולא כשלושה
+     עיצובים שונים. הכותרות יושבות על הרקע הוורוד, ולכן לבן + צל דק (בלי אפור). -->
+{#snippet sectionHead(icon: string, title: string, sub: string)}
+    <div class="sec-head">
+        <h2 class="sec-title">
+            <span class="sec-ico" aria-hidden="true">{icon}</span>
+            <span>{title}</span>
+        </h2>
+        <p class="sec-sub">{sub}</p>
+    </div>
+{/snippet}
 
 <!-- Results / Categories -->
 {#if showResults || selectedCategory || selectedCity}
@@ -728,11 +717,9 @@
         </div>
       </div>
 
-        <!-- נעוצים — הרשימה שהאדמין עורך ב-/admin/pinned (📌) -->
+        <!-- (1) נעוצים — הרשימה שהאדמין עורך ב-/admin/pinned (📌) -->
         {#if pinnedGemachim.length > 0}
-            <h2 class="text-2xl font-black text-white text-center mb-6">
-                <span aria-hidden="true">📌</span> גמחים נעוצים
-            </h2>
+            {@render sectionHead('📌', 'גמ"חים נעוצים', 'מה שכדאי להכיר קודם')}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
                 {#each pinnedGemachim as gemach (gemach.id)}
                     <GemachCard {gemach} {categories} pinned />
@@ -740,78 +727,113 @@
             </div>
         {/if}
 
-        <!-- Newest Gemachim -->
-        <h2 class="text-2xl font-black text-white text-center mb-6">גמחים חדשים שנוספו</h2>
+        <!-- (2) החדשים שנוספו -->
+        {@render sectionHead('✨', 'גמ"חים חדשים', 'הגמ"חים האחרונים שנוספו למאגר')}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {#each newestGemachim as gemach (gemach.id)}
                 <GemachCard {gemach} {categories} />
             {/each}
         </div>
-
-        <!-- CTA -->
-        <div class="text-center mt-10 p-8 rounded-2xl bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-500/20">
-            <div class="text-4xl mb-3" aria-hidden="true">➕</div>
-            <h3 class="text-xl font-black text-white mb-2">יש לך גמח?</h3>
-            <p class="text-gray-300 text-sm mb-4">הוסף אותו למאגר הארצי ועזור לאנשים למצוא אותך בקלות</p>
-            <a
-                href="/gemach/add"
-                class="inline-block px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold hover:opacity-90 transition-opacity shadow-lg"
-            >
-                הוסף גמח חינם
-            </a>
-        </div>
     </section>
 {/if}
 
-<!-- מעבר לרשימת כל הגמ"חים (עם עימוד) — בסוף דף הבית -->
-<section class="px-4 pb-14 pt-2 text-center">
-    <a
-        href="/gemachim"
-        class="group inline-flex flex-col items-center gap-2 rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-900/40 to-purple-900/40 px-8 py-6 transition-all hover:border-blue-400/60 hover:from-blue-900/60 hover:to-purple-900/60"
-    >
-        <h2 class="text-2xl md:text-3xl font-black text-white group-hover:text-blue-200 transition-colors">
-            לכלל הגמ"חים ←
-        </h2>
-        <p class="text-sm text-gray-300">עיון בכל {gemachim.length} הגמ"חים במאגר</p>
-    </a>
-</section>
-
-<!-- ═══ תוכן SEO: הסבר מלא + שאלות ותשובות ═══
-     הטקסט הזה הוא מה שגוגל ומנועי ה-AI קוראים ומצטטים כשמישהו שואל "מה זה גמ"ח"
-     או "איפה יש גמ"ח ציוד רפואי". הוא מקביל ל-FAQPage שב-JSON-LD למעלה. -->
-<section class="px-4 pb-14 max-w-4xl mx-auto text-gray-100" aria-labelledby="about-gemach-title">
-    <div class="rounded-2xl border border-[#3b5794] bg-[#16264d]/90 p-5 md:p-7 shadow-lg">
-        <h2 id="about-gemach-title" class="text-2xl font-black text-white mb-3">
-            מאגר הגמ"חים הארצי — כל הגמ"חים בישראל במקום אחד
-        </h2>
-        <p class="leading-relaxed text-gray-200 mb-3">
-            <strong>הגמ"ח הארצי</strong> מרכז במקום אחד את הגמ"חים (גמילות חסדים) מכל רחבי הארץ:
-            גמ"ח <strong>ציוד רפואי</strong> (כיסאות גלגלים, הליכונים, משאבות חלב), גמ"ח
-            <strong>שמלות וחליפות</strong> לחתונות ולשמחות, גמ"ח <strong>כלי אירוח</strong>,
-            גמ"ח <strong>ריהוט</strong>, גמ"ח <strong>ציוד לתינוקות</strong>, גמ"ח
-            <strong>ספרים</strong>, גמ"ח <strong>כלי עבודה</strong>, גמ"ח <strong>מזון</strong>,
-            גמ"ח <strong>כספים והלוואות</strong> ועוד. החיפוש הוא לפי נושא ולפי עיר, ובכל דף גמ"ח
-            מופיעים הכתובת, שעות הפעילות והטלפון — בלי הרשמה ובלי עלות.
-        </p>
-        <p class="leading-relaxed text-gray-200 mb-3">
-            מפעילים גמ"ח? <a href="/gemach/add" class="text-blue-300 font-bold underline hover:text-blue-200">הוסיפו אותו למאגר בחינם</a>
-            ותקבלו דף אינדקס שמופיע בגוגל, כדי שכל מי שמחפש בדיוק את מה שאתם משאילים ימצא אתכם.
-            אפשר גם לעיין ב<a href="/gemachim" class="text-blue-300 font-bold underline hover:text-blue-200">רשימת כל הגמ"חים במאגר</a>.
-        </p>
-
-        <h2 class="text-xl font-black text-white mt-6 mb-3">שאלות נפוצות על גמ"חים</h2>
-        <div class="space-y-2">
-            {#each faqs as f (f.q)}
-                <details class="rounded-xl border border-[#3b5794] bg-[#1c2f5a]/80 px-4">
-                    <summary class="cursor-pointer py-3 font-bold text-white">{f.q}</summary>
-                    <p class="pb-3 text-sm leading-relaxed text-gray-200">{f.a}</p>
-                </details>
-            {/each}
-        </div>
+<!-- (3) כל השאר — מעבר לרשימה המעומדת. אותה כותרת בדיוק כמו שתי הקודמות,
+     ומתחתיה קישור אחד רזה במקום קופסת-ענק. -->
+<section class="px-2 md:px-4 pb-6 pt-2">
+    {@render sectionHead('🗂️', 'כל שאר הגמ"חים', `עיון בכל ${gemachim.length} הגמ"חים במאגר, לפי עיר ולפי נושא`)}
+    <div class="flex justify-center">
+        <a
+            href="/gemachim"
+            class="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-900/50 to-purple-900/50 px-8 py-3.5 text-base font-black text-white shadow-lg transition-all hover:border-blue-400/60 hover:from-blue-900/70 hover:to-purple-900/70 md:text-lg"
+        >
+            לרשימת כל הגמ"חים ←
+        </a>
     </div>
 </section>
 
+<!-- באנר הוספת גמ"ח — שורה אחת בזהב, בלי כותרת ובלי אייקון-ענק.
+     בכוונה בפלטה אחרת מכל שאר האתר (זהב על כמעט-שקוף במקום כחול-סגול),
+     כדי שייקרא כפנייה נפרדת ולא כעוד כרטיס בדף. -->
+<section class="px-4 pb-6">
+    <div class="add-banner mx-auto flex max-w-3xl flex-col items-center gap-3 rounded-2xl px-5 py-4 text-center sm:flex-row sm:justify-between sm:text-right">
+        <p class="text-sm font-bold text-amber-50 sm:text-base">
+            מפעילים גמ"ח?
+            <span class="font-normal text-amber-100/80">הוסיפו אותו למאגר — חינם, בלי התחייבות.</span>
+        </p>
+        <a
+            href="/gemach/add"
+            class="add-banner-btn shrink-0 rounded-full px-6 py-2.5 text-sm font-black transition-all"
+        >
+            הוספת גמ"ח
+        </a>
+    </div>
+</section>
+
+<!-- קישור לדף המידע (אותו תוכן שהיה כאן בתחתית) — גם למי שלא שם לב לכפתור בהאדר -->
+<section class="px-4 pb-14 text-center">
+    <a
+        href="/info"
+        class="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/15"
+    >
+        מה זה גמ"ח, איך מוצאים ואיך מוסיפים — כל המידע
+        <span aria-hidden="true">←</span>
+    </a>
+</section>
+
 <style>
+    /* ═══ כותרות הסקשנים: נעוצים · חדשים · כל השאר ═══
+       שלושתן חולקות אייקון, טיפוגרפיה, תת-כותרת וחוט זהב — אותו מוטיב זהב
+       של שדה החיפוש ושל תגי הכמות במסילה — ולכן נקראות כרצף אחד.
+       הן יושבות על הרקע הוורוד, ולכן לבן + צל דק (אסור אפור על ורוד). */
+    .sec-head { margin-bottom: 1.25rem; text-align: center; }
+    .sec-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.5rem;
+        font-weight: 900;
+        line-height: 1.15;
+        color: #fff;
+        text-shadow: 0 1px 4px rgba(11, 18, 38, 0.55);
+    }
+    .sec-ico { font-size: 1.15rem; }
+    .sec-sub {
+        margin-top: 0.35rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #fdf4ff;
+        text-shadow: 0 1px 4px rgba(11, 18, 38, 0.6);
+    }
+    .sec-head::after {
+        content: "";
+        display: block;
+        width: 4.5rem;
+        height: 2px;
+        margin: 0.6rem auto 0;
+        border-radius: 999px;
+        background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.9), transparent);
+    }
+    @media (min-width: 768px) {
+        .sec-title { font-size: 1.75rem; }
+        .sec-ico { font-size: 1.35rem; }
+    }
+
+    /* ═══ באנר הוספת גמ"ח ═══
+       בכוונה בפלטה נפרדת מכל שאר האתר — זהב על כמעט-שקוף במקום כחול-סגול,
+       מסגרת דקה בלי מילוי — כדי שייקרא כפנייה ולא כעוד כרטיס בדף. */
+    .add-banner {
+        border: 1px solid rgba(212, 175, 55, 0.45);
+        background: rgba(15, 28, 55, 0.5);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    .add-banner-btn {
+        color: #3a2a06;
+        background: linear-gradient(145deg, #f3d68b, #d4af37);
+        box-shadow: 0 6px 18px -10px rgba(212, 175, 55, 0.9);
+    }
+    .add-banner-btn:hover { filter: brightness(1.06); }
+    .add-banner-btn:active { transform: scale(0.97); }
+
     /* ═══ המסילה ═══ */
     .cat-rail {
         display: flex;
@@ -852,19 +874,21 @@
     .cat-item { flex: 0 0 auto; scroll-snap-align: start; }
     .cat-spacer { flex: 0 0 2rem; }   /* ≥ רוחב המסכה, אחרת האריח האחרון נשאר מעומעם */
 
-    /* ═══ אריח ═══ */
+    /* ═══ אריח ═══
+       המידות כאן הן של הנייד: אריח צר ⇒ ~4 קטגוריות במסך אחד במקום 3,
+       וההצצה לאריח הבא נשמרת. מ-md ומעלה חוזרים לאריח הגדול. */
     .cat-tile {
         position: relative;
-        width: clamp(7rem, 29vw, 8.5rem);   /* vw ⇒ ההצצה לאריח הבא מובטחת בכל רוחב מסך */
-        min-height: 10.25rem;
+        width: clamp(4.75rem, 20.5vw, 7rem); /* vw ⇒ ההצצה לאריח הבא מובטחת בכל רוחב מסך */
+        min-height: 8rem;
         height: 100%;                       /* ה-li נמתח לגובה השורה; בלי זה תחתית האריחים מתפרעת */
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0.4rem;
-        padding: 0.85rem 0.5rem;            /* ריפוד צר ⇒ מקום לתמונה גדולה יותר */
-        border-radius: 1rem;
+        gap: 0.3rem;
+        padding: 0.6rem 0.35rem;            /* ריפוד צר ⇒ מקום לתמונה גדולה יותר */
+        border-radius: 0.85rem;
         border: 1px solid #3b5794;
         background: linear-gradient(160deg, #1b2f5e 0%, #132342 55%, #0f1c37 100%);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 26px -20px rgba(0, 0, 0, 0.95);
@@ -891,19 +915,30 @@
 
     .cat-tile.is-empty { opacity: 0.72; }
 
+    /* מהטאבלט ומעלה יש רוחב בשפע — אריח גדול, תמונה גדולה, כמו קודם */
+    @media (min-width: 768px) {
+        .cat-tile {
+            width: clamp(7rem, 29vw, 8.5rem);
+            min-height: 10.25rem;
+            gap: 0.4rem;
+            padding: 0.85rem 0.5rem;
+            border-radius: 1rem;
+        }
+    }
+
     /* תג הכמות בפינה — כמה גמחים בקטגוריה. גלולה שמתרחבת לפי מספר הספרות */
     .cat-count-badge {
         position: absolute;
-        top: 0.45rem;
-        inset-inline-end: 0.55rem;      /* לוגי ⇒ נוחת בפינה הנכונה ב-RTL */
+        top: 0.3rem;
+        inset-inline-end: 0.35rem;      /* לוגי ⇒ נוחת בפינה הנכונה ב-RTL */
         display: grid;
         place-items: center;
-        min-width: 1.35rem;
-        height: 1.35rem;
-        padding: 0 0.4rem;
+        min-width: 1.1rem;
+        height: 1.1rem;
+        padding: 0 0.28rem;
         z-index: 2;                     /* מעל התמונה — התג לא נבלע במסגרת */
         border-radius: 999px;
-        font-size: 0.72rem;
+        font-size: 0.62rem;
         font-weight: 900;
         line-height: 1;
         font-variant-numeric: tabular-nums;
@@ -911,16 +946,16 @@
         background: linear-gradient(145deg, #f3d68b, #d4af37);
         box-shadow: 0 2px 6px -2px rgba(212, 175, 55, 0.8);
     }
-    .cat-ico { display: grid; place-items: center; width: 100%; min-height: 3.5rem; }
+    .cat-ico { display: grid; place-items: center; width: 100%; min-height: 2.5rem; }
     /* תמונת נושא במקום האימוג'י — גדולה, ממלאת כמעט את כל רוחב האריח.
        overflow:hidden חותך את הזום-פנימה (‎--z) שמעלים מסגרות לבנות אפויות בקצוות. */
     .cat-photo {
-        width: 6.75rem;
+        width: 6.75rem;                 /* max-width מקצץ אותה לרוחב הפנימי של האריח בנייד */
         max-width: 100%;
         aspect-ratio: 1 / 1;
         overflow: hidden;
-        border-radius: 0.85rem;
-        border: 3px solid #000;         /* מסגרת שחורה צמודה — התמונה ממלאת אותה בלי רווח */
+        border-radius: 0.7rem;
+        border: 2px solid #000;         /* מסגרת שחורה צמודה — התמונה ממלאת אותה בלי רווח */
         background: #0f1c3d;
         box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.95);
     }
@@ -932,7 +967,21 @@
         object-position: center;
         transform: scale(var(--z, 1.06));
     }
-    .cat-label { font-size: 0.875rem; font-weight: 700; line-height: 1.15; color: #e5e7eb; }
+    .cat-label { font-size: 0.75rem; font-weight: 700; line-height: 1.15; color: #e5e7eb; }
+
+    @media (min-width: 768px) {
+        .cat-count-badge {
+            top: 0.45rem;
+            inset-inline-end: 0.55rem;
+            min-width: 1.35rem;
+            height: 1.35rem;
+            padding: 0 0.4rem;
+            font-size: 0.72rem;
+        }
+        .cat-ico { min-height: 3.5rem; }
+        .cat-photo { border-radius: 0.85rem; border-width: 3px; }
+        .cat-label { font-size: 0.875rem; }
+    }
 
     /* ═══ פקדי ניווט ═══ */
     .cat-nav {

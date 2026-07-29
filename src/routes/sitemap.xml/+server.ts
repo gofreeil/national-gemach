@@ -38,6 +38,7 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
     const staticUrls: SitemapUrl[] = [
         { loc: `${SITE_URL}/`, changefreq: 'daily', priority: '1.0' },
         { loc: `${SITE_URL}/gemachim`, changefreq: 'daily', priority: '0.9' },
+        { loc: `${SITE_URL}/info`, changefreq: 'monthly', priority: '0.7' },
         { loc: `${SITE_URL}/gemach/add`, changefreq: 'monthly', priority: '0.6' },
         { loc: `${SITE_URL}/advertise`, changefreq: 'monthly', priority: '0.4' },
     ];
