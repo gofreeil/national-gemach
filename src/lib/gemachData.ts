@@ -87,7 +87,7 @@ export const categories: CategoryDef[] = [
     { key: 'hosting', label: 'אירוח ולינה', icon: '🏠' },
     { key: 'toys', label: 'צעצועים ומשחקים', icon: '🧸', image: CAT_IMG('kids') },
     { key: 'prayer', label: 'תפילה ובקשת רחמים', icon: '🙏' },
-    { key: 'mourning', label: 'אבלות וחסד של אמת', icon: '🤍' },
+    { key: 'mourning', label: 'אבלות', icon: '🤍', image: CAT_IMG('mourning') },
     { key: 'initiatives', label: 'מיזמים חשובים לציבור', icon: '🌟', image: CAT_IMG('initiatives') },
     { key: 'other', label: 'אחר', icon: '📦', image: CAT_IMG('other') },
 ];
