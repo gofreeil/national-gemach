@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { untrack } from 'svelte';
+    import { tick, untrack } from 'svelte';
     import { cities } from '$lib/gemachData';
     import GemachCard from '$lib/components/GemachCard.svelte';
     import AvedotBanner from '$lib/components/AvedotBanner.svelte';
@@ -13,7 +13,7 @@
         serviceSchema,
         collectionSchema,
     } from '$lib/seo';
-    import type { PageData } from './$types';
+    import type { PageData, Snapshot } from './$types';
 
     let { data }: { data: PageData } = $props();
     let gemachim = $derived(data.gemachim);
@@ -379,6 +379,41 @@
         selectedCity = '';
         showResults = false;
     }
+
+    /* ═══════════ חזרה לדף הבית עם החיפוש שהיה ═══════════
+       מצב החיפוש הוא state של הרכיב ולא פרמטרים בכתובת, ולכן מי שחיפש,
+       סינן ולחץ על גמ"ח קיבל דף בית מאופס כשחזר — גם בכפתור "חזרה" של
+       דף הגמ"ח וגם בזה של הדפדפן — ונאלץ לחפש את הכול מהתחלה.
+       snapshot של SvelteKit נשמר לרשומת ההיסטוריה (ב-sessionStorage) ומוחזר
+       בחזרה אליה בלבד, כך שכניסה רגילה לדף הבית נשארת נקייה.
+       מסילת הקטגוריות אינה נשמרת: כשיש סינון היא כלל אינה מרונדרת. */
+    interface HomeSnapshot {
+        q: string;
+        cat: string;
+        city: string;
+        results: boolean;
+        y: number;
+    }
+
+    export const snapshot: Snapshot<HomeSnapshot> = {
+        capture: () => ({
+            q: searchQuery,
+            cat: selectedCategory,
+            city: selectedCity,
+            results: showResults,
+            y: window.scrollY,
+        }),
+        restore: (v) => {
+            searchQuery = v.q ?? '';
+            selectedCategory = v.cat ?? '';
+            selectedCity = v.city ?? '';
+            showResults = v.results ?? false;
+            // התוצאות מרונדרות רק אחרי שהמצב חזר. בלי ההמתנה לרינדור הדף
+            // עדיין קצר ברגע שחזור הגלילה, והמבקר נוחת בראש הדף במקום
+            // באותו גמ"ח שהסתכל עליו.
+            if (v.y > 0) tick().then(() => window.scrollTo(0, v.y));
+        },
+    };
 
     /* ═══════════ SEO ═══════════
        דף הבית הוא דף הכניסה הראשי מגוגל וממנועי ה-AI. הכותרת והתיאור
