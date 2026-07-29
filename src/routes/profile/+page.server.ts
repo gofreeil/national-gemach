@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { isOwner } from '$lib/server/admin';
+import { getOwnerAssets } from '$lib/server/ownerAssets';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const session = await locals.auth();
@@ -10,8 +11,15 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	// owner הוא בדיקה מקומית מול משתני הסביבה, בלי עלות.
 	const { adminRole } = await parent();
 
+	// הפרסומות והגמ"חים נטענים כאן ומוצגים פרוסים בדף — האזור האישי מראה
+	// מה יש למשתמש בלי מסע לדף אחר. אותה שליפה בדיוק כמו /advertise/manage.
+	const assets = await getOwnerAssets(session.user);
+
 	return {
 		user: { name: session.user.name ?? '', email: session.user.email ?? '' },
-		isOwner: adminRole ? isOwner(session.user) : false
+		isOwner: adminRole ? isOwner(session.user) : false,
+		loadFailed: assets.loadFailed,
+		ads: assets.ads,
+		gemachim: assets.gemachim
 	};
 };
