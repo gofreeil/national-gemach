@@ -1,6 +1,7 @@
 import { redirect, fail } from '@sveltejs/kit';
 import { strapiRegister } from '$lib/server/strapiAuth';
 import type { PageServerLoad, Actions } from './$types';
+import { oauthEnabled } from '../../auth';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const session = await locals.auth();
@@ -8,7 +9,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const raw = url.searchParams.get('redirect') ?? '/';
 	const redirectTo = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
 	if (session?.user) throw redirect(302, redirectTo);
-	return { redirectTo };
+	return {
+		redirectTo,
+		// כפתור Google/Facebook מוצג רק אם הספק באמת מוגדר (מפתחות ב-env)
+		oauth: oauthEnabled
+	};
 };
 
 export const actions: Actions = {
