@@ -21,13 +21,60 @@
             <h1 class="text-2xl font-black text-white md:text-3xl">📢 הנכסים שלי</h1>
             <!-- גלולה כהה — טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
             <p class="mt-2 inline-block rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3 py-1 text-xs font-semibold text-gray-100 shadow-md">
-                {data.ads.length} פרסומות בחשבון {data.user.email}
+                {data.gemachim.length} גמ"חים · {data.ads.length} פרסומות בחשבון {data.user.email}
             </p>
         </div>
         <a href="/advertise" class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 shadow-md transition-colors hover:bg-[#2a4379] hover:text-white">
             ➕ פרסומת חדשה
         </a>
     </div>
+
+    <!-- הגמ"חים שרשומים על שם המשתמש. אותו פריט Strapi נערך גם ב"קהילה
+         בשכונה" — לכן העריכה כאן היא העריכה שם. -->
+    {#if data.gemachim.length > 0}
+        <h2 class="mb-3 text-lg font-black text-white">🤝 הגמ"חים שלי</h2>
+        <div class="mb-8 flex flex-col gap-4">
+            {#each data.gemachim as g (g.id)}
+                <article class="overflow-hidden rounded-2xl border border-[#3b5794] bg-[#16264d] transition-all hover:border-[#4c6cb0] hover:bg-[#1e3260]">
+                    <div class="flex items-stretch gap-4 p-4">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="text-lg font-black leading-tight text-white">{g.name}</h3>
+                                {#if g.status === 'draft'}
+                                    <span class="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-200">⏳ ממתין לאישור</span>
+                                {:else}
+                                    <span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-200">● באוויר</span>
+                                {/if}
+                                {#if g.verified}
+                                    <span class="rounded-full border border-blue-500/30 bg-blue-900/50 px-2 py-0.5 text-xs font-bold text-blue-300">✔ מאומת</span>
+                                {/if}
+                            </div>
+                            <p class="mt-1 text-xs text-gray-400">{g.categoryLabel} · 📍 {g.city}</p>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <a href="/gemach/{g.id}/edit" class="rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
+                                    ✏️ עריכה
+                                </a>
+                                <a href="/gemach/{g.id}" class="rounded-xl border border-[#3b5794] bg-[#1c2f5a] px-4 py-2 text-sm font-bold text-gray-100 transition-colors hover:bg-[#2a4379] hover:text-white">
+                                    לעמוד הגמ"ח ←
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- ב-RTL האיבר האחרון יושב בצד שמאל -->
+                        <div class="flex min-h-[110px] w-2/5 max-w-[190px] flex-shrink-0 items-center justify-center self-stretch overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d]">
+                            {#if g.image}
+                                <img src={g.image} alt="" class="h-full w-full object-cover" />
+                            {:else}
+                                <span class="text-4xl" aria-hidden="true">{g.icon || '🤝'}</span>
+                            {/if}
+                        </div>
+                    </div>
+                </article>
+            {/each}
+        </div>
+
+        <h2 class="mb-3 text-lg font-black text-white">📢 הפרסומות שלי</h2>
+    {/if}
 
     {#if data.loadFailed}
         <div class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm font-bold text-rose-200">

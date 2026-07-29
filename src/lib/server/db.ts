@@ -187,6 +187,37 @@ export async function getAllGemachimWithDrafts(): Promise<Gemach[]> {
     }
 }
 
+/** הגמ"חים שבבעלות המשתמש המחובר — ל"הנכסים שלי".
+ *  כולל טיוטות, כדי שהבעלים יראה גם גמ"ח שממתין לאישור.
+ *  הסינון נעשה ב-Strapi לפי user_id (התאמה מדויקת — זה הפורמט שגם "קהילה
+ *  בשכונה" כותב), ובנוסף רשת-ביטחון ב-JS מול אותה קבוצת מזהים.
+ *  שים לב: הפריטים ממופים עם ownerId — אסור להעביר אותם כמות שהם ללקוח. */
+export async function getGemachimByOwner(keys: Set<string>): Promise<Gemach[]> {
+    if (keys.size === 0) return [];
+    const params: Record<string, string> = {
+        'filters[category][$eq]':   CATEGORY,
+        'filters[status1][$in][0]': 'active',
+        'filters[status1][$in][1]': DRAFT_ITEM_STATUS,
+        'sort':                     'createdAt:desc',
+    };
+    [...keys].forEach((k, i) => { params[`filters[user_id][$in][${i}]`] = k; });
+
+    try {
+        const data = await strapiGetAll<StrapiItem>('/api/items', params);
+        return data
+            .map((item) => mapItemToGemach(item, true))
+            .filter((g) => {
+                const oid = (g.ownerId ?? '').trim();
+                return !!oid && (keys.has(oid) || keys.has(oid.toLowerCase()));
+            })
+            .sort(sortManaged);
+    } catch (e) {
+        if (e instanceof StrapiContentTypeError) return [];
+        console.error('[national-gemach] getGemachimByOwner failed:', e);
+        return [];
+    }
+}
+
 /** גמ"חים לפי סטטוס, כ-items גולמיים (למסך הגילוי בפאנל — שצריך גם את
  *  extra_fields.discovery). 'draft' = טיוטות מהאוטומציה, 'rejected' = נדחו. */
 export async function getRawGemachimByStatus(status: string): Promise<StrapiItem[]> {

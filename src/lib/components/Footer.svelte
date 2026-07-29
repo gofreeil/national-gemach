@@ -1,6 +1,7 @@
 <script lang="ts">
     import { t, locale } from "svelte-i18n";
     import { get } from "svelte/store";
+    import { OTHER_NETWORK_SITES } from "$lib/seo";
     let _loc = $state(get(locale));
     $effect(() => locale.subscribe(l => (_loc = l)));
     const tFn = (k: string) => { void _loc; return get(t)(k); };
@@ -8,6 +9,30 @@
 
 <footer class="bg-[#5a3067] border-t border-[#3b5794] py-0 md:py-2 mt-1 md:mt-0">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <!-- רשת "יוצאים לחירות": קישורי טקסט אמיתיים לכל אתרי הרשת.
+             זה מה שמאפשר לגוגל ולמנועי ה-AI לזהות את כל האתרים כמותג אחד
+             ולחלק ביניהם את האמון (entity consolidation), ובמקביל שולח גם
+             מבקרים אנושיים בין האתרים. -->
+        <nav aria-labelledby="network-links-title" class="border-b border-white/10 py-3">
+            <h2 id="network-links-title" class="mb-1.5 text-xs font-black tracking-wide text-yellow-400/90">
+                רשת יוצאים לחירות
+            </h2>
+            <ul class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] md:text-xs font-semibold text-gray-300">
+                {#each OTHER_NETWORK_SITES as site (site.url)}
+                    <li>
+                        <!-- לשונית חדשה, כמו כל קישור-חוץ באתר — הביקור כאן לא נקטע -->
+                        <a
+                            href={site.url}
+                            title={site.description}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="hover:text-white transition-colors"
+                        >{site.name}</a>
+                    </li>
+                {/each}
+            </ul>
+        </nav>
+
         <div
             class="flex flex-col md:flex-row items-center justify-between gap-0 md:gap-6"
         >

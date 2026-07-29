@@ -3,6 +3,17 @@
     import { cities } from '$lib/gemachData';
     import GemachCard from '$lib/components/GemachCard.svelte';
     import AvedotBanner from '$lib/components/AvedotBanner.svelte';
+    import JsonLd from '$lib/components/JsonLd.svelte';
+    import {
+        SITE_NAME,
+        SITE_DESCRIPTION,
+        canonical,
+        websiteSchema,
+        organizationSchema,
+        serviceSchema,
+        collectionSchema,
+        faqSchema,
+    } from '$lib/seo';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -22,6 +33,13 @@
         gemachim.filter(g => !pinnedIds.has(g.id))
             .sort((a, b) => (b.hasPhone ? 1 : 0) - (a.hasPhone ? 1 : 0))
             .slice(0, 6)
+    );
+
+    /** הבאנר הקשיח של "פינת האבדות" מוצג רק כל עוד אין לה פריט אמיתי במאגר.
+     *  ברגע שהיא קיימת כגמ"ח (עם קישור ל-avedot) היא מוצגת ככרטיס רגיל —
+     *  עם עריכה לבעלים וסנכרון ל"קהילה בשכונה" — והבאנר נסוג כדי לא לכפול. */
+    let hasAvedotGemach = $derived(
+        gemachim.some(g => (g.link ?? '').includes('avedot.gofreeil.com'))
     );
 
     let searchQuery = $state('');
@@ -361,7 +379,61 @@
         showResults = false;
     }
 
+    /* ═══════════ SEO ═══════════
+       דף הבית הוא דף הכניסה הראשי מגוגל וממנועי ה-AI. הכותרת והתיאור
+       יורשים מה-layout; כאן נוספים canonical, JSON-LD (WebSite, Organization,
+       Service, CollectionPage עם הגמ"חים, FAQ) וטקסט/שו"ת גלוי לציטוט. */
+    const faqs = [
+        {
+            q: 'מה זה גמ"ח?',
+            a: 'גמ"ח (גמילות חסדים) הוא ארגון התנדבותי שמשאיל או נותן בחינם ציוד, כספים או שירותים לכל מי שצריך — למשל גמ"ח ציוד רפואי שמשאיל כיסא גלגלים, גמ"ח שמלות לחתונה, גמ"ח כלי אירוח או גמ"ח הלוואות. אין רווח ואין תיווך: מקבלים, מחזירים, ועוזרים לבא אחרינו.',
+        },
+        {
+            q: 'איך מוצאים גמ"ח קרוב לבית?',
+            a: 'מקלידים בשדה החיפוש את מה שצריך ("ציוד רפואי", "שמלות", "כלי אירוח") ובוחרים עיר במסנן הערים. אפשר גם לגלול את מסילת הקטגוריות ולראות את כל הגמ"חים בנושא. בדף הגמ"ח מופיעים הכתובת, שעות הפעילות והטלפון.',
+        },
+        {
+            q: 'האם השימוש באתר בתשלום?',
+            a: 'לא. החיפוש באתר חינמי לחלוטין, וגם רישום גמ"ח למאגר הוא בחינם וללא עלות. האתר הוא חלק מפעילות התנועה החברתית "יוצאים לחירות".',
+        },
+        {
+            q: 'אני מפעיל גמ"ח — איך מוסיפים אותו למאגר?',
+            a: 'לוחצים על "הוסף גמח חינם", ממלאים שם, נושא, עיר, כתובת, שעות פעילות וטלפון — והגמ"ח מקבל דף אינדקס משלו שמופיע בגוגל ובחיפוש באתר. אין עלות ואין התחייבות.',
+        },
+        {
+            q: 'האם צריך להירשם או להשאיר פרטים כדי לראות טלפון של גמ"ח?',
+            a: 'לא. הטלפון נחשף בלחיצה על "גלה טלפון" בדף הגמ"ח, בלי הרשמה ובלי השארת פרטים.',
+        },
+    ];
+
+    const schemas = $derived([
+        websiteSchema(),
+        organizationSchema(),
+        serviceSchema(),
+        collectionSchema({
+            name: `${SITE_NAME} — מאגר הגמ"חים של ישראל`,
+            description: SITE_DESCRIPTION,
+            path: '/',
+            numberOfItems: gemachim.length,
+            items: [...pinnedGemachim, ...newestGemachim].map((g) => ({
+                name: g.name,
+                path: `/gemach/${g.id}`,
+            })),
+        }),
+        faqSchema(faqs),
+    ]);
 </script>
+
+<svelte:head>
+    <link rel="canonical" href={canonical('/')} />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta
+        name="keywords"
+        content='גמ"ח, גמחים, מאגר גמחים, אינדקס גמחים, גמ"ח ציוד רפואי, גמ"ח שמלות, גמ"ח ריהוט, גמ"ח כלי אירוח, גמ"ח תינוקות, גמ"ח הלוואות, גמילות חסדים'
+    />
+</svelte:head>
+
+<JsonLd data={schemas} />
 
 <!-- Hero Section -->
 <section class="text-center py-6 md:py-8 px-4">
@@ -486,7 +558,7 @@
 
         {#if filteredGemachim.length === 0}
             <!-- גם בלי תוצאות, "מיזמים חשובים לציבור" עדיין מציג את פינת האבדות -->
-            {#if selectedCategory === 'initiatives'}
+            {#if selectedCategory === 'initiatives' && !hasAvedotGemach}
                 <div class="mb-5"><AvedotBanner /></div>
             {/if}
             <!-- קופסה כהה: טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
@@ -502,7 +574,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- פינת האבדות ראשונה ברשת התוצאות של "מיזמים חשובים לציבור" —
                      משבצת רגילה בגודל כרטיס, לא באנר-על מעל הרשימה -->
-                {#if selectedCategory === 'initiatives'}
+                {#if selectedCategory === 'initiatives' && !hasAvedotGemach}
                     <AvedotBanner />
                 {/if}
                 {#each filteredGemachim as gemach (gemach.id)}
@@ -703,6 +775,41 @@
         </h2>
         <p class="text-sm text-gray-300">עיון בכל {gemachim.length} הגמ"חים במאגר</p>
     </a>
+</section>
+
+<!-- ═══ תוכן SEO: הסבר מלא + שאלות ותשובות ═══
+     הטקסט הזה הוא מה שגוגל ומנועי ה-AI קוראים ומצטטים כשמישהו שואל "מה זה גמ"ח"
+     או "איפה יש גמ"ח ציוד רפואי". הוא מקביל ל-FAQPage שב-JSON-LD למעלה. -->
+<section class="px-4 pb-14 max-w-4xl mx-auto text-gray-100" aria-labelledby="about-gemach-title">
+    <div class="rounded-2xl border border-[#3b5794] bg-[#16264d]/90 p-5 md:p-7 shadow-lg">
+        <h2 id="about-gemach-title" class="text-2xl font-black text-white mb-3">
+            מאגר הגמ"חים הארצי — כל הגמ"חים בישראל במקום אחד
+        </h2>
+        <p class="leading-relaxed text-gray-200 mb-3">
+            <strong>הגמ"ח הארצי</strong> מרכז במקום אחד את הגמ"חים (גמילות חסדים) מכל רחבי הארץ:
+            גמ"ח <strong>ציוד רפואי</strong> (כיסאות גלגלים, הליכונים, משאבות חלב), גמ"ח
+            <strong>שמלות וחליפות</strong> לחתונות ולשמחות, גמ"ח <strong>כלי אירוח</strong>,
+            גמ"ח <strong>ריהוט</strong>, גמ"ח <strong>ציוד לתינוקות</strong>, גמ"ח
+            <strong>ספרים</strong>, גמ"ח <strong>כלי עבודה</strong>, גמ"ח <strong>מזון</strong>,
+            גמ"ח <strong>כספים והלוואות</strong> ועוד. החיפוש הוא לפי נושא ולפי עיר, ובכל דף גמ"ח
+            מופיעים הכתובת, שעות הפעילות והטלפון — בלי הרשמה ובלי עלות.
+        </p>
+        <p class="leading-relaxed text-gray-200 mb-3">
+            מפעילים גמ"ח? <a href="/gemach/add" class="text-blue-300 font-bold underline hover:text-blue-200">הוסיפו אותו למאגר בחינם</a>
+            ותקבלו דף אינדקס שמופיע בגוגל, כדי שכל מי שמחפש בדיוק את מה שאתם משאילים ימצא אתכם.
+            אפשר גם לעיין ב<a href="/gemachim" class="text-blue-300 font-bold underline hover:text-blue-200">רשימת כל הגמ"חים במאגר</a>.
+        </p>
+
+        <h2 class="text-xl font-black text-white mt-6 mb-3">שאלות נפוצות על גמ"חים</h2>
+        <div class="space-y-2">
+            {#each faqs as f (f.q)}
+                <details class="rounded-xl border border-[#3b5794] bg-[#1c2f5a]/80 px-4">
+                    <summary class="cursor-pointer py-3 font-bold text-white">{f.q}</summary>
+                    <p class="pb-3 text-sm leading-relaxed text-gray-200">{f.a}</p>
+                </details>
+            {/each}
+        </div>
+    </div>
 </section>
 
 <style>
