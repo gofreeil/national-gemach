@@ -13,3 +13,4 @@ dist/
 
 # אחסון תפעולי מקומי של אוטומציית הגילוי (כשאין DATABASE_URL)
 automation/state/
+.env*
