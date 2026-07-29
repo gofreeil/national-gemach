@@ -62,6 +62,7 @@
         food: 1.00,           // food.webp — כנ"ל
         electronics: 1.20,    // מסגרת קרם דקה בקצה הימני
         judaism: 1.14,        // judaism.webp — הבהרה רכה בקצוות סביב הטלית
+        initiatives: 1.00,    // initiatives.webp — חיתוך ידני סביב הסמל, זום יקצץ אותו
     };
     const zoomFor = (key: string) => CAT_ZOOM[key] ?? 1.06;
 
