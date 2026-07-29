@@ -64,9 +64,10 @@ export interface CategoryDef {
 // וחגים, רכב, אירוח ואבלות הם מהנפוצים ביותר ולכן קיבלו קטגוריה משלהם.
 // ניתן לערוך/להוסיף קטגוריות בפאנל הניהול (/admin/categories) — מה שנשמר שם
 // גובר על הרשימה הזו.
-// תמונות נושא לקטגוריות תואמות — יובאו מ"קהילה בשכונה" (דף "למסירה") ומוצגות
-// באריחים במקום האימוג'י. קטגוריות בלי תמונה תואמת (כספים, שבת וחגים וכו')
-// נשארות עם אימוג'י; ב-'judaism' אייקון המנורה נשאר כנפילה-לאחור לתמונה שבורה.
+// תמונות נושא לקטגוריות — חלקן יובאו מ"קהילה בשכונה" (דף "למסירה") וחלקן
+// נחתכו כאן ידנית לריבוע. מוצגות באריחים במקום האימוג'י. קטגוריות שעוד אין
+// להן תמונה (שמחות ואירועים, שבת וחגים, רכב והסעות, תפילה) נשארות עם אימוג'י;
+// ב-'judaism' אייקון המנורה נשאר כנפילה-לאחור לתמונה שבורה.
 const CAT_IMG = (name: string) => `/images/categories/${name}.webp`;
 
 export const categories: CategoryDef[] = [
@@ -79,12 +80,12 @@ export const categories: CategoryDef[] = [
     { key: 'tools', label: 'כלים', icon: '🔧', image: CAT_IMG('tools') },
     { key: 'wedding', label: 'חתונה', icon: '💍', image: CAT_IMG('wedding') },
     { key: 'events', label: 'שמחות ואירועים', icon: '🎉' },
-    { key: 'money', label: 'כספים והלוואות', icon: '💰' },
+    { key: 'money', label: 'כספים והלוואות', icon: '💰', image: CAT_IMG('money') },
     { key: 'judaism', label: 'יהדות', icon: '🕎', image: CAT_IMG('judaism') },
     { key: 'holidays', label: 'שבת וחגים', icon: '🕯️' },
     { key: 'electronics', label: 'חשמל ומחשבים', icon: '💻', image: CAT_IMG('electronics') },
     { key: 'transport', label: 'רכב והסעות', icon: '🚗' },
-    { key: 'hosting', label: 'אירוח ולינה', icon: '🏠' },
+    { key: 'hosting', label: 'אירוח ולינה', icon: '🏠', image: CAT_IMG('hosting') },
     { key: 'toys', label: 'צעצועים ומשחקים', icon: '🧸', image: CAT_IMG('kids') },
     { key: 'prayer', label: 'תפילה ובקשת רחמים', icon: '🙏' },
     { key: 'mourning', label: 'אבלות', icon: '🤍', image: CAT_IMG('mourning') },
