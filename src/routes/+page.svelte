@@ -46,6 +46,9 @@
     let selectedCity = $state('');
     let showResults = $state(false);
 
+    /** יש סינון פעיל ⇒ מוצג מסך התוצאות במקום הנעוצים/החדשים */
+    let filtering = $derived(showResults || !!selectedCategory || !!selectedCity);
+
     /** מפתחות קטגוריה שתמונת הנושא שלהן נכשלה בטעינה — נופלים חזרה לאימוג'י */
     let brokenImg = $state(new Set<string>());
 
@@ -391,11 +394,74 @@
         tiles[next].focus();     // הדפדפן גולל פנימה; scroll-padding שומר על טבעת הפוקוס
     }
 
+    /* ═══════════ בחירת קטגוריה: גלילה רכה ואיטית אל התוצאות ═══════════
+       scrollTo({behavior:'smooth'}) רץ במהירות שהדפדפן קובע — כאן רוצים תנועה
+       איטית ומכוונת, ולכן אנימציה משלנו ב-rAF עם easeInOutCubic. כל מגע של
+       המשתמש בגלגלת/במסך/במקלדת מבטל אותה מיד: אנימציה שנלחמת בגלילה של
+       המשתמש היא החוויה הגרועה ביותר. */
+    const SCROLL_MS = 900;
+    let scrollAnimId = 0;
+
+    /** גובה ההאדר הדביק — היעד נעצר מתחתיו ולא נבלע מאחוריו */
+    function stickyOffset() {
+        const h = document.querySelector<HTMLElement>('.site-header');
+        return (h?.offsetHeight ?? 0) + 12;
+    }
+
+    function glideTo(top: number) {
+        if (scrollAnimId) cancelAnimationFrame(scrollAnimId);
+        const start = window.scrollY;
+        const dist = top - start;
+        if (Math.abs(dist) < 2) return;
+        if (prefersReduce()) { window.scrollTo(0, top); return; }
+
+        let cancelled = false;
+        const stop = () => { cancelled = true; };
+        const opts = { passive: true } as const;
+        addEventListener('wheel', stop, opts);
+        addEventListener('touchstart', stop, opts);
+        addEventListener('keydown', stop, opts);
+        const done = () => {
+            scrollAnimId = 0;
+            removeEventListener('wheel', stop);
+            removeEventListener('touchstart', stop);
+            removeEventListener('keydown', stop);
+        };
+
+        const t0 = performance.now();
+        const frame = (now: number) => {
+            if (cancelled) { done(); return; }
+            const p = Math.min(1, (now - t0) / SCROLL_MS);
+            const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;   // easeInOutCubic
+            window.scrollTo(0, start + dist * e);
+            if (p < 1) scrollAnimId = requestAnimationFrame(frame);
+            else done();
+        };
+        scrollAnimId = requestAnimationFrame(frame);
+    }
+
+    let railSectionEl = $state<HTMLElement | null>(null);
+    let resultsEl = $state<HTMLElement | null>(null);
+
+    /** בדסקטופ המסילה נשארת, ולכן היא העוגן — היא נעצרת מתחת להאדר והתוצאות
+     *  נפתחות מיד תחתיה. בנייד המסילה מוסתרת (offsetParent === null) והעוגן
+     *  הוא ראש התוצאות עצמן. */
+    async function revealResults() {
+        showResults = true;
+        await tick();                                  // התוצאות מרונדרות ⇒ אפשר למדוד
+        requestAnimationFrame(() => {
+            const anchor = railSectionEl?.offsetParent ? railSectionEl : resultsEl;
+            if (!anchor) return;
+            const top = window.scrollY + anchor.getBoundingClientRect().top - stickyOffset();
+            glideTo(Math.max(0, top));
+        });
+    }
+
     function pick(key: string, e?: MouseEvent) {
         // חגורה שנייה מעל onclickcapture; Enter/Space מהמקלדת (detail=0) פטורים ממנה
         if (e?.detail !== 0 && performance.now() - dragEndedAt < CLICK_GUARD_MS) return;
         selectedCategory = key;
-        doSearch();
+        revealResults();
     }
 
     let filteredGemachim = $derived.by(() => {
@@ -443,6 +509,7 @@
     /** "חזור" — יציאה ממסך התוצאות חזרה לדף הבית הרגיל (קטגוריות, נעוצים,
      *  חדשים). מנקה את הסינון וגולל לראש הדף, כדי שהחזרה תרגיש כמו מסך קודם. */
     function goBack() {
+        if (scrollAnimId) { cancelAnimationFrame(scrollAnimId); scrollAnimId = 0; }
         clearFilters();
         window.scrollTo({ top: 0 });
     }
@@ -453,7 +520,8 @@
        דף הגמ"ח וגם בזה של הדפדפן — ונאלץ לחפש את הכול מהתחלה.
        snapshot של SvelteKit נשמר לרשומת ההיסטוריה (ב-sessionStorage) ומוחזר
        בחזרה אליה בלבד, כך שכניסה רגילה לדף הבית נשארת נקייה.
-       מסילת הקטגוריות אינה נשמרת: כשיש סינון היא כלל אינה מרונדרת. */
+       מקום הגלילה של מסילת הקטגוריות עצמה אינו נשמר — הקטגוריה הנבחרת מסומנת
+       ממילא, וגלילה אופקית משוחזרת הייתה נראית כקפיצה. */
     interface HomeSnapshot {
         q: string;
         cat: string;
@@ -575,7 +643,7 @@
                 </span>
                 <select
                     bind:value={selectedCategory}
-                    onchange={doSearch}
+                    onchange={revealResults}
                     aria-label="סנן לפי קטגוריה"
                     class="qc-select w-full appearance-none cursor-pointer rounded-xl bg-[#1c2f5a]/70 border border-[#3b5794]/70 text-white/90 text-base sm:text-sm ps-9 pe-9 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
                 >
@@ -609,7 +677,7 @@
             </div>
         </div>
 
-        {#if showResults || selectedCategory || selectedCity}
+        {#if filtering}
             <div class="mt-3 flex justify-center">
                 <button
                     onclick={clearFilters}
@@ -636,93 +704,16 @@
     </div>
 {/snippet}
 
-<!-- Results / Categories -->
-{#if showResults || selectedCategory || selectedCity}
-    <!-- Search Results -->
-    <section class="px-2 md:px-4 pb-8" aria-label="תוצאות חיפוש">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div class="flex flex-wrap items-center gap-3">
-                <!-- חזרה מהתוצאות לדף הבית הרגיל — בלי לגעת בהיסטוריית הדפדפן -->
-                <button
-                    type="button"
-                    onclick={goBack}
-                    class="inline-flex items-center gap-1.5 rounded-full border border-[#3b5794] bg-[#1c2f5a] px-4 py-2 min-h-[40px] text-sm font-bold text-gray-100 shadow-md hover:bg-[#2a4379] hover:text-white active:scale-95 transition-all"
-                >
-                    <span aria-hidden="true">→</span>
-                    חזור
-                </button>
-                <h2 class="text-xl font-bold text-white">
-                    נמצאו <span class="text-blue-400">{filteredGemachim.length}</span> גמחים
-                </h2>
-            </div>
-            <!-- הוספה בתוך ההקשר: הקטגוריה שנבחרה נשלחת לטופס ונבחרת בו מראש -->
-            <a
-                href={addHref}
-                class="add-here-btn inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-black transition-all"
-            >
-                <span aria-hidden="true">➕</span>
-                {#if selectedCategoryDef}
-                    הוספת גמ"ח ב{selectedCategoryDef.label}
-                {:else}
-                    הוספת גמ"ח למאגר
-                {/if}
-            </a>
-        </div>
-
-        {#if filteredGemachim.length === 0}
-            <!-- גם בלי תוצאות, "מיזמים חשובים לציבור" עדיין מציג את פינת האבדות -->
-            {#if selectedCategory === 'initiatives' && !hasAvedotGemach}
-                <div class="mb-5"><AvedotBanner /></div>
-            {/if}
-            <!-- קופסה כהה: טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
-            <div class="mx-auto max-w-md rounded-2xl border border-[#3b5794] bg-[#16264d] px-6 py-12 text-center text-gray-300 shadow-lg">
-                <div class="text-5xl mb-4" aria-hidden="true">🔍</div>
-                <p class="text-lg font-bold text-white">לא נמצאו גמחים מתאימים</p>
-                <p class="text-sm mt-2">נסה לחפש במילים אחרות או לשנות את הפילטרים</p>
-                <!-- אין תוצאות בנושא = הזדמנות להוסיף. ההוספה היא הפעולה הראשית כאן -->
-                <p class="mt-5 text-sm font-bold text-amber-100">
-                    {#if selectedCategoryDef}
-                        מכירים גמ"ח {selectedCategoryDef.label} שחסר כאן?
-                    {:else}
-                        מכירים גמ"ח שחסר במאגר?
-                    {/if}
-                </p>
-                <div class="mt-3 flex flex-wrap items-center justify-center gap-2.5">
-                    <a
-                        href={addHref}
-                        class="add-here-btn inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-black transition-all"
-                    >
-                        <span aria-hidden="true">➕</span>
-                        {#if selectedCategoryDef}
-                            הוספת גמ"ח ב{selectedCategoryDef.label}
-                        {:else}
-                            הוספת גמ"ח למאגר
-                        {/if}
-                    </a>
-                    <button onclick={clearFilters} class="px-5 py-2.5 rounded-full bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 transition-colors text-sm font-bold">
-                        נקה חיפוש
-                    </button>
-                </div>
-            </div>
-        {:else}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- פינת האבדות ראשונה ברשת התוצאות של "מיזמים חשובים לציבור" —
-                     משבצת רגילה בגודל כרטיס, לא באנר-על מעל הרשימה -->
-                {#if selectedCategory === 'initiatives' && !hasAvedotGemach}
-                    <AvedotBanner />
-                {/if}
-                {#each filteredGemachim as gemach (gemach.id)}
-                    <GemachCard {gemach} {categories} />
-                {/each}
-            </div>
-        {/if}
-    </section>
-
-{:else}
-    <!-- מסילת הקטגוריות: המובילות ראשונות, השאר נחשפות בגרירה של השורה.
-         גלישה ולא הסתרה — כל קטגוריה נשארת ב-DOM, בסדר ה-Tab ובעץ הנגישות. -->
-    <section class="px-2 md:px-4 pb-8" aria-labelledby="cat-rail-title">
-      <div class="mx-auto mb-10 max-w-4xl">
+<!-- מסילת הקטגוריות: המובילות ראשונות, השאר נחשפות בגרירה של השורה.
+     גלישה ולא הסתרה — כל קטגוריה נשארת ב-DOM, בסדר ה-Tab ובעץ הנגישות.
+     כשיש סינון המסילה נשארת בדסקטופ — הקטגוריה הנבחרת מודגשת, ואפשר להחליף
+     נושא בלי לחזור אחורה. בנייד היא נעלמת: שם המסך צר, והתוצאות הן העיקר. -->
+<section
+    bind:this={railSectionEl}
+    class="px-2 md:px-4 pb-8 {filtering ? 'hidden md:block' : ''}"
+    aria-labelledby="cat-rail-title"
+>
+      <div class="mx-auto max-w-4xl {filtering ? 'mb-6' : 'mb-10'}">
 
         <div class="mb-3 px-1">
             <h2 id="cat-rail-title" class="text-2xl font-black text-white">סינון מהיר</h2>
@@ -739,7 +730,9 @@
                 data-tile
                 class="cat-tile"
                 class:is-empty={cat.count === 0}
+                class:is-selected={selectedCategory === cat.key}
                 onclick={(e) => pick(cat.key, e)}
+                aria-current={selectedCategory === cat.key ? 'true' : undefined}
                 aria-label="חפש גמחי {cat.label} — {cat.count} גמחים"
             >
                 <span class="cat-count-badge" aria-hidden="true">{cat.count}</span>
@@ -867,7 +860,92 @@
             </div>
         </div>
       </div>
+</section>
 
+<!-- Results / Categories -->
+{#if filtering}
+    <!-- Search Results -->
+    <section bind:this={resultsEl} class="px-2 md:px-4 pb-8" aria-label="תוצאות חיפוש">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- חזרה מהתוצאות לדף הבית הרגיל — בלי לגעת בהיסטוריית הדפדפן -->
+                <button
+                    type="button"
+                    onclick={goBack}
+                    class="inline-flex items-center gap-1.5 rounded-full border border-[#3b5794] bg-[#1c2f5a] px-4 py-2 min-h-[40px] text-sm font-bold text-gray-100 shadow-md hover:bg-[#2a4379] hover:text-white active:scale-95 transition-all"
+                >
+                    <span aria-hidden="true">→</span>
+                    חזור
+                </button>
+                <h2 class="text-xl font-bold text-white">
+                    נמצאו <span class="text-blue-400">{filteredGemachim.length}</span> גמחים
+                </h2>
+            </div>
+            <!-- הוספה בתוך ההקשר: הקטגוריה שנבחרה נשלחת לטופס ונבחרת בו מראש -->
+            <a
+                href={addHref}
+                class="add-here-btn inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-black transition-all"
+            >
+                <span aria-hidden="true">➕</span>
+                {#if selectedCategoryDef}
+                    הוספת גמ"ח ב{selectedCategoryDef.label}
+                {:else}
+                    הוספת גמ"ח למאגר
+                {/if}
+            </a>
+        </div>
+
+        {#if filteredGemachim.length === 0}
+            <!-- גם בלי תוצאות, "מיזמים חשובים לציבור" עדיין מציג את פינת האבדות -->
+            {#if selectedCategory === 'initiatives' && !hasAvedotGemach}
+                <div class="mb-5"><AvedotBanner /></div>
+            {/if}
+            <!-- קופסה כהה: טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
+            <div class="mx-auto max-w-md rounded-2xl border border-[#3b5794] bg-[#16264d] px-6 py-12 text-center text-gray-300 shadow-lg">
+                <div class="text-5xl mb-4" aria-hidden="true">🔍</div>
+                <p class="text-lg font-bold text-white">לא נמצאו גמחים מתאימים</p>
+                <p class="text-sm mt-2">נסה לחפש במילים אחרות או לשנות את הפילטרים</p>
+                <!-- אין תוצאות בנושא = הזדמנות להוסיף. ההוספה היא הפעולה הראשית כאן -->
+                <p class="mt-5 text-sm font-bold text-amber-100">
+                    {#if selectedCategoryDef}
+                        מכירים גמ"ח {selectedCategoryDef.label} שחסר כאן?
+                    {:else}
+                        מכירים גמ"ח שחסר במאגר?
+                    {/if}
+                </p>
+                <div class="mt-3 flex flex-wrap items-center justify-center gap-2.5">
+                    <a
+                        href={addHref}
+                        class="add-here-btn inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-black transition-all"
+                    >
+                        <span aria-hidden="true">➕</span>
+                        {#if selectedCategoryDef}
+                            הוספת גמ"ח ב{selectedCategoryDef.label}
+                        {:else}
+                            הוספת גמ"ח למאגר
+                        {/if}
+                    </a>
+                    <button onclick={clearFilters} class="px-5 py-2.5 rounded-full bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 transition-colors text-sm font-bold">
+                        נקה חיפוש
+                    </button>
+                </div>
+            </div>
+        {:else}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- פינת האבדות ראשונה ברשת התוצאות של "מיזמים חשובים לציבור" —
+                     משבצת רגילה בגודל כרטיס, לא באנר-על מעל הרשימה -->
+                {#if selectedCategory === 'initiatives' && !hasAvedotGemach}
+                    <AvedotBanner />
+                {/if}
+                {#each filteredGemachim as gemach (gemach.id)}
+                    <GemachCard {gemach} {categories} />
+                {/each}
+            </div>
+        {/if}
+    </section>
+
+{:else}
+    <section class="px-2 md:px-4 pb-8">
         <!-- (1) נעוצים — הרשימה שהאדמין עורך ב-/admin/pinned (📌) -->
         {#if pinnedGemachim.length > 0}
             {@render sectionHead('📌', 'גמ"חים נעוצים', 'מה שכדאי להכיר קודם')}
@@ -1096,6 +1174,27 @@
     .cat-rail:not(.is-dragging) .cat-tile:active { transform: translateY(-1px) scale(0.985); }
 
     .cat-tile.is-empty { opacity: 0.72; }
+
+    /* ═══ הקטגוריה הנבחרת ═══
+       האריח גדל מעט ונענד טבעת זהב — אותו זהב של תגי הכמות ושל שדה החיפוש —
+       כדי שברור אילו תוצאות מוצגות מטה, וכדי שהחלפת נושא תהיה קליק אחד.
+       הכללים יושבים אחרי ה-hover/‎:active ובאותה סגוליות, אחרת ההרמה ב-hover
+       דורסת את ה-scale (שתי הצהרות transform על אותו אלמנט). */
+    .cat-rail .cat-tile.is-selected {
+        transform: scale(1.07);
+        border-color: rgba(212, 175, 55, 0.95);
+        background: linear-gradient(160deg, #2a4890 0%, #1c3161 58%, #142549 100%);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            0 0 0 2px rgba(212, 175, 55, 0.5),
+            0 18px 32px -18px rgba(0, 0, 0, 1);
+        opacity: 1;                       /* גובר על is-empty — הנבחר לעולם לא מעומעם */
+    }
+    .cat-rail .cat-tile.is-selected .cat-label { color: #fdf1cf; }
+    @media (hover: hover) {
+        .cat-rail:not(.is-dragging) .cat-tile.is-selected:hover { transform: translateY(-4px) scale(1.07); }
+    }
+    .cat-rail:not(.is-dragging) .cat-tile.is-selected:active { transform: translateY(-1px) scale(1.04); }
 
     /* מהטאבלט ומעלה יש רוחב בשפע — אריח גדול, תמונה גדולה, כמו קודם */
     @media (min-width: 768px) {
