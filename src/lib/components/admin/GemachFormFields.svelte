@@ -122,6 +122,9 @@
         <label for="f-category" class="block text-sm font-bold text-gray-300 mb-1">קטגוריה <span class="text-red-400">*</span></label>
         <select id="f-category" name="category" required
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white focus:border-purple-500 focus:outline-none">
+            <!-- בלי אפשרות ריקה הדפדפן בוחר לבד את הראשונה, ומי שדילג על השדה
+                 היה מפרסם גמ"ח בקטגוריה שמעולם לא בחר. סימון = בחירה אמיתית. -->
+            <option value="" selected={!gemach?.category}>— בחרו נושא —</option>
             {#each categories as cat (cat.key)}
                 <option value={cat.key} selected={gemach?.category === cat.key}>{cat.icon} {cat.label}</option>
             {/each}
@@ -133,7 +136,7 @@
         <label for="f-icon" class="block text-sm font-bold text-gray-300 mb-1">אייקון (אימוג'י)</label>
         <input id="f-icon" name="icon" value={gemach?.icon ?? ''} maxlength="4"
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-            placeholder="🤝" />
+            placeholder="לדוגמה: 🤝" />
     </div>
 
     <!-- לוגו -->
@@ -233,7 +236,7 @@
         <label for="f-city" class="block text-sm font-bold text-gray-300 mb-1">עיר <span class="text-red-400">*</span></label>
         <input id="f-city" name="city" required list="cities-list" value={gemach?.city ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-            placeholder="ירושלים" />
+            placeholder="לדוגמה: ירושלים" />
         <datalist id="cities-list">
             {#each cities as c (c)}<option value={c}></option>{/each}
         </datalist>
@@ -244,7 +247,7 @@
         <label for="f-neighborhood" class="block text-sm font-bold text-gray-300 mb-1">שכונה</label>
         <input id="f-neighborhood" name="neighborhood" value={gemach?.neighborhood ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-            placeholder="קרית משה" />
+            placeholder="לדוגמה: קרית משה" />
     </div>
 
     <!-- כתובת -->
@@ -261,13 +264,13 @@
             <label for="f-floor" class="block text-sm font-bold text-gray-300 mb-1">קומה</label>
             <input id="f-floor" name="floor" value={gemach?.floor ?? ''}
                 class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-                placeholder="3" />
+                placeholder="לדוגמה: 3" />
         </div>
         <div>
             <label for="f-apartment" class="block text-sm font-bold text-gray-300 mb-1">מספר דירה</label>
             <input id="f-apartment" name="apartment" value={gemach?.apartment ?? ''}
                 class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-                placeholder="5" />
+                placeholder="לדוגמה: 5" />
         </div>
     </div>
 
@@ -284,7 +287,7 @@
         <label for="f-phone" class="block text-sm font-bold text-gray-300 mb-1">טלפון</label>
         <input id="f-phone" name="phone" value={gemach?.phone ?? ''} inputmode="tel" dir="ltr"
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
-            placeholder="02-5001234" />
+            placeholder="לדוגמה: 02-5001234" />
     </div>
 
     <!-- איש קשר -->
@@ -348,3 +351,14 @@
         </div>
     {/if}
 </div>
+
+<style>
+    /* רמז אינו ערך: טקסט העזרה בשדה ריק נטוי ועמום, כדי שלא ייקרא כשדה מלא.
+       קודם "ירושלים" האפור בשדה העיר נראה כמו בחירה קיימת, והמשתמש גילה
+       שהשדה בעצם ריק רק כשהדפדפן עצר אותו ב"זהו שדה חובה". */
+    input::placeholder,
+    textarea::placeholder {
+        font-style: italic;
+        opacity: 0.8;
+    }
+</style>

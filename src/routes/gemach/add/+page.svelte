@@ -10,8 +10,13 @@
 
 	// אם השמירה נכשלה — נזרע מהערכים שהוזנו; אחרת טופס ריק, פרט לקטגוריה
 	// שהגיעה בכתובת (?category=) כשההוספה נפתחה מתוך סינון נושא בדף הבית.
+	// זו בחירה אמיתית בשדה — לא רמז אפור — והיא נשלחת כמות שהיא אם לא שינו אותה.
 	const initial = $derived(
 		form?.values ?? (data.presetCategory ? { category: data.presetCategory } : null)
+	);
+
+	const presetLabel = $derived(
+		data.presetCategory ? (data.categories.find((c) => c.key === data.presetCategory)?.label ?? '') : ''
 	);
 </script>
 
@@ -38,6 +43,11 @@
 			פרסום אחד — שתי רשתות: הגמ"ח יופיע במאגר הארצי וגם באתר
 			<span class="font-bold text-emerald-300">קהילה בשכונה</span>.
 		</p>
+		{#if presetLabel && !form?.values}
+			<p class="mt-2 inline-block rounded-full border border-amber-400/40 bg-amber-950/50 px-3.5 py-1.5 text-sm font-semibold text-amber-100 shadow-md">
+				הנושא <span class="font-black">{presetLabel}</span> כבר נבחר בטופס — אפשר לשנות אותו בשדה "קטגוריה".
+			</p>
+		{/if}
 		{#if !data.loggedIn}
 			<p class="mt-2 inline-block rounded-full border border-emerald-500/40 bg-emerald-950/60 px-3.5 py-1.5 text-sm font-semibold text-emerald-100 shadow-md">
 				אין צורך בחשבון כדי להתחיל — מלאו את הפרטים, נשמור לכם אותם, וההתחברות בסוף.

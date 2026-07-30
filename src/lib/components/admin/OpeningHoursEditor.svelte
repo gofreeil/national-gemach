@@ -99,8 +99,8 @@
         <input
             bind:value={legacyText}
             aria-label="שעות פעילות"
-            class="w-full rounded-xl border border-[#3b5794] bg-[#101d3d] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-            placeholder="א-ה 9:00-13:00"
+            class="w-full rounded-xl border border-[#3b5794] bg-[#101d3d] px-4 py-3 text-white placeholder-gray-500 placeholder:italic focus:border-purple-500 focus:outline-none"
+            placeholder="לדוגמה: א-ה 9:00-13:00"
         />
         <button
             type="button"
