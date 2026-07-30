@@ -81,7 +81,9 @@
        בין האזורים הבהירים לכהים יישאר עדין. טווח ביניים לשמירת קריאוּת הטקסט הלבן */
     .site-bg {
         background:
-            radial-gradient(1100px 600px at 85% -5%, rgba(251, 207, 232, 0.48), transparent 60%),
+            /* הענן הימני-עליון היה נפרש על כל צד ימין עד למרכז; חצי רדיוס ⇒ כתם
+               מרוכז בפינה במקום שטח ורוד רחב */
+            radial-gradient(550px 300px at 85% -5%, rgba(251, 207, 232, 0.48), transparent 60%),
             radial-gradient(900px 650px at 8% 12%, rgba(244, 194, 231, 0.44), transparent 55%),
             radial-gradient(1000px 750px at 50% 45%, rgba(240, 182, 222, 0.35), transparent 60%),
             radial-gradient(900px 600px at 92% 70%, rgba(249, 168, 212, 0.40), transparent 55%),
