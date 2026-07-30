@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { adSlots, loadApprovedAds } from "$lib/adSlots";
+    import { adSlots, type AdSlot, loadApprovedAds } from "$lib/adSlots";
     import { markAdSeen, trackAdClick } from "$lib/adTrack";
 
     const PER_VIEW = 4;      // כמה משבצות נראות בטור בו-זמנית
@@ -11,17 +11,45 @@
     let fading = $state(false);
 
     let slots = $derived($adSlots);
+    let paid = $derived(
+        slots.filter((s): s is Extract<AdSlot, { kind: 'real' }> => s.kind === 'real'),
+    );
+    let vacant = $derived(
+        slots.filter((s): s is Extract<AdSlot, { kind: 'vacant' }> => s.kind === 'vacant'),
+    );
 
-    // כל המשבצות משתתפות בסבב — גם מודעה בתשלום מתחלפת כמו השאר,
-    // והסבב אינסופי (בלי תקרת החלפות שהייתה עוצרת אותו על קבוצה אחת).
-    let displayedAds = $derived.by(() => {
-        if (slots.length <= PER_VIEW) return slots;
-        const start = (rotation * PER_VIEW) % slots.length;
-        return Array.from(
-            { length: PER_VIEW },
-            (_, i) => slots[(start + i) % slots.length],
-        );
+    // המודעות בתשלום מוצמדות לראש הטור ואינן משתתפות בסבב: קודם הן התחלפו
+    // כמו כל משבצת, ולכן מפרסם ששילם היה על המסך 14 שניות מכל 42 — ומי שהסתכל
+    // בטור בזמן הלא נכון ראה רק משבצות פנויות. הסבב מתחלף מעכשיו רק במשבצות
+    // הפנויות שמתחת להן. המספר על משבצת פנויה הוא מקומה בטור (2, 3, 4...),
+    // ולא מקומה במאגר — כך שהמשבצת שאחרי מודעה בתשלום היא תמיד הבאה במספר,
+    // ולא מספר מקרי שהסבב הגיע אליו.
+    let displayedAds = $derived.by((): AdSlot[] => {
+        // הטור מלא במודעות בתשלום — אז הן אלה שמתחלפות בסבב
+        if (paid.length >= PER_VIEW) {
+            const start = (rotation * PER_VIEW) % paid.length;
+            return Array.from(
+                { length: PER_VIEW },
+                (_, i) => paid[(start + i) % paid.length],
+            );
+        }
+        const free = Math.min(PER_VIEW - paid.length, vacant.length);
+        const start = vacant.length > free ? (rotation * free) % vacant.length : 0;
+        return [
+            ...paid,
+            ...Array.from({ length: free }, (_, i) => ({
+                ...vacant[(start + i) % vacant.length],
+                no: paid.length + i + 1,
+            })),
+        ];
     });
+
+    // יש בכלל מה לסובב? (טור שכולו נראה בבת אחת נשאר קבוע)
+    let rotates = $derived(
+        paid.length >= PER_VIEW
+            ? paid.length > PER_VIEW
+            : vacant.length > PER_VIEW - paid.length,
+    );
 
     // כל מודעה שנכנסת לקבוצה המוצגת נספרת כחשיפה (פעם אחת לכל ביקור)
     $effect(() => {
@@ -36,7 +64,7 @@
         // דעיכה החוצה → החלפת הקבוצה בזמן שהטור שקוף → דעיכה פנימה.
         // כך אין קפיצה: המשבצות לא מתחלפות מול העין אלא מתוך שקיפות מלאה.
         const interval = setInterval(() => {
-            if (slots.length <= PER_VIEW) return;
+            if (!rotates) return;
             fading = true;
             fadeTimer = setTimeout(() => {
                 rotation++;
@@ -61,7 +89,7 @@
     >
         תוכן שיווקי
     </h4>
-    <div class="space-y-3 ads-track" class:fading>
+    <div class="space-y-3">
         {#each displayedAds as item}
             {#if item.kind === 'real'}
                 <!-- מודעה אמיתית מהבילדר — קליק מוביל לדף הנחיתה המקומי -->
@@ -119,7 +147,8 @@
                 <a
                     href={ad.href}
                     aria-label="{ad.text} — {ad.description}: לדף הפרסום"
-                    class="h-[490px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed {ad.borderColor} {ad.bgColor} p-3 text-center transition-all {ad.hoverBorder} {ad.hoverBg} group duration-700 relative overflow-hidden"
+                    class="slot-fade h-[490px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed {ad.borderColor} {ad.bgColor} p-3 text-center transition-all {ad.hoverBorder} {ad.hoverBg} group duration-700 relative overflow-hidden"
+                    class:fading
                 >
                     <!-- Ad Numbering -->
                     <div
@@ -169,17 +198,23 @@
 </aside>
 
 <style>
-    /* דעיכה רכה בין קבוצות המודעות — במקום החלקה קופצנית של כל כרטיס.
+    /* דעיכה רכה בהחלפת משבצת פנויה — במקום החלקה קופצנית. הדעיכה חלה על
+       המשבצות הפנויות בלבד (ולא על כל הטור כמו קודם), כי המודעות בתשלום
+       מוצמדות ואינן מתחלפות — הבהוב שלהן היה סתם רעש.
        הערך חייב להתאים ל-FADE_MS שבסקריפט. */
-    .ads-track {
+    .slot-fade {
         opacity: 1;
-        transition: opacity 900ms ease-in-out;
+        /* transition-property נשאר all (כמו במחלקות Tailwind על הכרטיס) כדי
+           שגם מעברי הריחוף ימשיכו לעבוד — רק המשך מיושר ל-FADE_MS */
+        transition-property: all;
+        transition-duration: 900ms;
+        transition-timing-function: ease-in-out;
     }
-    .ads-track.fading {
+    .slot-fade.fading {
         opacity: 0;
     }
     @media (prefers-reduced-motion: reduce) {
-        .ads-track {
+        .slot-fade {
             transition-duration: 1ms;
         }
     }
