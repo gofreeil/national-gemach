@@ -31,12 +31,6 @@
 
     const href = $derived(`/gemach/${gemach.id}`);
 
-    /** שורת המיקום — רק החלקים שקיימים בפועל. במאגר יש רשומות בלי עיר, ורשומות
-     *  שבהן העיר ריקה והשכונה מחזיקה את שם העיר. */
-    const locationLine = $derived(
-        [gemach.city, gemach.neighborhood].map((s) => s?.trim()).filter(Boolean).join(' – ')
-    );
-
     const categoryLabel = $derived(
         categories.find(c => c.key === gemach.category)?.label ?? gemach.category
     );
@@ -58,36 +52,27 @@
     </div>
 
     <a {href} onclick={(e) => gatedNav(e, href)} class="group flex items-stretch gap-4 p-4">
-        <div class="min-w-0 flex-1">
+        <!-- תצוגה מקדימה רזה: שם, תקציר, והקטגוריה בתחתית. מיקום, איש קשר,
+             הערות ושאר הפרטים — בעמוד הגמ"ח, אחרי הקלקה. -->
+        <div class="flex min-w-0 flex-1 flex-col">
             <svelte:element
                 this={heading}
                 class="text-lg font-black leading-tight text-white transition-colors group-hover:text-blue-300"
             >
-                {#if pinned}<span class="text-sm text-amber-400" aria-hidden="true">📌</span> {/if}{gemach.name}
+                {#if pinned}<span class="text-sm text-amber-400" aria-hidden="true">📌</span> {/if}{gemach.name}{#if gemach.verified}
+                    <VerifiedStamp />{/if}
             </svelte:element>
 
-            <div class="mt-1 flex flex-wrap items-center gap-2">
-                {#if gemach.verified}<VerifiedStamp />{/if}
+            {#if gemach.description}
+                <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-300">{gemach.description}</p>
+            {/if}
+
+            <!-- הקטגוריה יושבת בתחתית הבאנר, מוצמדת למטה -->
+            <div class="mt-auto flex flex-wrap items-center gap-2 pt-3">
                 <span class="rounded-full border border-blue-500/30 bg-blue-900/50 px-2 py-0.5 text-xs text-blue-300">
                     {categoryLabel}
                 </span>
-                <!-- המיקום נבנה מהחלקים הלא-ריקים בלבד. חיבור ישיר של עיר ושכונה
-                     הדפיס "📍 – רעננה" ברשומות שבהן העיר ריקה והשכונה מחזיקה את
-                     שם העיר, ו-"📍 " ריק ברשומות בלי מיקום כלל. -->
-                {#if locationLine}
-                    <span class="text-xs text-gray-400">📍 {locationLine}</span>
-                {/if}
             </div>
-
-            {#if gemach.description}
-                <p class="mt-2 line-clamp-3 text-sm leading-relaxed text-gray-300">{gemach.description}</p>
-            {/if}
-            {#if gemach.contact}
-                <p class="mt-2 line-clamp-1 text-xs text-gray-400">👤 {gemach.contact}</p>
-            {/if}
-            {#if gemach.notes}
-                <p class="mt-1 line-clamp-2 text-xs text-amber-300/80">💬 {gemach.notes}</p>
-            {/if}
         </div>
 
         <!-- ב-RTL האיבר האחרון יושב בצד שמאל — שם התמונה הגדולה -->
