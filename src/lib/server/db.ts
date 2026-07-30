@@ -5,6 +5,7 @@
 
 import { strapiGet, strapiGetAll, strapiPost, strapiPut, strapiDelete, StrapiContentTypeError } from './strapiClient.js';
 import type { Gemach } from '$lib/gemachData';
+import type { CreateGemachInput } from '$lib/gemachForm';
 import { categories } from '$lib/gemachData';
 import { resolveGemachCoords, hasValidCoords } from './geocode';
 
@@ -91,6 +92,13 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
     // ריק → 'other'.
     const subCategory = rawType || 'other';
 
+    // נושאים נוספים (extra_fields.gmach_types). `gmach_type` נשאר הנושא הראשי
+    // כדי ש"קהילה בשכונה" והרשומות הישנות ימשיכו לעבוד בלי שינוי.
+    const rawTypes = Array.isArray(extra.gmach_types)
+        ? (extra.gmach_types as unknown[]).map(toStr).filter((s): s is string => !!s)
+        : [];
+    const allCategories = [subCategory, ...rawTypes.filter((t) => t !== subCategory)];
+
     // tags - prefer real tags saved by the publisher, fall back to derived ones
     let tags: string[] = [];
     if (Array.isArray(extra.tags)) {
@@ -109,6 +117,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         id:            item.documentId,
         name:          item.label ?? '',
         category:      subCategory,
+        categories:    allCategories,
         city:          item.city ?? '',
         neighborhood:  item.neighborhood ?? undefined,
         phone:         item.phone ?? undefined,
@@ -307,37 +316,19 @@ export async function getGemachOwnerId(documentId: string): Promise<string | nul
     }
 }
 
-export interface CreateGemachInput {
-    name: string;
-    category: string;       // sub-category key (clothing, baby, ...)
-    city: string;
-    neighborhood?: string;
-    address?: string;
-    phone?: string;
-    contact?: string;
-    description?: string;
-    hours?: string;         // JSON של $lib/openingHours, או טקסט חופשי ישן
-    floor?: string;
-    apartment?: string;
-    arrivalNotes?: string;
-    icon?: string;
-    image?: string;         // כתובת https או data URI — נשמר ב-extra_fields.logo
-    link?: string;
-    notes?: string;
-    logoBase64?: string;
-    images?: string[];
-    tags?: string[];
-    order?: number;
-    featured?: boolean;
-    sourceId?: string;      // מזהה מקורי בעת ייבוא הרשימה הסטטית
-    status?: string;        // ברירת מחדל 'active'
-    lat?: number | null;    // פין מפורש (אחרת נגזר מהכתובת/עיר)
-    lng?: number | null;
-}
+// הסכמה עצמה יושבת ב-$lib/gemachForm כדי שגם הלקוח (טיוטות אוטומטיות) יכיר
+// אותה; נשמרת כאן היצוא-מחדש כדי שכל מי שמייבא מ-'$lib/server/db' ימשיך לעבוד.
+export type { CreateGemachInput } from '$lib/gemachForm';
 
 /** בונה את גוף ה-extra_fields מקלט (משותף ליצירה/עדכון) */
 function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     const extra: Record<string, unknown> = { gmach_type: input.category };
+    // הנושאים הנוספים נשמרים לצד הראשי; נכתב תמיד (גם כמערך בן-איבר-אחד) כדי
+    // שהסרת נושא בעריכה תמחק אותו באמת, ולא תישאר מהערך הקודם.
+    extra.gmach_types = [
+        input.category,
+        ...(input.categories ?? []).filter((c) => c && c !== input.category),
+    ];
     if (input.hours)      extra.hours   = input.hours;
     if (input.link)       extra.link    = input.link;
     if (input.notes)      extra.notes   = input.notes;

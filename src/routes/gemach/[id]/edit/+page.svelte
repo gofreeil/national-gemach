@@ -1,14 +1,21 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import GemachFormFields from '$lib/components/admin/GemachFormFields.svelte';
+	import DraftRestoredNotice from '$lib/components/DraftRestoredNotice.svelte';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import { formDraft } from '$lib/formDraft';
+	import { createGemachDraft } from '$lib/gemachDraft.svelte';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let saving = $state(false);
 
-	// אם השמירה נכשלה — נזרע מהערכים שהוזנו; אחרת מהגמ"ח שב-DB
-	const initial = $derived(form?.values ?? data.gemach);
+	// עריכה שלא הספיקה להישמר נשמרת מקומית לפי מזהה הגמ"ח, כדי ששני גמ"חים
+	// בעריכה במקביל לא ידרסו זה את הטיוטה של זה.
+	const draft = createGemachDraft(`gemach-edit:${data.gemach.id}`, { skip: () => !!form?.values });
+
+	// אם השמירה נכשלה — נזרע מהערכים שהוזנו; אחרת משינויים שלא נשמרו; אחרת מה-DB
+	const initial = $derived(form?.values ?? draft.restored ?? data.gemach);
 </script>
 
 <svelte:head>
@@ -34,13 +41,27 @@
 		<div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{form.error}</div>
 	{/if}
 
+	{#if draft.restored}
+		<DraftRestoredNotice onDiscard={() => draft.discard()} label="העריכה" />
+	{/if}
+
 	<form
 		method="POST"
 		action="?/update"
-		use:enhance={() => { saving = true; return async ({ update }) => { await update(); saving = false; }; }}
+		use:formDraft={draft.options}
+		use:enhance={() => {
+			saving = true;
+			return async ({ result, update }) => {
+				if (result.type === 'redirect' || result.type === 'success') draft.saved();
+				await update();
+				saving = false;
+			};
+		}}
 		class="rounded-2xl border border-[#3b5794] bg-[#16264d] p-5 md:p-6"
 	>
-		<GemachFormFields gemach={initial} categories={data.categories} cities={data.cities} admin={false} />
+		{#key initial}
+			<GemachFormFields gemach={initial} categories={data.categories} cities={data.cities} admin={false} />
+		{/key}
 
 		<div class="flex flex-wrap items-center gap-3 mt-6 pt-5 border-t border-[#3b5794]">
 			<button

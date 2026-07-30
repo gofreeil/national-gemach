@@ -9,6 +9,7 @@
     import { formatOpeningHoursLines, isOpenNow, toSchemaOpeningHours } from '$lib/openingHours';
     import Seo from '$lib/components/Seo.svelte';
     import { SITE_NAME, SITE_URL, SITE_LOGO, DEFAULT_OG_IMAGE, breadcrumbSchema } from '$lib/seo';
+    import { categoryKeys } from '$lib/gemachData';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -32,6 +33,14 @@
     const gemach = $derived(data.gemach);
     const categoryLabel = $derived(
         data.categories.find(c => c.key === gemach.category)?.label ?? gemach.category
+    );
+
+    /** כל נושאי הגמ"ח (הראשי ראשון) — כל אחד מקשר לסינון שלו בדף הבית */
+    const topicChips = $derived(
+        categoryKeys(gemach).map(key => ({
+            key,
+            label: data.categories.find(c => c.key === key)?.label ?? key
+        }))
     );
 
     /** הגלריה בלי תמונת הלוגו — כדי לא להציג את אותה תמונה פעמיים */
@@ -241,10 +250,12 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2 mt-1.5 flex-wrap">
-                            <a href="/?category={gemach.category}"
-                                class="text-xs bg-blue-900/50 text-blue-300 px-2.5 py-1 rounded-full border border-blue-500/30 hover:bg-blue-900/80 transition-colors">
-                                {categoryLabel}
-                            </a>
+                            {#each topicChips as topic (topic.key)}
+                                <a href="/?category={topic.key}"
+                                    class="text-xs bg-blue-900/50 text-blue-300 px-2.5 py-1 rounded-full border border-blue-500/30 hover:bg-blue-900/80 transition-colors">
+                                    {topic.label}
+                                </a>
+                            {/each}
                             {#if fullAddress || placeName}
                                 <span class="text-xs text-gray-400">📍 {fullAddress || placeName}</span>
                             {/if}

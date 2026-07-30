@@ -1,9 +1,17 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
     import GemachFormFields from '$lib/components/admin/GemachFormFields.svelte';
+    import DraftRestoredNotice from '$lib/components/DraftRestoredNotice.svelte';
+    import { formDraft } from '$lib/formDraft';
+    import { createGemachDraft } from '$lib/gemachDraft.svelte';
 
     let { data, form } = $props();
     let saving = $state(false);
+
+    // גם בפאנל: יציאה מהדף באמצע מילוי לא מוחקת את מה שהוקלד
+    const draft = createGemachDraft('admin-gemach-new', { skip: () => !!form?.values });
+
+    const initial = $derived(form?.values ?? draft.restored ?? null);
 </script>
 
 <svelte:head><title>הוספת גמ"ח – פאנל ניהול</title></svelte:head>
@@ -18,9 +26,24 @@
         <div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{form.error}</div>
     {/if}
 
-    <form method="POST" use:enhance={() => { saving = true; return async ({ update }) => { await update(); saving = false; }; }}
+    {#if draft.restored}
+        <DraftRestoredNotice onDiscard={() => draft.discard()} label='טופס הגמ"ח' />
+    {/if}
+
+    <form method="POST"
+        use:formDraft={draft.options}
+        use:enhance={() => {
+            saving = true;
+            return async ({ result, update }) => {
+                if (result.type === 'redirect' || result.type === 'success') draft.saved();
+                await update();
+                saving = false;
+            };
+        }}
         class="card p-5 md:p-6">
-        <GemachFormFields gemach={form?.values ?? null} categories={data.categories} cities={data.cities} />
+        {#key initial}
+            <GemachFormFields gemach={initial} categories={data.categories} cities={data.cities} />
+        {/key}
 
         <div class="flex items-center gap-3 mt-6 pt-5 border-t border-[#3b5794]">
             <button type="submit" disabled={saving}

@@ -1,14 +1,20 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
     import GemachFormFields from '$lib/components/admin/GemachFormFields.svelte';
+    import DraftRestoredNotice from '$lib/components/DraftRestoredNotice.svelte';
+    import { formDraft } from '$lib/formDraft';
+    import { createGemachDraft } from '$lib/gemachDraft.svelte';
 
     let { data, form } = $props();
     let saving = $state(false);
     let deleting = $state(false);
     let confirmDelete = $state(false);
 
-    // בעריכה: אם הייתה שגיאה נשתמש בערכים שהוזנו, אחרת בגמ"ח מה-DB
-    const initial = $derived(form?.values ?? data.gemach);
+    const draft = createGemachDraft(`admin-gemach-edit:${data.gemach.id}`, { skip: () => !!form?.values });
+
+    // בעריכה: אם הייתה שגיאה נשתמש בערכים שהוזנו, אחרת בשינויים שלא נשמרו,
+    // ואחרת בגמ"ח מה-DB
+    const initial = $derived(form?.values ?? draft.restored ?? data.gemach);
 </script>
 
 <svelte:head><title>עריכת {data.gemach.name} – פאנל ניהול</title></svelte:head>
@@ -23,9 +29,24 @@
         <div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{form.error}</div>
     {/if}
 
-    <form method="POST" action="?/update" use:enhance={() => { saving = true; return async ({ update }) => { await update(); saving = false; }; }}
+    {#if draft.restored}
+        <DraftRestoredNotice onDiscard={() => draft.discard()} label="העריכה" />
+    {/if}
+
+    <form method="POST" action="?/update"
+        use:formDraft={draft.options}
+        use:enhance={() => {
+            saving = true;
+            return async ({ result, update }) => {
+                if (result.type === 'redirect' || result.type === 'success') draft.saved();
+                await update();
+                saving = false;
+            };
+        }}
         class="card p-5 md:p-6">
-        <GemachFormFields gemach={initial} categories={data.categories} cities={data.cities} />
+        {#key initial}
+            <GemachFormFields gemach={initial} categories={data.categories} cities={data.cities} />
+        {/key}
 
         <div class="flex flex-wrap items-center gap-3 mt-6 pt-5 border-t border-[#3b5794]">
             <button type="submit" disabled={saving}

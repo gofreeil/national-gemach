@@ -1,7 +1,12 @@
 export interface Gemach {
     id: string;
     name: string;
+    /** הנושא הראשי — זה שמוצג בכרטיס ובאווטאר. תמיד הראשון ב-`categories`. */
     category: string;
+    /** כל הנושאים של הגמ"ח (הראשי ראשון). גמ"ח אחד יכול לשרת כמה נושאים —
+     *  גמ"ח שמשאיל גם ציוד רפואי וגם ריהוט יימצא בשני הסינונים.
+     *  ריק/undefined ברשומות ישנות → נופלים ל-`category` בלבד. */
+    categories?: string[];
     city: string;
     neighborhood?: string;
     phone?: string;
@@ -49,6 +54,14 @@ export interface Gemach {
  *  ללקוח: בלי הטלפון — הוא נחשף רק בעמוד הגמ"ח, אחרי "גלה טלפון" (פרסומת).
  *  hasPhone מאפשר להעדיף פריטים שיש להם טלפון בלי לחשוף את המספר. */
 export type ListGemach = Omit<Gemach, 'phone'> & { hasPhone?: boolean };
+
+/** כל מפתחות הנושאים של הגמ"ח, הראשי ראשון — נקודת האמת היחידה לסינון ולתצוגה.
+ *  עובד גם על רשומות ישנות שיש להן רק `category`. */
+export function categoryKeys(g: { category?: string; categories?: string[] }): string[] {
+    const keys = (g.categories ?? []).filter(Boolean);
+    if (g.category && !keys.includes(g.category)) keys.unshift(g.category);
+    return keys;
+}
 
 export interface CategoryDef {
     key: string;

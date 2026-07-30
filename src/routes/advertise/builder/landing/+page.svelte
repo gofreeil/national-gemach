@@ -1645,8 +1645,9 @@
         background: rgba(16, 185, 129, 0.08);
         border-color: rgba(16, 185, 129, 0.25);
     }
+    /* אזהרה חוסמת = אדום. צהוב נקרא כהדגשה, ואנשים פשוט לחצו "שלח" שוב ושוב */
     .submit-note {
-        color: #fcd34d;
+        color: #fca5a5;
         font-size: 0.85rem;
         margin: 0.75rem 0 0;
         font-weight: 700;
@@ -1654,7 +1655,7 @@
     .inline-link {
         background: none;
         border: none;
-        color: #fbbf24;
+        color: #fca5a5;
         text-decoration: underline;
         cursor: pointer;
         font-family: inherit;

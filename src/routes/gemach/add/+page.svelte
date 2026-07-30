@@ -2,17 +2,27 @@
     import Seo from '$lib/components/Seo.svelte';
 	import { enhance } from '$app/forms';
 	import GemachFormFields from '$lib/components/admin/GemachFormFields.svelte';
+	import DraftRestoredNotice from '$lib/components/DraftRestoredNotice.svelte';
 	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+	import { formDraft } from '$lib/formDraft';
+	import { createGemachDraft } from '$lib/gemachDraft.svelte';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let saving = $state(false);
 
-	// אם השמירה נכשלה — נזרע מהערכים שהוזנו; אחרת טופס ריק, פרט לקטגוריה
-	// שהגיעה בכתובת (?category=) כשההוספה נפתחה מתוך סינון נושא בדף הבית.
-	// זו בחירה אמיתית בשדה — לא רמז אפור — והיא נשלחת כמות שהיא אם לא שינו אותה.
+	// ----- טיוטה אוטומטית -----
+	// מילוי הטופס הזה לוקח דקות ארוכות; יציאה לדף אחר, רענון או סגירת כרטיסייה
+	// לא ימחקו אותו. השמירה רצה תוך כדי הקלדה (ראה $lib/formDraft) והשחזור כאן.
+	// אם חזרנו משמירה שנכשלה — הערכים שהשרת החזיר טריים יותר מהטיוטה.
+	const draft = createGemachDraft('gemach-add', { skip: () => !!form?.values });
+
+	// אם השמירה נכשלה — נזרע מהערכים שהוזנו; אחרת מהטיוטה השמורה; ואחרת טופס
+	// ריק, פרט לקטגוריה שהגיעה בכתובת (?category=) כשההוספה נפתחה מתוך סינון
+	// נושא בדף הבית. זו בחירה אמיתית בשדה — לא רמז אפור.
 	const initial = $derived(
-		form?.values ?? (data.presetCategory ? { category: data.presetCategory } : null)
+		form?.values ?? draft.restored ??
+		(data.presetCategory ? { category: data.presetCategory, categories: [data.presetCategory] } : null)
 	);
 
 	const presetLabel = $derived(
@@ -45,7 +55,7 @@
 		</p>
 		{#if presetLabel && !form?.values}
 			<p class="mt-2 inline-block rounded-full border border-amber-400/40 bg-amber-950/50 px-3.5 py-1.5 text-sm font-semibold text-amber-100 shadow-md">
-				הנושא <span class="font-black">{presetLabel}</span> כבר נבחר בטופס — אפשר לשנות אותו בשדה "קטגוריה".
+				הנושא <span class="font-black">{presetLabel}</span> כבר נבחר בטופס — אפשר לשנות אותו, ולסמן גם נושאים נוספים.
 			</p>
 		{/if}
 		{#if !data.loggedIn}
@@ -59,13 +69,29 @@
 		<div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{form.error}</div>
 	{/if}
 
+	{#if draft.restored}
+		<DraftRestoredNotice onDiscard={() => draft.discard()} label='טופס הגמ"ח' />
+	{/if}
+
 	<form
 		method="POST"
 		action="?/create"
-		use:enhance={() => { saving = true; return async ({ update }) => { await update(); saving = false; }; }}
+		use:formDraft={draft.options}
+		use:enhance={() => {
+			saving = true;
+			return async ({ result, update }) => {
+				// נשמר בשרת — הטיוטה המקומית סיימה את תפקידה. מנקים לפני
+				// update() כי הוא זה שמנווט הלאה ומפרק את הטופס.
+				if (result.type === 'redirect' || result.type === 'success') draft.saved();
+				await update();
+				saving = false;
+			};
+		}}
 		class="rounded-2xl border border-[#3b5794] bg-[#16264d] p-5 md:p-6"
 	>
-		<GemachFormFields gemach={initial} categories={data.categories} cities={data.cities} admin={false} />
+		{#key initial}
+			<GemachFormFields gemach={initial} categories={data.categories} cities={data.cities} admin={false} />
+		{/key}
 
 		<div class="flex flex-wrap items-center gap-3 mt-6 pt-5 border-t border-[#3b5794]">
 			<button

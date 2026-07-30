@@ -1,6 +1,6 @@
 <script lang="ts">
     import { tick, untrack } from 'svelte';
-    import { cities } from '$lib/gemachData';
+    import { categoryKeys, cities } from '$lib/gemachData';
     import GemachCard from '$lib/components/GemachCard.svelte';
     import AvedotBanner from '$lib/components/AvedotBanner.svelte';
     import JsonLd from '$lib/components/JsonLd.svelte';
@@ -74,7 +74,9 @@
     /** מונה גמ"חים לקטגוריה במעבר יחיד, במקום filter נפרד לכל אריח */
     let countByCat = $derived.by(() => {
         const m = new Map<string, number>();
-        for (const g of gemachim) m.set(g.category, (m.get(g.category) ?? 0) + 1);
+        // גמ"ח רב-נושאי נספר בכל אחד מהנושאים שלו — האריח מבטיח כמה יימצאו בו
+        for (const g of gemachim)
+            for (const key of categoryKeys(g)) m.set(key, (m.get(key) ?? 0) + 1);
         return m;
     });
 
@@ -409,7 +411,7 @@
                 (g.notes?.toLowerCase().includes(q) ?? false)
             );
             const cityQ = selectedCity.trim();
-            const matchesCategory = !selectedCategory || g.category === selectedCategory;
+            const matchesCategory = !selectedCategory || categoryKeys(g).includes(selectedCategory);
             const matchesCity = !cityQ || g.city.includes(cityQ);
             return matchesQuery && matchesCategory && matchesCity;
         });

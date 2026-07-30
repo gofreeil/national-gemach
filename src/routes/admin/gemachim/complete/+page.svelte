@@ -185,24 +185,24 @@
                                     <span class="text-[11px] bg-red-900/40 text-red-300 px-2 py-0.5 rounded-full border border-red-500/20">✗ חסר מיקום</span>
                                 {/if}
                                 {#if saved && f?.geocoded}<span class="text-[11px] text-emerald-300 font-bold">✅ נשמר + מיקום נגזר</span>{/if}
-                                {#if saved && !f?.geocoded}<span class="text-[11px] text-amber-300 font-bold">⚠️ נשמר, אך המיקום לא נגזר — ייתכן שהקואורדינטות הישנות נותרו; בדוק כתובת/עיר ושמור שוב</span>{/if}
+                                {#if saved && !f?.geocoded}<span class="text-[11px] text-red-300 font-bold">⚠️ נשמר, אך המיקום לא נגזר — ייתכן שהקואורדינטות הישנות נותרו; בדוק כתובת/עיר ושמור שוב</span>{/if}
                                 {#if f?.error && f?.id === g.id}<span class="text-[11px] text-red-300 font-bold">⚠️ {f.error}</span>{/if}
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 <div>
                                     <label class="block text-[11px] text-gray-400 mb-0.5" for="city-{g.id}">עיר <span class="text-red-400">*</span></label>
-                                    <input id="city-{g.id}" name="city" value={g.city ?? ''} list="complete-cities"
+                                    <input id="city-{g.id}" name="city" defaultValue={g.city ?? ''} list="complete-cities"
                                         class="w-full rounded-lg border {g.city ? 'border-[#3b5794]' : 'border-red-500/50'} bg-[#1e293b] px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" />
                                 </div>
                                 <div>
                                     <label class="block text-[11px] text-gray-400 mb-0.5" for="hood-{g.id}">שכונה</label>
-                                    <input id="hood-{g.id}" name="neighborhood" value={g.neighborhood ?? ''}
+                                    <input id="hood-{g.id}" name="neighborhood" defaultValue={g.neighborhood ?? ''}
                                         class="w-full rounded-lg border {(!g.address && !g.neighborhood) ? 'border-amber-500/50' : 'border-[#3b5794]'} bg-[#1e293b] px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" />
                                 </div>
                                 <div>
                                     <label class="block text-[11px] text-gray-400 mb-0.5" for="addr-{g.id}">כתובת (רחוב ומספר)</label>
-                                    <input id="addr-{g.id}" name="address" value={g.address ?? ''}
+                                    <input id="addr-{g.id}" name="address" defaultValue={g.address ?? ''}
                                         class="w-full rounded-lg border {(!g.address && !g.neighborhood) ? 'border-amber-500/50' : 'border-[#3b5794]'} bg-[#1e293b] px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" />
                                 </div>
                             </div>

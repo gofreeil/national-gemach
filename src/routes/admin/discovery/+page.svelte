@@ -123,7 +123,7 @@
 								</span>
 							{/if}
 							{#if job.stats?.blocked}
-								<span class="w-full text-amber-300">
+								<span class="w-full text-red-300">
 									⚠️ הסריקה נעצרה באמצע — {job.stats.blockedReason || 'Google ביקש אימות'}
 									השאילתות שלא הספיקו לרוץ יחזרו בסריקה הבאה.
 								</span>

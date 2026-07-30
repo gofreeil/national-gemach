@@ -21,6 +21,22 @@
 
     let tags = $state<string[]>(gemach?.tags ? [...gemach.tags] : []);
 
+    // ---- נושאים ----
+    // גמ"ח אחד משרת לא פעם כמה נושאים (ציוד רפואי + ריהוט, ביגוד + תינוקות),
+    // ולכן הבחירה מרובה. הסדר הוא סדר הסימון, והראשון הוא הנושא הראשי —
+    // הוא שקובע את התווית בכרטיס, את האייקון ואת דף הנושא הראשי בגוגל.
+    let selectedCats = $state<string[]>(
+        gemach?.categories?.length
+            ? [...gemach.categories]
+            : (gemach?.category ? [gemach.category] : [])
+    );
+
+    function toggleCat(key: string) {
+        selectedCats = selectedCats.includes(key)
+            ? selectedCats.filter((k) => k !== key)
+            : [...selectedCats, key];
+    }
+
     // ---- תמונות ----
     // התמונות נשמרות כ-data URI בתוך הרשומה (ולא ב-Media Library), בדיוק כמו
     // ב"קהילה בשכונה" — כך שתמונה שהועלתה שם נראית כאן ולהפך. ההעלאה מכווצת
@@ -112,29 +128,48 @@
     <!-- שם -->
     <div class="md:col-span-2">
         <label for="f-name" class="block text-sm font-bold text-gray-300 mb-1">שם הגמ"ח <span class="text-red-400">*</span></label>
-        <input id="f-name" name="name" required value={gemach?.name ?? ''}
+        <input id="f-name" name="name" required defaultValue={gemach?.name ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder='לדוגמה: גמ"ח ציוד רפואי ירושלים' />
     </div>
 
-    <!-- קטגוריה -->
-    <div>
-        <label for="f-category" class="block text-sm font-bold text-gray-300 mb-1">קטגוריה <span class="text-red-400">*</span></label>
-        <select id="f-category" name="category" required
-            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white focus:border-purple-500 focus:outline-none">
-            <!-- בלי אפשרות ריקה הדפדפן בוחר לבד את הראשונה, ומי שדילג על השדה
-                 היה מפרסם גמ"ח בקטגוריה שמעולם לא בחר. סימון = בחירה אמיתית. -->
-            <option value="" selected={!gemach?.category}>— בחרו נושא —</option>
+    <!-- נושאים (בחירה מרובה) -->
+    <fieldset class="md:col-span-2">
+        <legend class="block text-sm font-bold text-gray-300 mb-1">נושאים <span class="text-red-400">*</span></legend>
+        <!-- כל נושא מסומן נשלח כערך נפרד, בסדר הסימון — השרת לוקח את הראשון
+             כנושא הראשי. בלי סימון אין ברירת מחדל: גמ"ח לא יפורסם בנושא שלא נבחר. -->
+        {#each selectedCats as key (key)}
+            <input type="hidden" name="categories" value={key} />
+        {/each}
+        <div class="flex flex-wrap gap-2">
             {#each categories as cat (cat.key)}
-                <option value={cat.key} selected={gemach?.category === cat.key}>{cat.icon} {cat.label}</option>
+                {@const idx = selectedCats.indexOf(cat.key)}
+                <button type="button" onclick={() => toggleCat(cat.key)} aria-pressed={idx >= 0}
+                    class="flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-bold transition-colors
+                        {idx >= 0
+                            ? 'border-purple-400 bg-purple-600/30 text-white'
+                            : 'border-[#3b5794] bg-[#1e293b] text-gray-300 hover:bg-[#243a6e]'}">
+                    <span aria-hidden="true">{cat.icon}</span>
+                    <span>{cat.label}</span>
+                    {#if idx === 0}
+                        <span class="rounded-full bg-purple-500 px-1.5 py-0.5 text-[10px] font-black text-white">ראשי</span>
+                    {/if}
+                </button>
             {/each}
-        </select>
-    </div>
+        </div>
+        <p class="mt-1.5 text-xs {selectedCats.length === 0 ? 'text-red-300' : 'text-gray-500'}">
+            {#if selectedCats.length === 0}
+                יש לבחור לפחות נושא אחד
+            {:else}
+                אפשר לסמן כמה נושאים — הגמ"ח יופיע בסינון של כל אחד מהם. הראשון שסומן הוא הנושא הראשי (הוא שמוצג בכרטיס).
+            {/if}
+        </p>
+    </fieldset>
 
     <!-- אייקון -->
-    <div>
+    <div class="md:col-span-2">
         <label for="f-icon" class="block text-sm font-bold text-gray-300 mb-1">אייקון (אימוג'י)</label>
-        <input id="f-icon" name="icon" value={gemach?.icon ?? ''} maxlength="4"
+        <input id="f-icon" name="icon" defaultValue={gemach?.icon ?? ''} maxlength="4"
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="לדוגמה: 🤝" />
     </div>
@@ -174,7 +209,7 @@
                         class="mt-2 w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
                         placeholder="או הדבק כתובת: https://example.com/logo.png" />
                 {/if}
-                <p class="mt-1 text-xs {imageBroken ? 'text-amber-300' : 'text-gray-500'}">
+                <p class="mt-1 text-xs {imageBroken ? 'text-red-300' : 'text-gray-500'}">
                     {#if imageBroken}
                         התמונה לא נטענה — בדוק את הכתובת. בכרטיס יוצג האימוג'י במקומה.
                     {:else}
@@ -221,7 +256,7 @@
             {/if}
         </div>
 
-        <p class="mt-1.5 text-xs {uploadError ? 'text-amber-300' : 'text-gray-500'}">
+        <p class="mt-1.5 text-xs {uploadError ? 'text-red-300' : 'text-gray-500'}">
             {#if uploadError}
                 {uploadError}
             {:else}
@@ -234,10 +269,12 @@
     <!-- עיר -->
     <div>
         <label for="f-city" class="block text-sm font-bold text-gray-300 mb-1">עיר <span class="text-red-400">*</span></label>
-        <input id="f-city" name="city" required list="cities-list" value={gemach?.city ?? ''}
+        <input id="f-city" name="city" required list="cities-list" defaultValue={gemach?.city ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="לדוגמה: ירושלים" />
         <datalist id="cities-list">
+            <!-- גמ"ח שפועל בכל הארץ (משלוחים/טלפוני) — ראשון, לפני רשימת היישובים -->
+            <option value="ארצית"></option>
             {#each cities as c (c)}<option value={c}></option>{/each}
         </datalist>
     </div>
@@ -245,7 +282,7 @@
     <!-- שכונה -->
     <div>
         <label for="f-neighborhood" class="block text-sm font-bold text-gray-300 mb-1">שכונה</label>
-        <input id="f-neighborhood" name="neighborhood" value={gemach?.neighborhood ?? ''}
+        <input id="f-neighborhood" name="neighborhood" defaultValue={gemach?.neighborhood ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="לדוגמה: קרית משה" />
     </div>
@@ -253,7 +290,7 @@
     <!-- כתובת -->
     <div>
         <label for="f-address" class="block text-sm font-bold text-gray-300 mb-1">כתובת</label>
-        <input id="f-address" name="address" value={gemach?.address ?? ''}
+        <input id="f-address" name="address" defaultValue={gemach?.address ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="רחוב ומספר" />
     </div>
@@ -262,13 +299,13 @@
     <div class="grid grid-cols-2 gap-3">
         <div>
             <label for="f-floor" class="block text-sm font-bold text-gray-300 mb-1">קומה</label>
-            <input id="f-floor" name="floor" value={gemach?.floor ?? ''}
+            <input id="f-floor" name="floor" defaultValue={gemach?.floor ?? ''}
                 class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 placeholder="לדוגמה: 3" />
         </div>
         <div>
             <label for="f-apartment" class="block text-sm font-bold text-gray-300 mb-1">מספר דירה</label>
-            <input id="f-apartment" name="apartment" value={gemach?.apartment ?? ''}
+            <input id="f-apartment" name="apartment" defaultValue={gemach?.apartment ?? ''}
                 class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
                 placeholder="לדוגמה: 5" />
         </div>
@@ -277,7 +314,7 @@
     <!-- הוראות הגעה -->
     <div class="md:col-span-2">
         <label for="f-arrival" class="block text-sm font-bold text-gray-300 mb-1">הוראות הגעה</label>
-        <input id="f-arrival" name="arrival_notes" value={gemach?.arrivalNotes ?? ''}
+        <input id="f-arrival" name="arrival_notes" defaultValue={gemach?.arrivalNotes ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="כניסה מהחצר האחורית, קוד בשער, חניה ברחוב הסמוך..." />
     </div>
@@ -285,7 +322,7 @@
     <!-- טלפון -->
     <div>
         <label for="f-phone" class="block text-sm font-bold text-gray-300 mb-1">טלפון</label>
-        <input id="f-phone" name="phone" value={gemach?.phone ?? ''} inputmode="tel" dir="ltr"
+        <input id="f-phone" name="phone" defaultValue={gemach?.phone ?? ''} inputmode="tel" dir="ltr"
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
             placeholder="לדוגמה: 02-5001234" />
     </div>
@@ -293,7 +330,7 @@
     <!-- איש קשר -->
     <div>
         <label for="f-contact" class="block text-sm font-bold text-gray-300 mb-1">איש קשר</label>
-        <input id="f-contact" name="contact" value={gemach?.contact ?? ''}
+        <input id="f-contact" name="contact" defaultValue={gemach?.contact ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="שם האחראי/ת על הגמ&quot;ח" />
     </div>
@@ -307,7 +344,7 @@
     <!-- קישור -->
     <div class="md:col-span-2">
         <label for="f-link" class="block text-sm font-bold text-gray-300 mb-1">קישור (אתר / טופס)</label>
-        <input id="f-link" name="link" type="url" value={gemach?.link ?? ''} dir="ltr"
+        <input id="f-link" name="link" type="url" defaultValue={gemach?.link ?? ''} dir="ltr"
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
             placeholder="https://..." />
     </div>
@@ -323,7 +360,7 @@
     <!-- הערות -->
     <div class="md:col-span-2">
         <label for="f-notes" class="block text-sm font-bold text-gray-300 mb-1">הערות (מוצג בקטן)</label>
-        <input id="f-notes" name="notes" value={gemach?.notes ?? ''}
+        <input id="f-notes" name="notes" defaultValue={gemach?.notes ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="הערה קצרה" />
     </div>
@@ -338,7 +375,7 @@
     {#if admin}
         <div>
             <label for="f-order" class="block text-sm font-bold text-gray-300 mb-1">מיקום בסידור (קטן = מוקדם)</label>
-            <input id="f-order" name="order" type="number" step="1" value={gemach?.order ?? ''}
+            <input id="f-order" name="order" type="number" step="1" defaultValue={gemach?.order ?? ''}
                 class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
                 placeholder="ריק = לפי סדר ההוספה" />
         </div>
