@@ -5,7 +5,14 @@
     // תגי OG פר-דף מוגדרים כאן ולא ב-+layout.svelte, כדי שכל דף ישותף עם
     // הכותרת והכתובת שלו (ולא של דף הבית) וכדי שלא ייווצרו תגים כפולים.
     // ============================================================
-    import { SITE_NAME, SITE_URL, DEFAULT_OG_IMAGE, canonical } from '$lib/seo';
+    import {
+        SITE_NAME,
+        SITE_URL,
+        DEFAULT_OG_IMAGE,
+        OG_IMAGE_WIDTH,
+        OG_IMAGE_HEIGHT,
+        canonical,
+    } from '$lib/seo';
 
     let {
         title,
@@ -31,6 +38,9 @@
     );
     /** og:image חייב להיות כתובת מוחלטת — נתיב יחסי לא נטען ע"י פייסבוק/וואטסאפ */
     const absImage = $derived(image?.startsWith('http') ? image : SITE_URL + (image || ''));
+    /** המידות נשלחות רק לתמונת ברירת המחדל — רק עליה אנחנו יודעים שהיא 1200×630.
+     *  הן חוסכות לווצאפ/פייסבוק סבב הורדה ומבטיחות באנר גדול כבר בשיתוף הראשון. */
+    const isDefaultImage = $derived(absImage === DEFAULT_OG_IMAGE);
 </script>
 
 <svelte:head>
@@ -46,6 +56,12 @@
     <meta property="og:description" content={description} />
     <meta property="og:url" content={url} />
     <meta property="og:image" content={absImage} />
+    <meta property="og:image:alt" content={SITE_NAME} />
+    {#if isDefaultImage}
+        <meta property="og:image:type" content="image/jpeg" />
+        <meta property="og:image:width" content={String(OG_IMAGE_WIDTH)} />
+        <meta property="og:image:height" content={String(OG_IMAGE_HEIGHT)} />
+    {/if}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />

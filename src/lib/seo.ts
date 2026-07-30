@@ -10,7 +10,11 @@ export const SITE_NAME = 'הגמ"ח הארצי';
 export const SITE_TAGLINE = 'כל הגמ"חים בארץ במקום אחד';
 export const SITE_DESCRIPTION =
     'הגמ"ח הארצי — מאגר הגמ"חים הגדול בישראל. גמ"ח ציוד רפואי, ריהוט, בגדים ושמלות, כלי אירוח, ציוד לתינוקות, ספרים, כלי עבודה, מזון ועוד. חיפוש גמ"ח לפי עיר ולפי נושא, עם טלפון וכתובת — חינם ובלי הרשמה.';
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/images/logo.png`;
+/** תמונת השיתוף. חייבת להיות קלה (ווצאפ מוריד רק את תחילת הקובץ — מעל ~300KB
+ *  הוא מוותר על התצוגה המקדימה) ובמידות 1200×630 כדי לקבל באנר גדול ולא אייקון. */
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-logo.jpg`;
+export const OG_IMAGE_WIDTH = 1200;
+export const OG_IMAGE_HEIGHT = 630;
 export const SITE_LOGO = `${SITE_URL}/images/logo.png`;
 export const CONTACT_EMAIL = 'freedomhasbegun@gmail.com';
 
