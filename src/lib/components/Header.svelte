@@ -52,7 +52,7 @@
 
         <!-- Mobile -->
         <div class="md:hidden flex items-center justify-between h-[56px]">
-            <a href="/" class="flex items-center gap-3 min-w-0 flex-1">
+            <a href="/" class="flex items-center gap-2 min-w-0 flex-1">
                 <div class="h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-white border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.25)]">
                     <img
                         src="/images/לוגו-הגמח-הארצי.png"
@@ -60,37 +60,40 @@
                         class="w-full h-full object-contain"
                     />
                 </div>
+                <!-- הכיתובים חייבים להופיע במלואם ולא להיחתך: whitespace-nowrap בלי truncate,
+                     והכפתורים שמימין הוקטנו כדי לפנות להם את הרוחב הדרוש. -->
                 <div class="min-w-0">
                     <!-- שם המותג בכותרת הוא <p> ולא <h1>: ה-h1 שייך לכותרת הייחודית של כל דף
                          (שם הגמ"ח בדף גמ"ח, כותרת המאגר בדף הבית). h1 גלובלי זהה בכל
                          הדפים היה מטשטש לגוגל במה כל דף עוסק. -->
-                    <p class="truncate bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-lg font-black text-transparent leading-tight">
+                    <p class="hdr-brand-title whitespace-nowrap bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text font-black text-transparent leading-tight">
                         הגמ"ח הארצי
                     </p>
-                    <p class="truncate text-xs text-gray-100 leading-tight">כל הגמחים בארץ בכף ידך</p>
+                    <p class="hdr-brand-sub whitespace-nowrap text-gray-100 leading-tight">כל הגמחים בארץ בכף ידך</p>
                 </div>
             </a>
-            <div class="flex flex-shrink-0 items-center gap-1.5">
+            <div class="flex flex-shrink-0 items-center gap-1">
                 <!-- אין כאן כפתור ניהול — הפאנל פרוס בתוך האזור האישי (/profile) -->
                 <!-- מידע (ימין) — דף ההסבר: מהות האתר, מה יש במאגר ושאלות נפוצות -->
+                <!-- בלי מסגרת/רקע: אייקון בלבד, כדי לא להתחרות בכפתורי הפעולה -->
                 <a
                     href="/info"
-                    class="flex items-center justify-center w-9 h-9 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] text-white transition-colors"
+                    class="flex items-center justify-center w-7 h-7 text-white/90 hover:text-white transition-colors"
                     aria-label="מידע על האתר"
                     title="מידע"
                 >
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <svg class="h-[22px] w-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="9" /><path d="M12 16.5v-5" /><path d="M12 8h.01" />
                     </svg>
                 </a>
-                <!-- Language -->
+                <!-- Language — דגל קטן ובלי מסגרת -->
                 <div class="relative lang-dropdown">
                     <button
                         onclick={() => showLangDropdown = !showLangDropdown}
-                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
+                        class="flex items-center justify-center w-7 h-7 opacity-90 hover:opacity-100 transition-opacity"
                         aria-label="בחר שפה"
                     >
-                        <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.3rem"></span>
+                        <span class="fi fi-{languages.find(l => l.code === $locale || $locale?.startsWith(l.code))?.flag || 'il'}" style="font-size:1.05rem"></span>
                     </button>
                     {#if showLangDropdown}
                         <div class="absolute right-0 mt-2 w-36 rounded-lg bg-[#1c2f5a] border border-[#3b5794] shadow-xl z-50">
@@ -109,7 +112,7 @@
                 <!-- הוספת גמ"ח (אמצע) -->
                 <a
                     href="/gemach/add"
-                    class="flex h-9 items-center rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-2.5 text-xs font-bold text-white shadow-lg transition-opacity hover:opacity-90"
+                    class="flex h-8 items-center rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-2 text-[11px] font-bold text-white shadow-lg transition-opacity hover:opacity-90"
                     title="הוספת גמ&quot;ח"
                 >
                     + גמ"ח
@@ -118,20 +121,20 @@
                 {#if user}
                     <a
                         href="/profile"
-                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
+                        class="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
                         aria-label="האזור האישי שלי"
                         title={user.name || user.email}
                     >
-                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-xs" aria-hidden="true">👤</span>
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-[10px]" aria-hidden="true">👤</span>
                     </a>
                 {:else}
                     <a
                         href="/login?redirect=/profile"
-                        class="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white transition-colors"
+                        class="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white transition-colors"
                         aria-label="התחברות / אזור אישי"
                         title="התחברות"
                     >
-                        <span aria-hidden="true">👤</span>
+                        <span class="text-xs" aria-hidden="true">👤</span>
                     </a>
                 {/if}
             </div>
@@ -275,6 +278,21 @@
         );
         filter: blur(3px);
         pointer-events: none;
+    }
+
+    /* שם המותג והסלוגן בנייד — נגזרים מרוחב המסך כדי להיכנס במלואם בשורה אחת
+       גם במסכים צרים, בלי חיתוך ובלי גלישה. הגבול העליון הוא הגודל המקורי. */
+    .hdr-brand-title {
+        font-size: clamp(14px, 4.4vw, 17px);
+    }
+    .hdr-brand-sub {
+        font-size: clamp(9px, 2.9vw, 11px);
+    }
+    @media (min-width: 768px) {
+        .hdr-brand-title,
+        .hdr-brand-sub {
+            font-size: unset;
+        }
     }
 
     .brand-logo-frame {
