@@ -124,6 +124,8 @@
     let suppressClick = false, dragEndedAt = 0;
     let rafId = 0, nudged = false, tileStep = 0;
     let gapPx = GAP_PX, spacerPx = 32;   // נמדדים מה-DOM; הקבועים הם רק ברירת מחדל ל-SSR
+    let padStartPx = 8;                  // padding-inline-start של המסילה (0.5rem)
+    let reduceMotion = false;            // נקרא פעם אחת; הדומינו כבוי כשמבקשים פחות תנועה
 
     const prefersReduce = () =>
         typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -147,11 +149,13 @@
         // האוטומטי, כדי שהרמז לא יכבה את עצמו
         if (pos > 48) hinted = true;
 
-        // כל האריחים ברוחב זהה, ולכן די במדידת הראשון
+        // כל האריחים ברוחב זהה, ולכן די במדידת הראשון.
+        // offsetWidth ולא getBoundingClientRect: הראשון עשוי להיות מסובב בדומינו,
+        // ותיבת ה-rect שלו מצטמקת עם הסיבוב — offsetWidth הוא מידת הפריסה האמיתית
         const first = el.querySelector<HTMLElement>('[data-tile]');
-        if (first) tileStep = first.getBoundingClientRect().width + gapPx;
+        if (first) tileStep = first.offsetWidth + gapPx;
         const spacer = el.querySelector<HTMLElement>('[data-spacer]');
-        if (spacer) spacerPx = spacer.getBoundingClientRect().width;
+        if (spacer) spacerPx = spacer.offsetWidth;
 
         // ספירה לפי מרחק הגלילה שנותר, לא לפי אינדקסים: אחרת המונה מגיע ל-0
         // בזמן שהאריח האחרון עדיין חתוך, והגלולה מציגה "עוד 0"
@@ -160,6 +164,36 @@
             hiddenCount = Math.max(0, Math.ceil(remaining / tileStep));
         } else {
             hiddenCount = 0;
+        }
+
+        paintDepth(pos);
+    }
+
+    /* ── דומינו תלת-מימדי ────────────────────────────────────────────────
+       אריח שמתקרב לקצה-ההובלה (ימין ב-RTL) נסוג אחורה והצידה, כמו אבן
+       דומינו שנוטה ליפול, וכל אריח גורר את זה שאחריו — השורה נקראת
+       כאלכסון נסוג ולא כרצועה שטוחה. ה-JS כותב רק ‎--t (0..1), ומתוכו
+       ה-CSS גוזר סיבוב, עומק, היסט ושקיפות.
+
+       חלון ההקדמה (lead) נפתח עם הגלילה ולא קבוע: בלעדיו האריח הראשון
+       היה נראה נוטה כבר במנוחה, ודווקא הקטגוריה המובילה הייתה מוטה. */
+    /* החלון רחב בכוונה משני אריחים: אריח שכבר יצא מהמסך אינו נראה, ולכן
+       הנטייה חייבת להגיע לשיאה בזמן שהאריח עוד בתוך החלון הנראה. כך תמיד
+       שני אריחים בתנועה בבת אחת — אחד מוטה חזק בקצה, ואחריו נוטה מתחיל. */
+    const DOMINO_LEAD = 1.8;    // עד כמה לפני קצה-ההובלה מתחילה הנטייה (ביחידות אריח)
+    const DOMINO_RAMP = 2.0;    // על פני כמה אריחים הנטייה מתפתחת מ-0 למקסימום
+
+    function paintDepth(pos: number) {
+        const el = railEl;
+        if (!el || reduceMotion || tileStep <= 0) return;
+        const lead = Math.min(pos, tileStep * DOMINO_LEAD);
+        const ramp = tileStep * DOMINO_RAMP;
+        const wraps = el.querySelectorAll<HTMLElement>('[data-depth]');
+        for (let i = 0; i < wraps.length; i++) {
+            // past = כמה האריח כבר חלף את קצה-ההובלה של החלון הנראה
+            const past = pos - (padStartPx + i * tileStep);
+            const t = Math.max(0, Math.min(1, (past + lead) / ramp));
+            wraps[i].style.setProperty('--t', t < 0.002 ? '0' : t.toFixed(3));
         }
     }
 
@@ -175,6 +209,8 @@
         const cs = getComputedStyle(el);
         rtl = cs.direction === 'rtl';
         gapPx = parseFloat(cs.columnGap) || GAP_PX;
+        padStartPx = parseFloat(cs.paddingInlineStart) || 8;
+        reduceMotion = prefersReduce();
         untrack(readScroll);       // המדידה לא אמורה לחבר את ה-effect לערכים שהיא כותבת
         const ro = new ResizeObserver(readScroll);
         ro.observe(el);
@@ -670,7 +706,7 @@
                 bind:this={railEl}
                 class="cat-rail"
                 class:is-dragging={dragging}
-                style="--f-l:{rtl ? (atEnd ? '0px' : '2rem') : (atStart ? '0px' : '2rem')}; --f-r:{rtl ? (atStart ? '0px' : '2rem') : (atEnd ? '0px' : '2rem')}"
+                style="--f-l:{rtl ? (atEnd ? '0px' : '2rem') : (atStart ? '0px' : '2rem')}; --f-r:{rtl ? (atStart ? '0px' : '2rem') : (atEnd ? '0px' : '2rem')}; --sx:{rtl ? 1 : -1}; --o:{rtl ? '100%' : '0%'}"
                 onscroll={scheduleRead}
                 onpointerdown={onRailPointerDown}
                 onpointermove={onRailPointerMove}
@@ -680,7 +716,12 @@
                 onclickcapture={onRailClickCapture}
             >
                 {#each railCategories as cat (cat.key)}
-                    <li class="cat-item">{@render catTile(cat)}</li>
+                    <!-- העטיפה נושאת את טרנספורם הדומינו ולא ה-li: אזור ה-scroll-snap
+                         נמדד לפי תיבת ה-li, וסיבוב שלה היה מזיז את נקודות ההצמדה תחת
+                         הגלילה. גם ה-hover של האריח עצמו נשאר בלי התנגשות טרנספורמים. -->
+                    <li class="cat-item">
+                        <span class="cat-3d" data-depth>{@render catTile(cat)}</span>
+                    </li>
                 {/each}
                 <!-- מרווח סיום אמיתי: padding-inline-end נבלע בסקרולר flex, והוא חייב
                      להיות רחב כמו המסכה כדי שהאריח האחרון לא יישאר מעומעם -->
@@ -788,7 +829,7 @@
 <!-- באנר הוספת גמ"ח — שורה אחת בזהב, בלי כותרת ובלי אייקון-ענק.
      בכוונה בפלטה אחרת מכל שאר האתר (זהב על כמעט-שקוף במקום כחול-סגול),
      כדי שייקרא כפנייה נפרדת ולא כעוד כרטיס בדף. -->
-<section class="px-4 pb-6">
+<section class="px-4 pb-14">
     <div class="add-banner mx-auto flex max-w-3xl flex-col items-center gap-3 rounded-2xl px-5 py-4 text-center sm:flex-row sm:justify-between sm:text-right">
         <p class="text-sm font-bold text-amber-50 sm:text-base">
             מפעילים גמ"ח?
@@ -801,17 +842,6 @@
             הוספת גמ"ח
         </a>
     </div>
-</section>
-
-<!-- קישור לדף המידע (אותו תוכן שהיה כאן בתחתית) — גם למי שלא שם לב לכפתור בהאדר -->
-<section class="px-4 pb-14 text-center">
-    <a
-        href="/info"
-        class="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/15"
-    >
-        מה זה גמ"ח, איך מוצאים ואיך מוסיפים — כל המידע
-        <span aria-hidden="true">←</span>
-    </a>
 </section>
 
 <style>
@@ -905,8 +935,31 @@
     .cat-rail.is-dragging .cat-tile { transition: none; }
     @media (hover: none) { .cat-rail { cursor: default; } }
 
-    .cat-item { flex: 0 0 auto; scroll-snap-align: start; }
-    .cat-spacer { flex: 0 0 2rem; }   /* ≥ רוחב המסכה, אחרת האריח האחרון נשאר מעומעם */
+    .cat-item { flex: 0 0 auto; scroll-snap-align: start; display: flex; }
+    .cat-spacer { flex: 0 0 2rem; display: block; }   /* ≥ רוחב המסכה, אחרת האריח האחרון נשאר מעומעם */
+
+    /* ═══ דומינו תלת-מימדי ═══
+       ‎--t (0..1) נכתב מה-JS לפי מקומו של האריח ביחס לקצה-ההובלה. כאן הוא
+       נפרש לארבע תנועות בבת אחת: פנייה על ציר Y סביב הקצה המוביל (‎--o),
+       נסיגה לעומק, החלקה הצידה אל אותו קצה, ודהייה. התוצאה: השורה
+       נפרסת אלכסונית ואבן אחרי אבן נוטה ונעלמת אל הקצה.
+       ‎--sx הופך את הצירים ב-LTR, כך שהאלכסון תמיד נסוג לכיוון תחילת הרשימה.
+       perspective מקומי לכל אריח ולא על המסילה: perspective על מכל-גלילה
+       מוליד באגי נקודת-מגוז בין הדפדפנים.
+       בלי transition — הערך נצבע בכל פריים של גלילה, וכל השהיה הייתה משתרכת. */
+    .cat-3d {
+        display: flex;
+        transform-origin: var(--o, 100%) 50%;
+        transform:
+            perspective(380px)
+            translateX(calc(var(--t, 0) * var(--sx, 1) * 30px))
+            translateZ(calc(var(--t, 0) * -70px))
+            rotateY(calc(var(--t, 0) * var(--sx, 1) * 58deg));
+        opacity: calc(1 - var(--t, 0) * 0.4);
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .cat-3d { transform: none; opacity: 1; }
+    }
 
     /* ═══ אריח ═══
        המידות כאן הן של הנייד: אריח צר ⇒ ~4 קטגוריות במסך אחד במקום 3,
