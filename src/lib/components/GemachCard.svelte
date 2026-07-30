@@ -61,8 +61,7 @@
                 this={heading}
                 class="text-lg font-black leading-tight text-white transition-colors group-hover:text-blue-300"
             >
-                {#if pinned}<span class="text-sm text-amber-400" aria-hidden="true">📌</span> {/if}{gemach.name}{#if gemach.verified}
-                    <VerifiedStamp />{/if}
+                {#if pinned}<span class="text-sm text-amber-400" aria-hidden="true">📌</span> {/if}{gemach.name}
             </svelte:element>
 
             {#if gemach.description}
@@ -77,11 +76,21 @@
             </div>
         </div>
 
-        <!-- ב-RTL האיבר האחרון יושב בצד שמאל — שם התמונה הגדולה -->
-        <div
-            class="flex min-h-[150px] w-2/5 max-w-[210px] flex-shrink-0 items-center justify-center self-stretch overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d]"
-        >
-            <GemachAvatar {gemach} {categories} banner />
+        <!-- ב-RTL האיבר האחרון יושב בצד שמאל — שם התמונה הגדולה.
+             העטיפה relative בלי overflow — חותמת "מאושר" רוכבת על פינת
+             התמונה, חציה על התמונה וחציה באוויר; ה-overflow-hidden שחותך
+             את פינות התמונה יושב על הקונטיינר הפנימי בלבד. -->
+        <div class="relative w-2/5 max-w-[210px] flex-shrink-0 self-stretch">
+            <div
+                class="flex h-full min-h-[150px] items-center justify-center overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d]"
+            >
+                <GemachAvatar {gemach} {categories} banner />
+            </div>
+            {#if gemach.verified}
+                <div class="absolute -top-2.5 -right-3 z-10">
+                    <VerifiedStamp tilt={-10} />
+                </div>
+            {/if}
         </div>
     </a>
 </article>
