@@ -129,7 +129,12 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
 // נקראת בכל טעינת ה-endpoint הציבורי — אין צורך להציף את Strapi.
 // קצר בכוונה: invalidateAdsCache מנקה רק את המופע (lambda) שביצע את האישור,
 // ולכן זה גם הזמן המרבי שמופע אחר ימשיך להחזיר רשימה ישנה אחרי אישור מודעה.
-const TTL_MS = 60_000;
+// דקה הייתה יותר מדי: מודעה שאושרה במסך הניהול לא הופיעה בבאנר, והמנהל
+// שרענן מיד ראה את המשבצת עדיין ריקה וחשב שהאישור לא נקלט.
+const TTL_MS = 15_000;
+// מונה הממתינות (ההתראה לאדמינים) לא חייב להיות טרי לשנייה, והוא נקרא בכל
+// טעינת דף של אדמין — לכן נשאר על דקה.
+const PENDING_TTL_MS = 60_000;
 let approvedCache: { at: number; list: ApprovedAdPublic[] } | null = null;
 let pendingCache: { at: number; list: PendingAdBrief[] } | null = null;
 
@@ -153,7 +158,7 @@ export interface PendingAdBrief {
  * כדי שגם רשומה ישנה בלי status1 (שנחשבת pending) תיכנס להתראה.
  */
 export async function listPendingAds(): Promise<PendingAdBrief[]> {
-    if (pendingCache && Date.now() - pendingCache.at < TTL_MS) return pendingCache.list;
+    if (pendingCache && Date.now() - pendingCache.at < PENDING_TTL_MS) return pendingCache.list;
     try {
         const res = await strapiGet<{
             data: Array<{ documentId: string; label: string | null; status1: string | null; createdAt: string }>;

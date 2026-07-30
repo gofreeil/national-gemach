@@ -9,7 +9,8 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
     const ads = await listApproved();
     // קאש קצר בלבד: s-maxage גדול + stale-while-revalidate ארוך גרמו לכך
     // שתשובת "אין מודעות" שנשמרה לפני האישור הוגשה עוד דקות ארוכות אחריו,
-    // ומודעה שאושרה במסך האדמין לא הופיעה בטור הימני.
-    setHeaders({ 'cache-control': 'public, s-maxage=60, stale-while-revalidate=60' });
+    // ומודעה שאושרה במסך האדמין לא הופיעה בטור הימני. מיושר לקאש שבשרת
+    // (TTL_MS ב-adsStore), כדי שרענון אחרי אישור יראה את המודעה החדשה.
+    setHeaders({ 'cache-control': 'public, s-maxage=15, stale-while-revalidate=15' });
     return json({ ads });
 };
