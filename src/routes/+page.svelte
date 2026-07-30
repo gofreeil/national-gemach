@@ -419,6 +419,14 @@
         showResults = true;
     }
 
+    /* ═══════════ הוספת גמ"ח מתוך הקטגוריה שנבחרה ═══════════
+       מי שסינן לפי נושא ולא מצא את הגמ"ח שהוא מכיר הוא בדיוק מי שיכול להוסיף
+       אותו. הקישור נושא את הקטגוריה בכתובת, וטופס ההוספה בוחר אותה מראש. */
+    let selectedCategoryDef = $derived(categories.find(c => c.key === selectedCategory) ?? null);
+    let addHref = $derived(
+        selectedCategory ? `/gemach/add?category=${encodeURIComponent(selectedCategory)}` : '/gemach/add'
+    );
+
     function handleKey(e: KeyboardEvent) {
         if (e.key === 'Enter') doSearch();
     }
@@ -623,10 +631,22 @@
 {#if showResults || selectedCategory || selectedCity}
     <!-- Search Results -->
     <section class="px-2 md:px-4 pb-8" aria-label="תוצאות חיפוש">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h2 class="text-xl font-bold text-white">
                 נמצאו <span class="text-blue-400">{filteredGemachim.length}</span> גמחים
             </h2>
+            <!-- הוספה בתוך ההקשר: הקטגוריה שנבחרה נשלחת לטופס ונבחרת בו מראש -->
+            <a
+                href={addHref}
+                class="add-here-btn inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-black transition-all"
+            >
+                <span aria-hidden="true">➕</span>
+                {#if selectedCategoryDef}
+                    הוספת גמ"ח ב{selectedCategoryDef.label}
+                {:else}
+                    הוספת גמ"ח למאגר
+                {/if}
+            </a>
         </div>
 
         {#if filteredGemachim.length === 0}
@@ -639,9 +659,30 @@
                 <div class="text-5xl mb-4" aria-hidden="true">🔍</div>
                 <p class="text-lg font-bold text-white">לא נמצאו גמחים מתאימים</p>
                 <p class="text-sm mt-2">נסה לחפש במילים אחרות או לשנות את הפילטרים</p>
-                <button onclick={clearFilters} class="mt-4 px-6 py-2 rounded-xl bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 transition-colors">
-                    נקה חיפוש
-                </button>
+                <!-- אין תוצאות בנושא = הזדמנות להוסיף. ההוספה היא הפעולה הראשית כאן -->
+                <p class="mt-5 text-sm font-bold text-amber-100">
+                    {#if selectedCategoryDef}
+                        מכירים גמ"ח {selectedCategoryDef.label} שחסר כאן?
+                    {:else}
+                        מכירים גמ"ח שחסר במאגר?
+                    {/if}
+                </p>
+                <div class="mt-3 flex flex-wrap items-center justify-center gap-2.5">
+                    <a
+                        href={addHref}
+                        class="add-here-btn inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-black transition-all"
+                    >
+                        <span aria-hidden="true">➕</span>
+                        {#if selectedCategoryDef}
+                            הוספת גמ"ח ב{selectedCategoryDef.label}
+                        {:else}
+                            הוספת גמ"ח למאגר
+                        {/if}
+                    </a>
+                    <button onclick={clearFilters} class="px-5 py-2.5 rounded-full bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 transition-colors text-sm font-bold">
+                        נקה חיפוש
+                    </button>
+                </div>
             </div>
         {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -721,7 +762,7 @@
                 bind:this={railEl}
                 class="cat-rail"
                 class:is-dragging={dragging}
-                style="--f-l:{rtl ? fadeTailPx : fadeLeadPx}px; --f-r:{rtl ? fadeLeadPx : fadeTailPx}px; --sx:{rtl ? 1 : -1}; --o:{rtl ? '100%' : '0%'}"
+                style="--f-l:{rtl ? fadeTailPx : fadeLeadPx}px; --f-r:{rtl ? fadeLeadPx : fadeTailPx}px; --sx:{rtl ? 1 : -1}; --o:{rtl ? '0%' : '100%'}"
                 onscroll={scheduleRead}
                 onpointerdown={onRailPointerDown}
                 onpointermove={onRailPointerMove}
@@ -848,7 +889,7 @@
     <div class="add-banner mx-auto flex max-w-3xl flex-col items-center gap-3 rounded-2xl px-5 py-4 text-center sm:flex-row sm:justify-between sm:text-right">
         <p class="text-sm font-bold text-amber-50 sm:text-base">
             מפעילים גמ"ח?
-            <span class="font-normal text-amber-100/80">הוסיפו אותו למאגר — חינם, בלי התחייבות.</span>
+            <span class="font-normal text-amber-100/80">הוסיפו אותו למאגר — וקדמו את העולם למתוקן יותר!</span>
         </p>
         <a
             href="/gemach/add"
@@ -913,6 +954,16 @@
     .add-banner-btn:hover { filter: brightness(1.06); }
     .add-banner-btn:active { transform: scale(0.97); }
 
+    /* כפתור "הוספת גמ"ח ב<נושא>" בתוך התוצאות — אותה פלטת זהב של באנר ההוספה,
+       כדי שההוספה תיקרא כאותה פעולה בכל מקום שבו היא מוצעת. */
+    .add-here-btn {
+        color: #3a2a06;
+        background: linear-gradient(145deg, #f3d68b, #d4af37);
+        box-shadow: 0 6px 18px -10px rgba(212, 175, 55, 0.9);
+    }
+    .add-here-btn:hover { filter: brightness(1.06); }
+    .add-here-btn:active { transform: scale(0.97); }
+
     /* ═══ המסילה ═══ */
     .cat-rail {
         display: flex;
@@ -958,23 +1009,28 @@
     .cat-spacer { flex: 0 0 2rem; display: block; }   /* ≥ רוחב המסכה, אחרת האריח האחרון נשאר מעומעם */
 
     /* ═══ דומינו תלת-מימדי ═══
-       ‎--t (0..1) נכתב מה-JS לפי מקומו של האריח ביחס לקצה-ההובלה. כאן הוא
-       נפרש לארבע תנועות בבת אחת: פנייה על ציר Y סביב הקצה המוביל (‎--o),
-       נסיגה לעומק, החלקה הצידה אל אותו קצה, ודהייה. התוצאה: השורה
-       נפרסת אלכסונית ואבן אחרי אבן נוטה ונעלמת אל הקצה.
-       ‎--sx הופך את הצירים ב-LTR, כך שהאלכסון תמיד נסוג לכיוון תחילת הרשימה.
+       ‎--t (0..1) נכתב מה-JS לפי מקומו של האריח ביחס לקצה-ההובלה, וכאן הוא
+       נפרש לנסיגה לעומק: הכרטיס הולך אחורה, מצטמק בפרספקטיבה, פונה מעט
+       ודוהה. אין כאן translateX — היסט הצידה הרחיק את הכרטיס מהשכן שלו
+       ופתח רווח שגדל, במקום להיראות כמו כרטיס שנסוג לתוך המסך.
+
+       ‎--o היא נקודת הציר, והיא מוצבת על הקצה שפונה אל הכרטיס הבא (שמאל
+       ב-RTL). בגלל ש-perspective() הוא פונקציית טרנספורם, נקודת המגוז שלו
+       יושבת על ה-transform-origin, ולכן הקצה הזה נשאר מסומר בדיוק במקומו
+       בכל עומק ובכל זווית — הצטמקות והפנייה נבלעות אל הקצה היוצא, והרווח
+       אל השכן אינו גדל כלל. ‎--sx הופך את הצירים ב-LTR.
+
        perspective מקומי לכל אריח ולא על המסילה: perspective על מכל-גלילה
        מוליד באגי נקודת-מגוז בין הדפדפנים.
        בלי transition — הערך נצבע בכל פריים של גלילה, וכל השהיה הייתה משתרכת. */
     .cat-3d {
         display: flex;
-        transform-origin: var(--o, 100%) 50%;
+        transform-origin: var(--o, 0%) 50%;
         transform:
-            perspective(520px)
-            translateX(calc(var(--t, 0) * var(--sx, 1) * 24px))
-            translateZ(calc(var(--t, 0) * -50px))
-            rotateY(calc(var(--t, 0) * var(--sx, 1) * 38deg));
-        opacity: calc(1 - var(--t, 0) * 0.32);
+            perspective(460px)
+            translateZ(calc(var(--t, 0) * -110px))
+            rotateY(calc(var(--t, 0) * var(--sx, 1) * 22deg));
+        opacity: calc(1 - var(--t, 0) * 0.35);
     }
     @media (prefers-reduced-motion: reduce) {
         .cat-3d { transform: none; opacity: 1; }
