@@ -235,7 +235,11 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
         const res = await strapiGet<{ data: StrapiItem[] }>('/api/items', {
             'filters[category][$eq]': AD_CATEGORY,
             'filters[status1][$eq]':  toItemStatus('approved'),
-            sort: 'createdAt:desc',
+            // מהוותיק לחדש: סדר הרשימה הוא סדר המשבצות בטור, ולכן מפרסם
+            // חדש נכנס למשבצת הפנויה הבאה (2, 3...) ולא דוחף את מי שכבר
+            // באוויר מטה. עם מיון יורד כל מודעה חדשה קפצה למשבצת 1 והזיזה
+            // את כל השאר — מספר המשבצת של מפרסם קיים השתנה בלי שנגענו בו.
+            sort: 'createdAt:asc',
             'pagination[pageSize]': '25',
         });
         const now = Date.now();
