@@ -131,9 +131,55 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
 // ולכן זה גם הזמן המרבי שמופע אחר ימשיך להחזיר רשימה ישנה אחרי אישור מודעה.
 const TTL_MS = 60_000;
 let approvedCache: { at: number; list: ApprovedAdPublic[] } | null = null;
+let pendingCache: { at: number; list: PendingAdBrief[] } | null = null;
 
 export function invalidateAdsCache(): void {
     approvedCache = null;
+    pendingCache = null;
+}
+
+/** מודעה שממתינה לאישור — תמצית להתראת האדמינים (בלי תמונות). */
+export interface PendingAdBrief {
+    id: string;
+    title: string;
+    submittedAt: string;
+}
+
+/**
+ * המודעות שממתינות לאישור — הבסיס להתראה שרצה אצל כל אדמין בכל דף.
+ * שאילתה רזה בכוונה: fields מצמצם ל-label/status1/createdAt ומשאיר את
+ * extra_fields בחוץ — שם יושבות התמונות כ-data-URI, ומשיכתן בכל טעינת דף
+ * הייתה עשרות עד מאות KB לחינם. הסינון עצמו בקוד ולא ב-filters[status1],
+ * כדי שגם רשומה ישנה בלי status1 (שנחשבת pending) תיכנס להתראה.
+ */
+export async function listPendingAds(): Promise<PendingAdBrief[]> {
+    if (pendingCache && Date.now() - pendingCache.at < TTL_MS) return pendingCache.list;
+    try {
+        const res = await strapiGet<{
+            data: Array<{ documentId: string; label: string | null; status1: string | null; createdAt: string }>;
+        }>('/api/items', {
+            'filters[category][$eq]': AD_CATEGORY,
+            'fields[0]': 'label',
+            'fields[1]': 'status1',
+            'fields[2]': 'createdAt',
+            sort: 'createdAt:desc',
+            'pagination[pageSize]': '100',
+        });
+        const list = (res.data ?? [])
+            .filter((row) => fromItemStatus(row.status1) === 'pending')
+            .map((row) => ({
+                id: row.documentId,
+                title: row.label ?? 'פרסומת ללא כותרת',
+                submittedAt: row.createdAt ?? '',
+            }));
+        pendingCache = { at: Date.now(), list };
+        return list;
+    } catch (err) {
+        // כשל זמני — לא מפילים את הדף שההתראה יושבת עליו
+        console.warn('adsStore: listPendingAds failed', err instanceof Error ? err.message : err);
+        pendingCache = { at: Date.now(), list: [] };
+        return [];
+    }
 }
 
 /** שליחת מודעה חדשה מהבילדר (status: pending). */

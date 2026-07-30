@@ -62,7 +62,7 @@
 <AdInterstitial />
 
 <div class="site-bg min-h-screen flex flex-col">
-    <Header user={data.user} visitors={data.visitors} />
+    <Header user={data.user} visitors={data.visitors} pendingAds={data.pendingAds ?? 0} />
 
     <div class="layout-container flex-grow">
         <RightAdBanner />

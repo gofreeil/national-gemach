@@ -5,10 +5,14 @@
     // משתמש מחובר (מגיע מ-+layout.server דרך +layout.svelte); null = אנונימי
     let {
         user = null,
-        visitors = null
+        visitors = null,
+        pendingAds = 0
     }: {
         user?: { name: string; email: string } | null;
         visitors?: { count: number; label: string } | null;
+        /** פרסומות שממתינות לאישור — 0 לכל מי שאינו אדמין. מסמן את כפתור
+         *  האזור האישי בנקודה אדומה עד שמישהו מהאדמינים מאשר/דוחה. */
+        pendingAds?: number;
     } = $props();
 
     // מוצג רק כשיש נתון אמיתי מ-GA (אין מספרים מזויפים). count מעוצב עם מפריד אלפים.
@@ -120,12 +124,21 @@
                 <!-- התחברות / אזור אישי (שמאל) -->
                 {#if user}
                     <a
-                        href="/profile"
-                        class="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
-                        aria-label="האזור האישי שלי"
-                        title={user.name || user.email}
+                        href={pendingAds > 0 ? '/profile#admin' : '/profile'}
+                        class="relative flex items-center justify-center w-8 h-8 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
+                        aria-label={pendingAds > 0
+                            ? `האזור האישי שלי — ${pendingAds} פרסומות ממתינות לאישור`
+                            : 'האזור האישי שלי'}
+                        title={pendingAds > 0
+                            ? `${pendingAds} פרסומות ממתינות לאישור`
+                            : user.name || user.email}
                     >
                         <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-[10px]" aria-hidden="true">👤</span>
+                        {#if pendingAds > 0}
+                            <span class="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-[#874b90]" aria-hidden="true">
+                                {pendingAds}
+                            </span>
+                        {/if}
                     </a>
                 {:else}
                     <a
@@ -225,12 +238,17 @@
                 <!-- התחברות / אזור אישי (שמאל) -->
                 {#if user}
                     <a
-                        href="/profile"
-                        class="flex items-center gap-2 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-2 text-sm font-bold text-white transition-colors"
-                        title="האזור האישי שלי"
+                        href={pendingAds > 0 ? '/profile#admin' : '/profile'}
+                        class="relative flex items-center gap-2 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-2 text-sm font-bold text-white transition-colors"
+                        title={pendingAds > 0 ? `${pendingAds} פרסומות ממתינות לאישור` : 'האזור האישי שלי'}
                     >
                         <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-xs">👤</span>
                         <span class="hidden sm:inline max-w-[120px] truncate">{user.name || user.email}</span>
+                        {#if pendingAds > 0}
+                            <span class="absolute -top-1.5 -left-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-black leading-none text-white ring-2 ring-[#874b90]">
+                                <span class="sr-only">פרסומות ממתינות לאישור:</span>{pendingAds}
+                            </span>
+                        {/if}
                     </a>
                 {:else}
                     <a

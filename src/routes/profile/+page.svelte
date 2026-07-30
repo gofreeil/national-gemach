@@ -9,6 +9,22 @@
 	const role = $derived(data.adminRole as AdminNavRole | null);
 	const tiles = $derived(adminTiles(role, data.isOwner));
 
+	// פרסומות שממתינות לאישור — ההתראה נגזרת מהמצב באמת (רשומות pending),
+	// ולכן היא זהה אצל כל האדמינים ונעלמת מעצמה כשמישהו מאשר או דוחה.
+	const pending = $derived(data.pendingAds ?? []);
+
+	function timeAgo(iso: string): string {
+		const ts = Date.parse(iso);
+		if (Number.isNaN(ts)) return '';
+		const mins = Math.max(0, Math.round((Date.now() - ts) / 60000));
+		if (mins < 1) return 'עכשיו';
+		if (mins < 60) return `לפני ${mins} דק׳`;
+		const hours = Math.round(mins / 60);
+		if (hours < 24) return `לפני ${hours} שע׳`;
+		const days = Math.round(hours / 24);
+		return days === 1 ? 'לפני יום' : `לפני ${days} ימים`;
+	}
+
 	const TONE: Record<string, string> = {
 		amber: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
 		emerald: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200',
@@ -72,6 +88,43 @@
 							לפאנל המלא ←
 						</a>
 					</div>
+
+					<!-- התראת אישור פרסומות — הדבר הראשון שאדמין רואה בפאנל, ונשארת
+					     כאן אצל כולם עד שמישהו מאשר/דוחה. הפריטים והכפתור זה לצד זה
+					     כדי לא להוסיף קומה שדורשת גלילה. -->
+					{#if pending.length > 0}
+						<div class="mt-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4">
+							<div class="flex flex-wrap items-center justify-between gap-3">
+								<p class="flex items-center gap-2 font-black text-rose-100">
+									<span class="relative flex h-2.5 w-2.5" aria-hidden="true">
+										<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
+										<span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+									</span>
+									{pending.length === 1
+										? 'פרסומת אחת ממתינה לאישור'
+										: `${pending.length} פרסומות ממתינות לאישור`}
+								</p>
+								{#if role === 'super_admin'}
+									<a
+										href="/admin/ads"
+										class="rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
+									>
+										לאישור עכשיו ←
+									</a>
+								{:else}
+									<span class="text-xs font-bold text-rose-200/80">האישור בידי סופר-אדמין</span>
+								{/if}
+							</div>
+							<ul class="mt-3 flex flex-wrap gap-2">
+								{#each pending as ad (ad.id)}
+									<li class="flex items-center gap-2 rounded-full border border-rose-500/30 bg-[#1c2f5a] px-3 py-1.5 text-sm">
+										<span class="font-bold text-white">{ad.title}</span>
+										<span class="text-xs text-gray-400">{timeAgo(ad.submittedAt)}</span>
+									</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
 
 					<div class="mt-4 grid gap-3 sm:grid-cols-2">
 						{#each tiles as tile (tile.href)}
