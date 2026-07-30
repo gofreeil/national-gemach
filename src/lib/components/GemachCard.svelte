@@ -51,7 +51,9 @@
         <AdminGemachMenu {gemach} />
     </div>
 
-    <a {href} onclick={(e) => gatedNav(e, href)} class="group flex items-stretch gap-4 p-4">
+    <!-- h-full: בגריד כל הכרטיסים בשורה נמתחים לאותו גובה — בלי זה הקישור
+         הפנימי נשאר בגובה התוכן ונשארת רצועה כחולה ריקה בתחתית הכרטיס הקצר -->
+    <a {href} onclick={(e) => gatedNav(e, href)} class="group flex h-full items-stretch gap-4 p-4">
         <!-- תצוגה מקדימה רזה: שם, תקציר, והקטגוריה בתחתית. מיקום, איש קשר,
              הערות ושאר הפרטים — בעמוד הגמ"ח, אחרי הקלקה. -->
         <div class="flex min-w-0 flex-1 flex-col">
