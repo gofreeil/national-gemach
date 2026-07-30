@@ -8,8 +8,11 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	let saving = $state(false);
 
-	// אם השמירה נכשלה — נזרע מהערכים שהוזנו; אחרת טופס ריק
-	const initial = $derived(form?.values ?? null);
+	// אם השמירה נכשלה — נזרע מהערכים שהוזנו; אחרת טופס ריק, פרט לקטגוריה
+	// שהגיעה בכתובת (?category=) כשההוספה נפתחה מתוך סינון נושא בדף הבית.
+	const initial = $derived(
+		form?.values ?? (data.presetCategory ? { category: data.presetCategory } : null)
+	);
 </script>
 
 <Seo

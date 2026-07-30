@@ -7,13 +7,19 @@ import { ownerIdForSession } from '$lib/server/ownership';
 import { newDraftToken, setDraftTicket } from '$lib/server/guestDraft';
 import { cities } from '$lib/gemachData';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	// הטופס פתוח גם למי שאינו מחובר — לא לחסום מתנדב שרוצה לתרום גמ"ח בגלל
 	// מסך התחברות. אורח שישלח יקבל טיוטה שמורה, וההתחברות בסוף (/gemach/claim)
 	// היא זו שרושמת את הגמ"ח על שמו ומפרסמת אותו.
 	const session = await locals.auth();
+	const categories = await getCategories();
 
-	return { loggedIn: !!session?.user, categories: await getCategories(), cities };
+	// ?category=<key> — מי שהגיע מסינון קטגוריה בדף הבית מקבל אותה בחורה מראש.
+	// מאומת מול הרשימה, כדי שערך מומצא בכתובת לא יזרע את הטופס.
+	const wanted = url.searchParams.get('category');
+	const presetCategory = categories.some((c) => c.key === wanted) ? wanted : null;
+
+	return { loggedIn: !!session?.user, categories, cities, presetCategory };
 };
 
 export const actions: Actions = {
