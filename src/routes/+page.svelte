@@ -440,6 +440,13 @@
         showResults = false;
     }
 
+    /** "חזור" — יציאה ממסך התוצאות חזרה לדף הבית הרגיל (קטגוריות, נעוצים,
+     *  חדשים). מנקה את הסינון וגולל לראש הדף, כדי שהחזרה תרגיש כמו מסך קודם. */
+    function goBack() {
+        clearFilters();
+        window.scrollTo({ top: 0 });
+    }
+
     /* ═══════════ חזרה לדף הבית עם החיפוש שהיה ═══════════
        מצב החיפוש הוא state של הרכיב ולא פרמטרים בכתובת, ולכן מי שחיפש,
        סינן ולחץ על גמ"ח קיבל דף בית מאופס כשחזר — גם בכפתור "חזרה" של
@@ -634,9 +641,20 @@
     <!-- Search Results -->
     <section class="px-2 md:px-4 pb-8" aria-label="תוצאות חיפוש">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h2 class="text-xl font-bold text-white">
-                נמצאו <span class="text-blue-400">{filteredGemachim.length}</span> גמחים
-            </h2>
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- חזרה מהתוצאות לדף הבית הרגיל — בלי לגעת בהיסטוריית הדפדפן -->
+                <button
+                    type="button"
+                    onclick={goBack}
+                    class="inline-flex items-center gap-1.5 rounded-full border border-[#3b5794] bg-[#1c2f5a] px-4 py-2 min-h-[40px] text-sm font-bold text-gray-100 shadow-md hover:bg-[#2a4379] hover:text-white active:scale-95 transition-all"
+                >
+                    <span aria-hidden="true">→</span>
+                    חזור
+                </button>
+                <h2 class="text-xl font-bold text-white">
+                    נמצאו <span class="text-blue-400">{filteredGemachim.length}</span> גמחים
+                </h2>
+            </div>
             <!-- הוספה בתוך ההקשר: הקטגוריה שנבחרה נשלחת לטופס ונבחרת בו מראש -->
             <a
                 href={addHref}
