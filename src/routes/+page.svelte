@@ -114,6 +114,12 @@
     let thumbRatio = $state(1);       // clientWidth / scrollWidth
     let hiddenCount = $state(0);      // כמה קטגוריות עוד מחכות קדימה
     let scrubbing = $state(false);    // גרירת ידית הסקראבר פעילה
+    /* רוחבי הדהייה בשני הקצוות, בפיקסלים. נגזרים ממרחק הגלילה ולא מ-atStart/atEnd:
+       מיתוג בינארי הקפיץ מסכה של 32px בפריים אחד על הקצה הימני — פופ שנראה כגליצ'.
+       עכשיו הדהייה גדלה ~2px לפריים יחד עם הגלילה. */
+    const FADE_PX = 32;               // = 2rem, וגם scroll-padding-inline של המסילה
+    let fadeLeadPx = $state(0);       // הקצה שממנו האריחים יוצאים (ימין ב-RTL)
+    let fadeTailPx = $state(0);       // הקצה שממנו הם נכנסים
 
     // לא-ריאקטיביים: לא מוצגים, ולכן אין טעם ב-$state
     let pointerId = -1;
@@ -144,6 +150,9 @@
         atStart = pos <= 2;                       // אפסילון נגד עיגול בזום/hi-dpi
         atEnd = isEnd;
         progress = max > 0 ? pos / max : 0;
+        // עיגול לפיקסל: קצה הגרדיאנט רך, וחישוב מסכה חדש בכל שבריר פיקסל הוא בזבוז
+        fadeLeadPx = Math.round(Math.min(FADE_PX, Math.max(0, pos)));
+        fadeTailPx = Math.round(Math.min(FADE_PX, Math.max(0, max - pos)));
         thumbRatio = el.scrollWidth > 0 ? Math.min(1, el.clientWidth / el.scrollWidth) : 1;
         // גלגלת/מקלדת/סרגל — תזוזה אמיתית מכבה את הרמז. הסף גבוה מ-36px של הנדנוד
         // האוטומטי, כדי שהרמז לא יכבה את עצמו
@@ -177,16 +186,22 @@
 
        חלון ההקדמה (lead) נפתח עם הגלילה ולא קבוע: בלעדיו האריח הראשון
        היה נראה נוטה כבר במנוחה, ודווקא הקטגוריה המובילה הייתה מוטה. */
-    /* החלון רחב בכוונה משני אריחים: אריח שכבר יצא מהמסך אינו נראה, ולכן
-       הנטייה חייבת להגיע לשיאה בזמן שהאריח עוד בתוך החלון הנראה. כך תמיד
-       שני אריחים בתנועה בבת אחת — אחד מוטה חזק בקצה, ואחריו נוטה מתחיל. */
-    const DOMINO_LEAD = 1.8;    // עד כמה לפני קצה-ההובלה מתחילה הנטייה (ביחידות אריח)
-    const DOMINO_RAMP = 2.0;    // על פני כמה אריחים הנטייה מתפתחת מ-0 למקסימום
+    /* LEAD קטן מרוחב אריח: הנטייה מתחילה סמוך לקצה הימני, ולא באמצע השורה —
+       בכל רגע יש אריח אחד נוטה בקצה ואחריו מתחיל הבא, כמו אבן דומינו שמפילה
+       את הבאה אחריה. LEAD גדול היה מתחיל את הנטייה כבר במרכז המסך. */
+    const DOMINO_LEAD = 0.9;    // עד כמה לפני קצה-ההובלה מתחילה הנטייה (ביחידות אריח)
+    const DOMINO_RAMP = 1.6;    // על פני כמה אריחים הנטייה מתפתחת מ-0 למקסימום
+    const DOMINO_OPEN = 4;      // על פני כמה אריחים נפתח חלון ההקדמה בתחילת הגלילה
 
     function paintDepth(pos: number) {
         const el = railEl;
         if (!el || reduceMotion || tileStep <= 0) return;
-        const lead = Math.min(pos, tileStep * DOMINO_LEAD);
+        /* חלון ההקדמה נפתח בעקומת smoothstep ולא ב-Math.min: ב-min הוא גדל בקצב 1
+           יחד עם past, ולכן הנטייה רצה בקצב כפול עד לנקודת הרוויה ושם נחתכת בבת
+           אחת לחצי — קפיצת-קצב שנראית כגליצ' בדיוק בקצה הימני. smoothstep מתחיל
+           בנגזרת אפס, ולכן הקצב יוצא מהמנוחה חלק ולא מזנק באמצע. */
+        const u = Math.min(1, pos / (tileStep * DOMINO_OPEN));
+        const lead = tileStep * DOMINO_LEAD * u * u * (3 - 2 * u);
         const ramp = tileStep * DOMINO_RAMP;
         const wraps = el.querySelectorAll<HTMLElement>('[data-depth]');
         for (let i = 0; i < wraps.length; i++) {
@@ -706,7 +721,7 @@
                 bind:this={railEl}
                 class="cat-rail"
                 class:is-dragging={dragging}
-                style="--f-l:{rtl ? (atEnd ? '0px' : '2rem') : (atStart ? '0px' : '2rem')}; --f-r:{rtl ? (atStart ? '0px' : '2rem') : (atEnd ? '0px' : '2rem')}; --sx:{rtl ? 1 : -1}; --o:{rtl ? '100%' : '0%'}"
+                style="--f-l:{rtl ? fadeTailPx : fadeLeadPx}px; --f-r:{rtl ? fadeLeadPx : fadeTailPx}px; --sx:{rtl ? 1 : -1}; --o:{rtl ? '100%' : '0%'}"
                 onscroll={scheduleRead}
                 onpointerdown={onRailPointerDown}
                 onpointermove={onRailPointerMove}
@@ -716,9 +731,9 @@
                 onclickcapture={onRailClickCapture}
             >
                 {#each railCategories as cat (cat.key)}
-                    <!-- העטיפה נושאת את טרנספורם הדומינו ולא ה-li: אזור ה-scroll-snap
-                         נמדד לפי תיבת ה-li, וסיבוב שלה היה מזיז את נקודות ההצמדה תחת
-                         הגלילה. גם ה-hover של האריח עצמו נשאר בלי התנגשות טרנספורמים. -->
+                    <!-- העטיפה נושאת את טרנספורם הדומינו ולא ה-li ולא הכפתור: לכפתור יש
+                         טרנספורם משלו ב-hover וב-active, ושתי הצהרות transform על אותו
+                         אלמנט דורסות אחת את השנייה. -->
                     <li class="cat-item">
                         <span class="cat-3d" data-depth>{@render catTile(cat)}</span>
                     </li>
@@ -909,10 +924,14 @@
         overflow-y: hidden;
         overscroll-behavior-x: contain; /* בלי back-swipe של הדפדפן באייפון */
         -webkit-overflow-scrolling: touch;
-        scroll-padding-inline: 2rem;    /* תואם בדיוק את רוחב המסכה */
-        /* ה-snap מוגדר כאן ולא כ-utility, כדי שהעקיפה בגרירה תשב באותו מקור בקסקייד.
+        scroll-padding-inline: 2rem;    /* תואם בדיוק את רוחב המסכה; שומר על טבעת הפוקוס במקלדת */
+        /* אין כאן scroll-snap-type — ואסור להחזיר אותו: ההצמדה קופצת מיידית ובלי
+           אנימציה, וכל קפיצה כזו קופצת גם את נטיית הדומינו (‎--t הוא פונקציה של
+           מקום הגלילה). מדידה: עם x proximity המסילה נחה רק בנקודות ההצמדה
+           (0, 72, 168, 264px ברוחב 412px), כתיבה של כל מקום ביניהם נבלעה, וכל
+           שחרור גרירה או גרירת ידית סקראבר הזיזה את השורה בקפיצה של עד אריח —
+           ‎12°—24° של סיבוב בפריים אחד, לסירוגין, בדיוק בקצה הימני.
            scroll-behavior: smooth לא מוצהר בכוונה — הוא היה הופך כל גרירה למקרטעת. */
-        scroll-snap-type: x proximity;
         cursor: grab;
         user-select: none;
         -webkit-user-select: none;
@@ -931,11 +950,11 @@
         mask-image: var(--cat-mask);
     }
     .cat-rail::-webkit-scrollbar { display: none; }
-    .cat-rail.is-dragging { cursor: grabbing; scroll-snap-type: none; scroll-behavior: auto; }
+    .cat-rail.is-dragging { cursor: grabbing; scroll-behavior: auto; }
     .cat-rail.is-dragging .cat-tile { transition: none; }
     @media (hover: none) { .cat-rail { cursor: default; } }
 
-    .cat-item { flex: 0 0 auto; scroll-snap-align: start; display: flex; }
+    .cat-item { flex: 0 0 auto; display: flex; }
     .cat-spacer { flex: 0 0 2rem; display: block; }   /* ≥ רוחב המסכה, אחרת האריח האחרון נשאר מעומעם */
 
     /* ═══ דומינו תלת-מימדי ═══
@@ -951,11 +970,11 @@
         display: flex;
         transform-origin: var(--o, 100%) 50%;
         transform:
-            perspective(380px)
-            translateX(calc(var(--t, 0) * var(--sx, 1) * 30px))
-            translateZ(calc(var(--t, 0) * -70px))
-            rotateY(calc(var(--t, 0) * var(--sx, 1) * 58deg));
-        opacity: calc(1 - var(--t, 0) * 0.4);
+            perspective(520px)
+            translateX(calc(var(--t, 0) * var(--sx, 1) * 24px))
+            translateZ(calc(var(--t, 0) * -50px))
+            rotateY(calc(var(--t, 0) * var(--sx, 1) * 38deg));
+        opacity: calc(1 - var(--t, 0) * 0.32);
     }
     @media (prefers-reduced-motion: reduce) {
         .cat-3d { transform: none; opacity: 1; }
