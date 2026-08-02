@@ -52,16 +52,6 @@
 				</p>
 			{/if}
 
-			{#if data.visitors}
-				<div class="mt-5 rounded-2xl border border-[#3b5794] bg-[#1c2f5a] px-4 py-3">
-					<div class="flex items-center justify-center gap-2">
-						<span class="text-green-400 text-sm" aria-hidden="true">●</span>
-						<span class="text-2xl font-black tabular-nums text-white">{new Intl.NumberFormat('he-IL').format(data.visitors.count)}</span>
-					</div>
-					<div class="mt-0.5 text-xs text-gray-400">{data.visitors.label} · באתר הגמ"ח הארצי</div>
-				</div>
-			{/if}
-
 			<div class="mt-6 flex flex-col gap-3">
 				<a href="https://community.gofreeil.com/profile" class="rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-3 font-bold text-white transition hover:opacity-90">
 					🕊️ לפרופיל המלא בקהילה
