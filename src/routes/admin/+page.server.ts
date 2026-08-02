@@ -41,15 +41,15 @@ async function buildAdsSummary(): Promise<AdsSummary | null> {
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const { role } = await getAdminContext(locals);
+	await getAdminContext(locals);
 
 	const [all, categories, admins, visits, adsSummary, discoveryDrafts] = await Promise.all([
 		getMergedGemachim(),
 		getCategories(),
 		getAdmins(),
 		getMonthlyVisits(12),
-		// מסך הפרסומות הוא לסופר-אדמין בלבד — לאדמין רגיל אין מה להציג ממנו
-		role === 'super_admin' ? buildAdsSummary() : Promise.resolve(null),
+		// תמצית הפרסומות — לשני התפקידים; מסך /admin/ads פתוח לכל אדמין
+		buildAdsSummary(),
 		// טיוטות שאוטומציית הגילוי ייבאה וממתינות לאישור (לשני התפקידים)
 		countDraftGemachim().catch(() => 0)
 	]);

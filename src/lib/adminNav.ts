@@ -60,12 +60,12 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
             title: 'גילוי חכם',
             desc: 'איתור גמ"חים חדשים מ-Google ואישור טיוטות'
         },
+        {
+            href: '/admin/ads', icon: '📢', label: 'ניהול פרסומות', exact: false,
+            title: 'ניהול פרסומות',
+            desc: 'אישור מודעות, לוח תפוסה ונתוני מפרסמים'
+        },
         ...(isSuper ? [
-            {
-                href: '/admin/ads', icon: '📢', label: 'ניהול פרסומות', exact: false,
-                title: 'ניהול פרסומות',
-                desc: 'אישור מודעות, לוח תפוסה ונתוני מפרסמים'
-            },
             {
                 href: '/admin/admins', icon: '🔑', label: 'ניהול אדמינים', exact: false,
                 title: 'ניהול אדמינים',

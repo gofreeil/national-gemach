@@ -70,7 +70,7 @@
         {/if}
     </div>
 
-    <!-- מצב הפרסומות — תמצית לסופר-אדמין; הפירוט המלא ב-/admin/ads -->
+    <!-- מצב הפרסומות — תמצית לכל אדמין; הפירוט המלא ב-/admin/ads -->
     {#if adsSum}
         <a href="/admin/ads" class="card p-5 block transition-colors hover:bg-[#1e3260] {adsSum.pending > 0 ? 'border-amber-500/40 bg-amber-500/5' : ''}">
             <div class="flex flex-wrap items-center justify-between gap-3">

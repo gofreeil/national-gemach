@@ -104,36 +104,25 @@
 										? 'פרסומת אחת ממתינה לאישור'
 										: `${pending.length} פרסומות ממתינות לאישור`}
 								</p>
-								{#if role === 'super_admin'}
-									<a
-										href="/admin/ads"
-										class="rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
-									>
-										לאישור עכשיו ←
-									</a>
-								{:else}
-									<span class="text-xs font-bold text-rose-200/80">האישור בידי סופר-אדמין</span>
-								{/if}
+								<a
+									href="/admin/ads"
+									class="rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
+								>
+									לאישור עכשיו ←
+								</a>
 							</div>
 							<ul class="mt-3 flex flex-wrap gap-2">
 								{#each pending as ad (ad.id)}
 									<li>
-										{#if role === 'super_admin'}
-											<!-- הצ'יפ עצמו מוביל ישירות לכרטיס המודעה במסך האישור -->
-											<a
-												href="/admin/ads#ad-{ad.id}"
-												class="flex items-center gap-2 rounded-full border border-rose-500/30 bg-[#1c2f5a] px-3 py-1.5 text-sm transition hover:border-rose-400/70 hover:bg-[#2a4379]"
-											>
-												<span class="font-bold text-white">{ad.title}</span>
-												<span class="text-xs text-gray-400">{timeAgo(ad.submittedAt)}</span>
-												<span class="text-xs font-black text-rose-300" aria-hidden="true">←</span>
-											</a>
-										{:else}
-											<span class="flex items-center gap-2 rounded-full border border-rose-500/30 bg-[#1c2f5a] px-3 py-1.5 text-sm">
-												<span class="font-bold text-white">{ad.title}</span>
-												<span class="text-xs text-gray-400">{timeAgo(ad.submittedAt)}</span>
-											</span>
-										{/if}
+										<!-- הצ'יפ עצמו מוביל ישירות לכרטיס המודעה במסך האישור -->
+										<a
+											href="/admin/ads#ad-{ad.id}"
+											class="flex items-center gap-2 rounded-full border border-rose-500/30 bg-[#1c2f5a] px-3 py-1.5 text-sm transition hover:border-rose-400/70 hover:bg-[#2a4379]"
+										>
+											<span class="font-bold text-white">{ad.title}</span>
+											<span class="text-xs text-gray-400">{timeAgo(ad.submittedAt)}</span>
+											<span class="text-xs font-black text-rose-300" aria-hidden="true">←</span>
+										</a>
 									</li>
 								{/each}
 							</ul>

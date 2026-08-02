@@ -1,13 +1,13 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getAdminContext, requireSuperAdmin } from '$lib/server/admin';
+import { getAdminContext } from '$lib/server/admin';
 import { listAllForAdmin, approveAd, rejectAd } from '$lib/server/adsStore';
 import { getAdStats, type AdStats, type AdCounters } from '$lib/server/adStats';
 import { normalizePlanDays, planLabel } from '$lib/adPlans';
 import { rightAds } from '$lib/rightAdsData';
 
-// מסך ניהול הפרסומות — סופר-אדמין בלבד (כמו במקור בקבוצות רכישה):
-// התשלום ידני, ולכן מי שמקבל את הכסף הוא שמאשר ואת משך הפרסום.
+// מסך ניהול הפרסומות — פתוח לכל אדמין (לא רק סופר-אדמין), כדי שכל
+// חבר צוות יוכל לאשר/לדחות; decidedBy מתעד מי החליט.
 // בנוסף לאישור/דחייה, המסך מציג את לוח התפוסה (כמה משבצות תפוסות,
 // עד מתי, ומה פנוי) ואת הנתונים של כל מפרסם — אותם מדדים שהמפרסם
 // רואה בדשבורד שלו (/advertise/manage).
@@ -28,8 +28,7 @@ function sumDays(st: AdStats | undefined): AdCounters {
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
-    const { role } = await getAdminContext(locals);
-    requireSuperAdmin(role);
+    await getAdminContext(locals);
 
     let raw: Awaited<ReturnType<typeof listAllForAdmin>> = [];
     let backendUnavailable = false;
@@ -85,8 +84,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
     approve: async ({ request, locals }) => {
-        const { user, role } = await getAdminContext(locals);
-        requireSuperAdmin(role);
+        const { user } = await getAdminContext(locals);
         const form = await request.formData();
         const id = String(form.get('id') ?? '');
         if (!id) return fail(400, { error: 'חסר מזהה פרסומת' });
@@ -104,8 +102,7 @@ export const actions: Actions = {
         }
     },
     reject: async ({ request, locals }) => {
-        const { user, role } = await getAdminContext(locals);
-        requireSuperAdmin(role);
+        const { user } = await getAdminContext(locals);
         const form = await request.formData();
         const id = String(form.get('id') ?? '');
         const reason = String(form.get('reason') ?? '');
