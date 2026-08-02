@@ -21,7 +21,7 @@ const SA_EMAIL    = (env.GA_SA_CLIENT_EMAIL ?? '').trim();
 // תומך גם במפתח עם \n מילוליים (כפי שנשמר לרוב במשתני סביבה) וגם בשורות אמיתיות
 const SA_KEY      = (env.GA_SA_PRIVATE_KEY ?? '').replace(/\\n/g, '\n');
 
-const REFRESH_MS = 20 * 60 * 60 * 1000;      // ~20 שעות בין רענוני GA
+const REFRESH_MS = 15 * 60 * 1000;           // 15 דקות בין רענוני GA (96 פעמים ביום, מתוזמן ב-Cron)
 const STALE_MS   = 30 * 24 * 60 * 60 * 1000; // מעבר לכך — נחשב ישן מדי, נחזיר fallback
 const LABEL = 'גולשים השבוע';
 
