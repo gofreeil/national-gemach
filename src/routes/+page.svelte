@@ -1,5 +1,7 @@
 <script lang="ts">
     import { tick, untrack } from 'svelte';
+    import { fly } from 'svelte/transition';
+    import { cubicOut } from 'svelte/easing';
     import { categoryKeys, cities } from '$lib/gemachData';
     import GemachCard from '$lib/components/GemachCard.svelte';
     import AvedotBanner from '$lib/components/AvedotBanner.svelte';
@@ -398,8 +400,10 @@
        scrollTo({behavior:'smooth'}) רץ במהירות שהדפדפן קובע — כאן רוצים תנועה
        איטית ומכוונת, ולכן אנימציה משלנו ב-rAF עם easeInOutCubic. כל מגע של
        המשתמש בגלגלת/במסך/במקלדת מבטל אותה מיד: אנימציה שנלחמת בגלילה של
-       המשתמש היא החוויה הגרועה ביותר. */
-    const SCROLL_MS = 900;
+       המשתמש היא החוויה הגרועה ביותר.
+       המשך לעולם לא יורד מ-900ms — גם מרחק קצרצר נגלל לאט ולא כהבזק; מרחק
+       ארוך מקבל תוספת זמן כדי שהמהירות לא תזנק. */
+    const scrollDuration = (dist: number) => Math.min(1500, 900 + Math.abs(dist) * 0.5);
     let scrollAnimId = 0;
 
     /** גובה ההאדר הדביק — היעד נעצר מתחתיו ולא נבלע מאחוריו */
@@ -429,9 +433,10 @@
         };
 
         const t0 = performance.now();
+        const dur = scrollDuration(dist);
         const frame = (now: number) => {
             if (cancelled) { done(); return; }
-            const p = Math.min(1, (now - t0) / SCROLL_MS);
+            const p = Math.min(1, (now - t0) / dur);
             const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;   // easeInOutCubic
             window.scrollTo(0, start + dist * e);
             if (p < 1) scrollAnimId = requestAnimationFrame(frame);
@@ -869,6 +874,12 @@
 {#if filtering}
     <!-- Search Results -->
     <section bind:this={resultsEl} class="px-2 md:px-4 pb-8" aria-label="תוצאות חיפוש">
+        <!-- הקפיצה שהעין תופסת היא החלפת התוכן בפריים אחד, לא הגלילה עצמה:
+             כשהמסילה כבר צמודה לראש המסך אין כמעט מרחק לגלול, וכל מה שרואים
+             הוא סוויץ' חד. לכן התוצאות נכנסות בעלייה+עמעום איטיים. העטיפה היא
+             div פנימי ולא ה-section: ה-section הוא עוגן המדידה של הגלילה,
+             וטרנספורם עליו היה מזייף את המדידה. -->
+        <div in:fly={{ y: prefersReduce() ? 0 : 28, duration: prefersReduce() ? 0 : 700, easing: cubicOut }}>
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div class="flex flex-wrap items-center gap-3">
                 <!-- חזרה מהתוצאות לדף הבית הרגיל — בלי לגעת בהיסטוריית הדפדפן -->
@@ -945,6 +956,7 @@
                 {/each}
             </div>
         {/if}
+        </div>
     </section>
 
 {:else}
