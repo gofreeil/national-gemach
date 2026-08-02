@@ -5,22 +5,13 @@
     // משתמש מחובר (מגיע מ-+layout.server דרך +layout.svelte); null = אנונימי
     let {
         user = null,
-        visitors = null,
         pendingAds = 0
     }: {
         user?: { name: string; email: string } | null;
-        visitors?: { count: number; label: string } | null;
         /** פרסומות שממתינות לאישור — 0 לכל מי שאינו אדמין. מסמן את כפתור
          *  האזור האישי בנקודה אדומה עד שמישהו מהאדמינים מאשר/דוחה. */
         pendingAds?: number;
     } = $props();
-
-    // מוצג כשיש נתון אמיתי מ-GA (כולל 0, לאימות שהחיבור עובד). count מעוצב עם מפריד אלפים.
-    const visitorText = $derived(
-        visitors && typeof visitors.count === 'number'
-            ? new Intl.NumberFormat('he-IL').format(visitors.count)
-            : null
-    );
 
     let languages = [
         { name: "עברית", code: "he", flag: "il" },
@@ -77,13 +68,6 @@
                 </div>
             </a>
             <div class="flex flex-shrink-0 items-center gap-1">
-                <!-- מונה גולשים — גרסה קומפקטית לנייד (נקודה + מספר); מוצג רק כשיש נתון -->
-                {#if visitorText}
-                    <div class="flex items-center gap-0.5 px-0.5 text-[11px] font-bold text-white/90" title={visitors?.label}>
-                        <span class="text-green-400 text-[8px] leading-none" aria-hidden="true">●</span>
-                        <span>{visitorText}</span>
-                    </div>
-                {/if}
                 <!-- אין כאן כפתור ניהול — הפאנל פרוס בתוך האזור האישי (/profile) -->
                 <!-- מידע (ימין) — דף ההסבר: מהות האתר, מה יש במאגר ושאלות נפוצות -->
                 <!-- בלי מסגרת/רקע: אייקון בלבד, כדי לא להתחרות בכפתורי הפעולה -->
@@ -183,15 +167,6 @@
 
             <!-- Right side controls -->
             <div class="flex items-center gap-3">
-                <!-- מונה גולשים (נתון אמיתי מ-GA; מוצג רק אם קיים) -->
-                {#if visitorText}
-                    <div class="flex items-center gap-2 bg-[#16264d] px-3 py-2 rounded-lg border border-blue-500/30" title="לפי Google Analytics, מתעדכן פעם ביום">
-                        <span class="text-green-400 text-lg" aria-hidden="true">●</span>
-                        <span class="text-white text-sm font-bold">{visitorText}</span>
-                        <span class="text-gray-300 text-sm">{visitors?.label}</span>
-                    </div>
-                {/if}
-
                 <!-- אין כאן כפתור ניהול — הפאנל פרוס בתוך האזור האישי (/profile) -->
 
                 <!-- מידע — דף ההסבר: מהות האתר, מה יש במאגר ושאלות נפוצות -->
