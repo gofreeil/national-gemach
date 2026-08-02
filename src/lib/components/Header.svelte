@@ -77,6 +77,13 @@
                 </div>
             </a>
             <div class="flex flex-shrink-0 items-center gap-1">
+                <!-- מונה גולשים — גרסה קומפקטית לנייד (נקודה + מספר); מוצג רק כשיש נתון -->
+                {#if visitorText}
+                    <div class="flex items-center gap-0.5 px-0.5 text-[11px] font-bold text-white/90" title={visitors?.label}>
+                        <span class="text-green-400 text-[8px] leading-none" aria-hidden="true">●</span>
+                        <span>{visitorText}</span>
+                    </div>
+                {/if}
                 <!-- אין כאן כפתור ניהול — הפאנל פרוס בתוך האזור האישי (/profile) -->
                 <!-- מידע (ימין) — דף ההסבר: מהות האתר, מה יש במאגר ושאלות נפוצות -->
                 <!-- בלי מסגרת/רקע: אייקון בלבד, כדי לא להתחרות בכפתורי הפעולה -->
