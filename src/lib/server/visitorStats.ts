@@ -45,7 +45,7 @@ function loadCredentials(): { clientEmail: string; privateKey: string } | null {
 
 const REFRESH_MS = 15 * 60 * 1000;           // 15 דקות בין רענוני GA (96 פעמים ביום, מתוזמן ב-Cron)
 const STALE_MS   = 30 * 24 * 60 * 60 * 1000; // מעבר לכך — נחשב ישן מדי, נחזיר fallback
-const LABEL = 'גולשים השבוע';
+const LABEL = 'גולשים החודש';
 
 interface VisitorStat {
     count: number;
@@ -114,7 +114,15 @@ async function getAccessToken(): Promise<string | null> {
     }
 }
 
-/** קורא מ-GA את מספר הגולשים ב-7 הימים האחרונים */
+/** תחילת החודש הלועזי הנוכחי (YYYY-MM-01) לפי שעון ישראל — אזור הזמן של נכס ה-GA */
+function monthStartDate(): string {
+    const ym = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit'
+    }).format(new Date());
+    return `${ym}-01`;
+}
+
+/** קורא מ-GA את מספר הגולשים מתחילת החודש הלועזי הנוכחי */
 async function fetchFromGA(): Promise<number | null> {
     if (!PROPERTY_ID) return null;
     const token = await getAccessToken();
@@ -126,7 +134,7 @@ async function fetchFromGA(): Promise<number | null> {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+                    dateRanges: [{ startDate: monthStartDate(), endDate: 'today' }],
                     metrics: [{ name: 'activeUsers' }],
                     ...(HOSTNAME
                         ? {
@@ -166,7 +174,8 @@ export async function refreshVisitorStatsIfStale(force = false): Promise<void> {
     if (refreshing) return;
 
     const cur = await getConfigValue<VisitorStat>('visitors');
-    if (!force && cur?.updatedAt && Date.now() - cur.updatedAt < REFRESH_MS) return;
+    // label שונה = טווח המדידה השתנה בקוד (שבוע→חודש) — מרעננים מיד ולא מחכים
+    if (!force && cur?.updatedAt && cur.label === LABEL && Date.now() - cur.updatedAt < REFRESH_MS) return;
 
     refreshing = true;
     try {
@@ -176,6 +185,88 @@ export async function refreshVisitorStatsIfStale(force = false): Promise<void> {
         }
     } finally {
         refreshing = false;
+    }
+}
+
+// ------------------------------------------------------------
+// סטטיסטיקה חודשית — לדף /admin/stats בלבד.
+// קריאת GA אחת לכל היותר בשעה (הדף נצפה רק ע"י אדמינים), עם מטמון ב-config
+// שמוגש גם אם GA נופל רגעית.
+// ------------------------------------------------------------
+
+export interface MonthlyStat {
+    /** YYYYMM כפי שמוחזר מ-GA, למשל "202608" */
+    yearMonth: string;
+    visitors: number;
+    pageViews: number;
+}
+
+interface MonthlyCache {
+    rows: MonthlyStat[];
+    updatedAt: number;
+}
+
+const MONTHLY_REFRESH_MS = 60 * 60 * 1000;
+
+/** גולשים וצפיות לכל חודש קלנדרי בשנה האחרונה. null = GA לא מוגדר/נכשל ואין מטמון. */
+export async function getMonthlyVisitorStats(): Promise<MonthlyCache | null> {
+    const cached = await getConfigValue<MonthlyCache>('visitors_monthly').catch(() => null);
+    if (cached?.rows && Date.now() - cached.updatedAt < MONTHLY_REFRESH_MS) return cached;
+
+    const rows = await fetchMonthlyFromGA();
+    if (rows) {
+        const value: MonthlyCache = { rows, updatedAt: Date.now() };
+        await setConfigValue('visitors_monthly', value).catch(() => {});
+        return value;
+    }
+    return cached?.rows ? cached : null;
+}
+
+async function fetchMonthlyFromGA(): Promise<MonthlyStat[] | null> {
+    if (!PROPERTY_ID) return null;
+    const token = await getAccessToken();
+    if (!token) return null;
+    try {
+        const res = await fetch(
+            `https://analyticsdata.googleapis.com/v1beta/properties/${PROPERTY_ID}:runReport`,
+            {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dateRanges: [{ startDate: '365daysAgo', endDate: 'today' }],
+                    dimensions: [{ name: 'yearMonth' }],
+                    metrics: [{ name: 'activeUsers' }, { name: 'screenPageViews' }],
+                    orderBys: [{ dimension: { dimensionName: 'yearMonth' } }],
+                    ...(HOSTNAME
+                        ? {
+                            dimensionFilter: {
+                                filter: {
+                                    fieldName: 'hostName',
+                                    stringFilter: { matchType: 'EXACT', value: HOSTNAME }
+                                }
+                            }
+                        }
+                        : {})
+                })
+            }
+        );
+        if (!res.ok) {
+            console.error('[visitorStats] monthly runReport failed:', res.status, await res.text());
+            return null;
+        }
+        const j = (await res.json()) as {
+            rows?: { dimensionValues?: { value?: string }[]; metricValues?: { value?: string }[] }[];
+        };
+        return (j.rows ?? [])
+            .map((r) => ({
+                yearMonth: r.dimensionValues?.[0]?.value ?? '',
+                visitors: Number(r.metricValues?.[0]?.value) || 0,
+                pageViews: Number(r.metricValues?.[1]?.value) || 0
+            }))
+            .filter((r) => /^\d{6}$/.test(r.yearMonth));
+    } catch (e) {
+        console.error('[visitorStats] monthly runReport error:', e);
+        return null;
     }
 }
 

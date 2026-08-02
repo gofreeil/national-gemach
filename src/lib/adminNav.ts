@@ -70,6 +70,11 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
             title: 'תביעות בעלות',
             desc: 'אישור בעלים שמבקשים לנהל גמ"ח שהעליתם'
         },
+        {
+            href: '/admin/stats', icon: '📈', label: 'סטטיסטיקה', exact: false,
+            title: 'סטטיסטיקת גולשים',
+            desc: 'כמה גולשים נכנסו לאתר בכל חודש'
+        },
         ...(isSuper ? [
             {
                 href: '/admin/admins', icon: '🔑', label: 'ניהול אדמינים', exact: false,
