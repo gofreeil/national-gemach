@@ -17,9 +17,28 @@ import { env } from '$env/dynamic/private';
 import { getConfigValue, setConfigValue } from './adminStore.js';
 
 const PROPERTY_ID = (env.GA_PROPERTY_ID ?? '').trim();
-const SA_EMAIL    = (env.GA_SA_CLIENT_EMAIL ?? '').trim();
-// תומך גם במפתח עם \n מילוליים (כפי שנשמר לרוב במשתני סביבה) וגם בשורות אמיתיות
-const SA_KEY      = (env.GA_SA_PRIVATE_KEY ?? '').replace(/\\n/g, '\n');
+
+// טעינת פרטי ה-service account. שתי דרכים:
+//  1. GA_SA_JSON — כל קובץ ה-JSON שהורד (הכי קל: העתק-הדבק את כולו).
+//  2. שני משתנים נפרדים: GA_SA_CLIENT_EMAIL + GA_SA_PRIVATE_KEY.
+function loadCredentials(): { clientEmail: string; privateKey: string } | null {
+    const rawJson = (env.GA_SA_JSON ?? '').trim();
+    if (rawJson) {
+        try {
+            const j = JSON.parse(rawJson) as { client_email?: string; private_key?: string };
+            if (j.client_email && j.private_key) {
+                return { clientEmail: j.client_email, privateKey: j.private_key };
+            }
+        } catch (e) {
+            console.error('[visitorStats] GA_SA_JSON parse failed:', e);
+        }
+    }
+    const clientEmail = (env.GA_SA_CLIENT_EMAIL ?? '').trim();
+    // תומך גם במפתח עם \n מילוליים וגם בשורות אמיתיות
+    const privateKey = (env.GA_SA_PRIVATE_KEY ?? '').replace(/\\n/g, '\n');
+    if (clientEmail && privateKey) return { clientEmail, privateKey };
+    return null;
+}
 
 const REFRESH_MS = 15 * 60 * 1000;           // 15 דקות בין רענוני GA (96 פעמים ביום, מתוזמן ב-Cron)
 const STALE_MS   = 30 * 24 * 60 * 60 * 1000; // מעבר לכך — נחשב ישן מדי, נחזיר fallback
@@ -43,13 +62,14 @@ function b64url(buf: Buffer | string): string {
 }
 
 async function getAccessToken(): Promise<string | null> {
-    if (!SA_EMAIL || !SA_KEY) return null;
+    const creds = loadCredentials();
+    if (!creds) return null;
     if (tokenCache && Date.now() < tokenCache.exp - 60_000) return tokenCache.token;
 
     const now = Math.floor(Date.now() / 1000);
     const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
     const claim = b64url(JSON.stringify({
-        iss: SA_EMAIL,
+        iss: creds.clientEmail,
         scope: 'https://www.googleapis.com/auth/analytics.readonly',
         aud: 'https://oauth2.googleapis.com/token',
         iat: now,
@@ -61,7 +81,7 @@ async function getAccessToken(): Promise<string | null> {
     try {
         const signer = createSign('RSA-SHA256');
         signer.update(signingInput);
-        signature = b64url(signer.sign(SA_KEY));
+        signature = b64url(signer.sign(creds.privateKey));
     } catch (e) {
         console.error('[visitorStats] JWT sign failed (bad GA_SA_PRIVATE_KEY?):', e);
         return null;
@@ -127,7 +147,7 @@ async function fetchFromGA(): Promise<number | null> {
  * נקרא רק מצד-האדמין (admin/+layout.server). לא חוסם אם אין הגדרות/נכשל.
  */
 export async function refreshVisitorStatsIfStale(force = false): Promise<void> {
-    if (!PROPERTY_ID || !SA_EMAIL || !SA_KEY) return; // GA לא מוגדר — אין מה לרענן
+    if (!PROPERTY_ID || !loadCredentials()) return; // GA לא מוגדר — אין מה לרענן
     if (refreshing) return;
 
     const cur = await getConfigValue<VisitorStat>('visitors');
