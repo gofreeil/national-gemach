@@ -117,9 +117,23 @@
 							</div>
 							<ul class="mt-3 flex flex-wrap gap-2">
 								{#each pending as ad (ad.id)}
-									<li class="flex items-center gap-2 rounded-full border border-rose-500/30 bg-[#1c2f5a] px-3 py-1.5 text-sm">
-										<span class="font-bold text-white">{ad.title}</span>
-										<span class="text-xs text-gray-400">{timeAgo(ad.submittedAt)}</span>
+									<li>
+										{#if role === 'super_admin'}
+											<!-- הצ'יפ עצמו מוביל ישירות לכרטיס המודעה במסך האישור -->
+											<a
+												href="/admin/ads#ad-{ad.id}"
+												class="flex items-center gap-2 rounded-full border border-rose-500/30 bg-[#1c2f5a] px-3 py-1.5 text-sm transition hover:border-rose-400/70 hover:bg-[#2a4379]"
+											>
+												<span class="font-bold text-white">{ad.title}</span>
+												<span class="text-xs text-gray-400">{timeAgo(ad.submittedAt)}</span>
+												<span class="text-xs font-black text-rose-300" aria-hidden="true">←</span>
+											</a>
+										{:else}
+											<span class="flex items-center gap-2 rounded-full border border-rose-500/30 bg-[#1c2f5a] px-3 py-1.5 text-sm">
+												<span class="font-bold text-white">{ad.title}</span>
+												<span class="text-xs text-gray-400">{timeAgo(ad.submittedAt)}</span>
+											</span>
+										{/if}
 									</li>
 								{/each}
 							</ul>

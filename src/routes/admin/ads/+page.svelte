@@ -248,7 +248,8 @@
 
     <div class="ads-list">
         {#each shown as ad (ad.id)}
-            <div class="ad-card">
+            <!-- id כעוגן — ההתראה בפרופיל מקשרת ישירות לכרטיס: /admin/ads#ad-{id} -->
+            <div class="ad-card" id="ad-{ad.id}">
                 <div class="ad-card-img">
                     {#if ad.mainImage}
                         <img src={ad.mainImage} alt={ad.title} />
@@ -589,6 +590,12 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 1rem;
         padding: 1rem;
+        scroll-margin-top: 6rem;
+    }
+    /* נחיתה מהעוגן שבהתראת הפרופיל — הכרטיס המבוקש מודגש */
+    .ad-card:target {
+        border-color: rgba(244, 63, 94, 0.6);
+        box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.25);
     }
     @media (max-width: 640px) {
         .ad-card { flex-direction: column; }
