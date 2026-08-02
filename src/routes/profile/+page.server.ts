@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { isOwner } from '$lib/server/admin';
 import { getOwnerAssets } from '$lib/server/ownerAssets';
-import { listPendingAds } from '$lib/server/adsStore';
+import { listPendingAdsPreview } from '$lib/server/adsStore';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const session = await locals.auth();
@@ -18,8 +18,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 
 	// התראת האדמינים: פרסומות שממתינות לאישור. מחושבת מהמצב עצמו ולא נשמרת
 	// כ"התראה שנקראה" — לכן היא מופיעה אצל כל האדמינים ונעלמת מעצמה מהרגע
-	// שמישהו אישר או דחה. אותו קאש של שאילתת ה-badge בהאדר.
-	const pendingAds = adminRole ? await listPendingAds() : [];
+	// שמישהו אישר או דחה. הגרסה המלאה (עם תמונה) — הבאנר מציג את הפרסומת עצמה.
+	const pendingAds = adminRole ? await listPendingAdsPreview() : [];
 
 	return {
 		user: { name: session.user.name ?? '', email: session.user.email ?? '' },

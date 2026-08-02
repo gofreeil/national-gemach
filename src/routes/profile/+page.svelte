@@ -111,17 +111,50 @@
 									לאישור עכשיו ←
 								</a>
 							</div>
-							<ul class="mt-3 flex flex-wrap gap-2">
+							<!-- הפרסומת עצמה מוצגת כאן — תמונה, כותרת ותוכן — כדי שכל אדמין
+							     יראה מיד על מה מדובר. לחיצה מובילה לכרטיס המלא במסך האישור. -->
+							<ul class="mt-3 flex flex-col gap-2">
 								{#each pending as ad (ad.id)}
 									<li>
-										<!-- הצ'יפ עצמו מוביל ישירות לכרטיס המודעה במסך האישור -->
 										<a
 											href="/admin/ads#ad-{ad.id}"
-											class="flex items-center gap-2 rounded-full border border-rose-500/30 bg-[#1c2f5a] px-3 py-1.5 text-sm transition hover:border-rose-400/70 hover:bg-[#2a4379]"
+											class="flex items-stretch overflow-hidden rounded-2xl border border-rose-500/30 bg-[#1c2f5a] transition hover:border-rose-400/70 hover:bg-[#2a4379]"
 										>
-											<span class="font-bold text-white">{ad.title}</span>
-											<span class="text-xs text-gray-400">{timeAgo(ad.submittedAt)}</span>
-											<span class="text-xs font-black text-rose-300" aria-hidden="true">←</span>
+											<span class="relative block w-28 flex-shrink-0 self-stretch overflow-hidden bg-black/30 sm:w-32">
+												{#if ad.mainImage}
+													<img
+														src={ad.mainImage}
+														alt={ad.title}
+														class="absolute inset-0 h-full w-full object-cover"
+													/>
+												{:else}
+													<span
+														class="absolute inset-0"
+														style="background: {ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}"
+													></span>
+												{/if}
+											</span>
+											<span class="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2.5">
+												<span class="truncate font-black text-white">{ad.title}</span>
+												{#if ad.subtitle}
+													<span class="truncate text-xs text-gray-300">{ad.subtitle}</span>
+												{/if}
+												{#if ad.hoverText}
+													<span class="truncate text-xs text-amber-200">{ad.hoverText}</span>
+												{/if}
+												<span class="flex flex-wrap items-center gap-2">
+													{#if ad.cta}
+														<span
+															class="rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white"
+															style="background: {ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}"
+														>{ad.cta}</span>
+													{/if}
+													<span class="truncate text-[11px] text-gray-400">
+														{ad.submittedBy.email || ad.submittedBy.name || 'מפרסם ללא זיהוי'} · {timeAgo(ad.submittedAt)}
+													</span>
+												</span>
+											</span>
+											<span class="flex items-center pe-3 text-sm font-black text-rose-300" aria-hidden="true">←</span>
 										</a>
 									</li>
 								{/each}

@@ -187,6 +187,40 @@ export async function listPendingAds(): Promise<PendingAdBrief[]> {
     }
 }
 
+/** מודעה ממתינה עם התוכן עצמו — התראת האדמינים מציגה את הפרסומת, לא רק שם. */
+export interface PendingAdPreview extends PendingAdBrief {
+    subtitle: string;
+    cta: string;
+    hoverText: string;
+    gradient: string;
+    mainImage: string;
+    submittedBy: { email: string; name: string };
+}
+
+/**
+ * הממתינות במלואן (כולל תמונה) — לבאנר שבפרופיל, שם האדמין רואה את
+ * הפרסומת מיד בלי לנדוד למסך אחר. שתי פעימות בכוונה: הרשימה הרזה
+ * (עם הקאש) נותנת את המזהים, ורק עבורם נמשכות הרשומות המלאות — כך
+ * תמונות ה-data-URI הכבדות נטענות רק כשבאמת יש מה לאשר.
+ */
+export async function listPendingAdsPreview(): Promise<PendingAdPreview[]> {
+    const brief = await listPendingAds();
+    if (brief.length === 0) return [];
+    const full = await Promise.all(brief.map((b) => getAd(b.id)));
+    return brief.map((b, i) => {
+        const a = full[i];
+        return {
+            ...b,
+            subtitle: a?.subtitle ?? '',
+            cta: a?.cta ?? '',
+            hoverText: a?.hoverText ?? '',
+            gradient: a?.gradient ?? '',
+            mainImage: a?.mainImage ?? '',
+            submittedBy: { email: a?.submittedBy.email ?? '', name: a?.submittedBy.name ?? '' },
+        };
+    });
+}
+
 /** שליחת מודעה חדשה מהבילדר (status: pending). */
 export async function submitAd(payload: {
     title: string;
