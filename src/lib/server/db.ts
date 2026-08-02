@@ -327,6 +327,14 @@ export async function getGemachById(documentId: string): Promise<Gemach | null> 
     }
 }
 
+/** מעביר בעלות על גמ"ח: כותב user_id בלבד (בלי extra_fields, כדי לא לדרוס
+ *  שדות משותפים עם "קהילה בשכונה"). משמש את אישור תביעות-הבעלות. */
+export async function setGemachOwner(documentId: string, ownerId: string): Promise<void> {
+    if (!ownerId.trim()) throw new Error('setGemachOwner: אין מזהה-בעלים');
+    await strapiPut(`/api/items/${documentId}`, { data: { user_id: ownerId } });
+    invalidateGemachCache();
+}
+
 /** מזהה-הבעלים (user_id) של פריט בלבד — שליפה קלה (שדה יחיד) לבדיקת הרשאת
  *  עריכה בדף הציבורי, בלי להביא את כל ה-extra_fields (שעשוי לכלול תמונות כבדות). */
 export async function getGemachOwnerId(documentId: string): Promise<string | null> {

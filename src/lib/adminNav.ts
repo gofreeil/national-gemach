@@ -65,6 +65,11 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
             title: 'ניהול פרסומות',
             desc: 'אישור מודעות, לוח תפוסה ונתוני מפרסמים'
         },
+        {
+            href: '/admin/claims', icon: '🤝', label: 'תביעות בעלות', exact: false,
+            title: 'תביעות בעלות',
+            desc: 'אישור בעלים שמבקשים לנהל גמ"ח שהעליתם'
+        },
         ...(isSuper ? [
             {
                 href: '/admin/admins', icon: '🔑', label: 'ניהול אדמינים', exact: false,

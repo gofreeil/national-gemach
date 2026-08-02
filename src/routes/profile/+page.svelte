@@ -67,6 +67,35 @@
 		</section>
 
 		<div class="flex flex-col gap-6">
+			<!-- זיהוי אוטומטי: גמ"חים שהטלפון שלהם תואם לשל המשתמש — "אולי שלך?".
+			     מוצג רק כשנמצאה התאמה. הבקשה עצמה נשלחת מדף הגמ"ח (כפתור "זה שלי"). -->
+			{#if data.claimable && data.claimable.length > 0}
+				<section class="rounded-3xl border border-blue-500/40 bg-blue-500/10 p-5 shadow-2xl sm:p-6">
+					<h2 class="flex items-center gap-2 text-lg font-black text-white">
+						<span aria-hidden="true">🤝</span> אולי אחד מאלה שלך?
+					</h2>
+					<p class="mt-1 text-sm text-gray-300">
+						מצאנו גמ"חים עם מספר טלפון שתואם לשלך. אם הגמ"ח שלך — פתח אותו ולחץ "כן, זה הגמ"ח שלי". אחרי אישור אדמין תוכל לערוך אותו בעצמך.
+					</p>
+					<ul class="mt-3 flex flex-col gap-2">
+						{#each data.claimable as g (g.id)}
+							<li>
+								<a
+									href={`/gemach/${g.id}`}
+									class="flex items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-[#1c2f5a] px-4 py-3 transition hover:bg-[#2a4379]"
+								>
+									<span class="min-w-0">
+										<span class="block truncate font-bold text-white">{g.name}</span>
+										{#if g.city}<span class="text-xs text-gray-400">📍 {g.city}</span>{/if}
+									</span>
+									<span class="flex-shrink-0 text-sm font-bold text-blue-300">זה שלי ←</span>
+								</a>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
+
 			<!-- פאנל הניהול חי כאן, ולא ככפתור נפרד בהדר. id="admin" נשאר כעוגן
 			     לקישור ישיר (/profile#admin). -->
 			{#if role}

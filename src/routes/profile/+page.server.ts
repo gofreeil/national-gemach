@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { isOwner } from '$lib/server/admin';
 import { getOwnerAssets } from '$lib/server/ownerAssets';
 import { listPendingAdsPreview } from '$lib/server/adsStore';
+import { findClaimableByPhone, countPendingClaims } from '$lib/server/claimsStore';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const session = await locals.auth();
@@ -21,12 +22,22 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	// שמישהו אישר או דחה. הגרסה המלאה (עם תמונה) — הבאנר מציג את הפרסומת עצמה.
 	const pendingAds = adminRole ? await listPendingAdsPreview() : [];
 
+	// זיהוי אוטומטי: גמ"חים שהטלפון שלהם תואם לטלפון של המשתמש — "האם זה שלך?".
+	// ריק כשאין למשתמש טלפון בסשן (נפוץ). pendingClaims — מונה בקשות הבעלות
+	// שממתינות לאישור, להתראה לאדמינים (בדומה ל-pendingAds).
+	const [claimable, pendingClaims] = await Promise.all([
+		findClaimableByPhone(session.user),
+		adminRole ? countPendingClaims() : Promise.resolve(0)
+	]);
+
 	return {
 		user: { name: session.user.name ?? '', email: session.user.email ?? '' },
 		isOwner: adminRole ? isOwner(session.user) : false,
 		loadFailed: assets.loadFailed,
 		ads: assets.ads,
 		gemachim: assets.gemachim,
-		pendingAds
+		pendingAds,
+		claimable,
+		pendingClaims
 	};
 };

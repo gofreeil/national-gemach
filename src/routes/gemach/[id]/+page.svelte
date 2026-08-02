@@ -10,9 +10,13 @@
     import Seo from '$lib/components/Seo.svelte';
     import { SITE_NAME, SITE_URL, SITE_LOGO, DEFAULT_OG_IMAGE, breadcrumbSchema } from '$lib/seo';
     import { categoryKeys } from '$lib/gemachData';
-    import type { PageData } from './$types';
+    import { isExtremeAspect } from '$lib/imageFit';
+    import { enhance } from '$app/forms';
+    import type { PageData, ActionData } from './$types';
 
-    let { data }: { data: PageData } = $props();
+    let { data, form }: { data: PageData; form: ActionData } = $props();
+
+    let claiming = $state(false);
 
     /** הטלפון מוסתר תמיד (דסקטופ ונייד) עד לחיצה על "גלה טלפון" — הלחיצה
      *  היא נקודת מדידה (אירוע GA). כשפרסומת-הביניים פעילה מוצגת פרסומת
@@ -51,6 +55,16 @@
 
     /** התמונה שנפתחה במסך מלא (null = סגור) */
     let lightbox = $state<string | null>(null);
+
+    /** תמונת שער רחבה/גבוהה במיוחד מוצגת בשלמותה (contain) במקום להיחתך
+     *  לרצועה צרה ע"י object-cover. נמדד אחרי הטעינה; נמדד שוב בניווט
+     *  לקוח בין גמ"חים (allImages מתחלף באותו קומפוננט). */
+    let coverEl = $state<HTMLImageElement | null>(null);
+    let coverContain = $state(false);
+    const measureCover = () => {
+        if (allImages[0] && coverEl?.complete) coverContain = isExtremeAspect(coverEl);
+    };
+    $effect(measureCover);
 
     const fullAddress = $derived(
         [gemach.address, gemach.neighborhood, gemach.city].filter(Boolean).join(', ')
@@ -208,6 +222,29 @@
         </div>
     {/if}
 
+    <!-- תביעת בעלות: משתמש מחובר שהגמ"ח הזה שלו יכול לבקש בעלות → אישור אדמין → עריכה -->
+    {#if form?.claimed}
+        <div class="mb-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200">
+            {form.already ? '✅ כבר יש בקשה שלך על הגמ"ח הזה — היא ממתינה לאישור.' : '✅ הבקשה נשלחה! אדמין יבדוק ויאשר, ואז תוכל לערוך את הגמ"ח.'}
+        </div>
+    {:else if form?.claimError}
+        <div class="mb-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-200">{form.claimError}</div>
+    {:else if data.claimPending}
+        <div class="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-200">
+            ⏳ שלחת בקשת בעלות על הגמ"ח הזה — היא ממתינה לאישור אדמין.
+        </div>
+    {:else if data.claimable}
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+            <span class="text-sm font-bold text-blue-100">🤝 הגמ"ח הזה שלך? בקש בעלות ותוכל לערוך את הפרטים בעצמך.</span>
+            <form method="POST" action="?/claim" use:enhance={() => { claiming = true; return async ({ update }) => { await update(); claiming = false; }; }}>
+                <button type="submit" disabled={claiming}
+                    class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60">
+                    {claiming ? 'שולח...' : 'כן, זה הגמ"ח שלי'}
+                </button>
+            </form>
+        </div>
+    {/if}
+
     <!-- כרטיס ראשי קומפקטי: גלריה מימין (תמונת השער ראשונה), כל המידע משמאלה -->
     <header class="bg-[#16264d] border border-[#3b5794] rounded-2xl p-4 md:p-5">
         <div class="flex flex-col md:flex-row md:items-start gap-4 md:gap-5">
@@ -216,8 +253,9 @@
                 <div class="w-full md:w-64 lg:w-72 flex-shrink-0">
                     <button type="button" onclick={() => (lightbox = allImages[0])}
                         class="block w-full aspect-video md:aspect-[4/3] overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d] transition-transform hover:scale-[1.01]">
-                        <img src={allImages[0]} alt="תמונת השער של {gemach.name}" decoding="async"
-                            class="h-full w-full object-cover" />
+                        <img bind:this={coverEl} src={allImages[0]} alt="תמונת השער של {gemach.name}" decoding="async"
+                            onload={measureCover}
+                            class="h-full w-full {coverContain ? 'object-contain' : 'object-cover'}" />
                     </button>
                     {#if allImages.length > 1}
                         <div class="grid grid-cols-4 gap-1.5 mt-1.5">
