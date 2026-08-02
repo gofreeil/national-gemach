@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Gemach, CategoryDef } from '$lib/gemachData';
+    import { catZoom, type Gemach, type CategoryDef } from '$lib/gemachData';
 
     let {
         gemach,
@@ -26,6 +26,11 @@
             : gemach.image || (banner ? (gemach.gallery?.[0] || catDef?.image) : undefined)
     );
     const fallbackIcon = $derived(gemach.icon || catDef?.icon || '📦');
+
+    // כשהבאנר נופל לתמונת-הנושא של הקטגוריה — אותו זום-פנימה כמו באריחי
+    // דף הבית חותך את מסגרת הקרם האפויה בקצוות (המיכל בכרטיס overflow-hidden).
+    // תמונות אמיתיות של הגמ"ח לא נוגעים בהן.
+    const zoom = $derived(src && src === catDef?.image ? catZoom(gemach.category) : 1);
 </script>
 
 {#if src}
@@ -35,6 +40,7 @@
         loading="lazy"
         decoding="async"
         onerror={() => (broken = true)}
+        style:transform={zoom !== 1 ? `scale(${zoom})` : undefined}
         class={banner
             ? 'w-full h-full object-cover'
             : 'w-11 h-11 rounded-xl object-cover border border-[#3b5794] bg-[#0f1c3d]'}

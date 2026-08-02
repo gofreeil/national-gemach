@@ -2,7 +2,7 @@
     import { tick, untrack } from 'svelte';
     import { fly } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
-    import { categoryKeys, cities } from '$lib/gemachData';
+    import { categoryKeys, cities, catZoom } from '$lib/gemachData';
     import GemachCard from '$lib/components/GemachCard.svelte';
     import AvedotBanner from '$lib/components/AvedotBanner.svelte';
     import JsonLd from '$lib/components/JsonLd.svelte';
@@ -54,22 +54,8 @@
     /** מפתחות קטגוריה שתמונת הנושא שלהן נכשלה בטעינה — נופלים חזרה לאימוג'י */
     let brokenImg = $state(new Set<string>());
 
-    /** זום-פנימה פר-קטגוריה: תמונות הקולאז' 341×341 (ביגוד, כלים, ספרים, חשמל)
-     *  מגיעות עם מסגרת קרם אפויה ולא-אחידה בקצוות. הגדלה מעבר לריבוע + חיתוך-מרכז
-     *  (overflow:hidden) מעלימה אותה לגמרי. הערכים אומתו חזותית (ffmpeg crop).
-     *  שאר התמונות (תינוקות/ריהוט/צעצועים/אחר) מלאות ומקבלות זום עדין בלבד.
-     *  תמונות שנחתכו כאן ידנית (ספרים, מזון) כבר צמודות לנושא — 1.0, בלי זום. */
-    const CAT_ZOOM: Record<string, number> = {
-        clothing: 1.20,       // clothing.webp — מסגרת קרם בקצוות
-        tools: 1.28,
-        books: 1.00,          // books.webp — חיתוך ידני צמוד, אין מסגרת להעלים
-        food: 1.00,           // food.webp — כנ"ל
-        electronics: 1.20,    // מסגרת קרם דקה בקצה הימני
-        judaism: 1.14,        // judaism.webp — הבהרה רכה בקצוות סביב הטלית
-        initiatives: 1.00,    // initiatives.webp — חיתוך ידני סביב הסמל, זום יקצץ אותו
-        money: 1.00,          // money.webp — חותמת "כשר ללא ריבית" צמודה לפינה, זום יחתוך אותה
-    };
-    const zoomFor = (key: string) => CAT_ZOOM[key] ?? 1.06;
+    // זום-פנימה פר-קטגוריה (חיתוך מסגרות קרם אפויות) — מוגדר ב-gemachData
+    // כדי שאותם ערכים ישמשו גם את באנר כרטיס הגמ"ח ואת פאנל הקטגוריות.
 
     /* ═══════════ מסילת הקטגוריות — מיון ═══════════ */
     const OTHER_KEY = 'other';   // "אחר" תמיד אחרון, גם אם צבר הרבה
@@ -756,7 +742,7 @@
                                 draggable="false"
                                 loading="lazy"
                                 decoding="async"
-                                style="--z:{zoomFor(cat.key)}"
+                                style="--z:{catZoom(cat.key)}"
                                 onerror={() => (brokenImg = new Set(brokenImg).add(cat.key))}
                             />
                         </span>

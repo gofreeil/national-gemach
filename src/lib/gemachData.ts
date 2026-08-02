@@ -83,6 +83,25 @@ export interface CategoryDef {
 // ב-'judaism' אייקון המנורה נשאר כנפילה-לאחור לתמונה שבורה.
 const CAT_IMG = (name: string) => `/images/categories/${name}.webp`;
 
+/** זום-פנימה פר-קטגוריה לתמונות הנושא: תמונות הקולאז' 341×341 (ביגוד, כלים,
+ *  חשמל...) מגיעות עם מסגרת קרם אפויה ולא-אחידה בקצוות. הגדלה מעבר לריבוע +
+ *  חיתוך-מרכז (overflow:hidden אצל המציג) מעלימה אותה לגמרי. הערכים אומתו
+ *  חזותית (ffmpeg crop). תמונות מלאות מקבלות זום עדין בלבד, ומה שנחתך כאן
+ *  ידנית (ספרים, מזון, מיזמים, כספים) — 1.0, בלי זום.
+ *  חל בכל מקום שתמונת קטגוריה מוצגת: אריחי דף הבית, באנר כרטיס גמ"ח
+ *  שנופל לתמונת הקטגוריה, והתצוגה המקדימה ב-/admin/categories. */
+export const CAT_ZOOM: Record<string, number> = {
+    clothing: 1.20,       // clothing.webp — מסגרת קרם בקצוות
+    tools: 1.28,
+    books: 1.00,          // books.webp — חיתוך ידני צמוד, אין מסגרת להעלים
+    food: 1.00,           // food.webp — כנ"ל
+    electronics: 1.20,    // מסגרת קרם דקה בקצה הימני
+    judaism: 1.14,        // judaism.webp — הבהרה רכה בקצוות סביב הטלית
+    initiatives: 1.00,    // initiatives.webp — חיתוך ידני סביב הסמל, זום יקצץ אותו
+    money: 1.00,          // money.webp — חותמת "כשר ללא ריבית" צמודה לפינה, זום יחתוך אותה
+};
+export const catZoom = (key: string) => CAT_ZOOM[key] ?? 1.06;
+
 export const categories: CategoryDef[] = [
     { key: 'clothing', label: 'ביגוד', icon: '👕', image: CAT_IMG('clothing') },
     { key: 'baby', label: 'תינוקות', icon: '🍼', image: CAT_IMG('baby') },

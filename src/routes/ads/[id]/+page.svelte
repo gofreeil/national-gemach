@@ -103,9 +103,7 @@
 
             {#if heroImage}
                 <div class="al-media">
-                    <span class="al-media-frame">
-                        <img src={heroImage} alt={ad.title} />
-                    </span>
+                    <img src={heroImage} alt={ad.title} />
                 </div>
             {/if}
         </div>
@@ -251,26 +249,18 @@
     .al-link:hover { background: rgba(255, 255, 255, 0.3); }
 
     .al-media { min-width: 0; }
-    /* העטיפה חותכת בזום מסגרות לבנות שמגיעות בתוך תמונות המפרסמים */
-    .al-media-frame {
-        display: block;
-        width: fit-content;
-        margin-inline: auto;
-        border-radius: 0.9rem;
-        overflow: hidden;
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-    }
     .al-media img {
         display: block;
         width: auto;
         max-width: 100%;
         max-height: 17rem;
-        transform: scale(1.18);
+        margin-inline: auto;
+        border-radius: 0.9rem;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
     }
     /* בדסקטופ התמונה גדלה עד לגובה של טור הטקסט שלידה — פרופורציה מאוזנת */
     @media (min-width: 860px) {
-        .al-media-frame { border-radius: 1.1rem; }
-        .al-media img { max-height: 27rem; }
+        .al-media img { max-height: 27rem; border-radius: 1.1rem; }
     }
 
     .al-actions {

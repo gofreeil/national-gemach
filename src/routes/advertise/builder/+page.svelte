@@ -1832,15 +1832,13 @@
         border-color: rgba(245, 158, 11, 0.7);
         background: rgba(245, 158, 11, 0.08);
     }
-    .upload-zone.has-image { border-style: solid; padding: 0; overflow: hidden; }
+    .upload-zone.has-image { border-style: solid; padding: 0; }
     .upload-zone img {
         width: 100%;
         height: 100%;
         min-height: 200px;
         max-height: 280px;
         object-fit: cover;
-        /* אותו זום כמו בתצוגה באתר — חותך מסגרות לבנות שמגיעות בתוך התמונה */
-        transform: scale(1.18);
     }
     .upload-empty { text-align: center; padding: 1rem; }
     .upload-emoji { font-size: 2.25rem; margin-bottom: 0.5rem; }
@@ -2328,13 +2326,11 @@
     .popup-img {
         position: relative;
         height: 130px;
-        overflow: hidden;
     }
     .popup-img > img {
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transform: scale(1.18);
     }
     .close-countdown {
         position: absolute;
@@ -2399,7 +2395,6 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transform: scale(1.18);
         transition: opacity 1500ms ease;
     }
     .pro-diag {

@@ -671,9 +671,7 @@
                                 </div>
                                 {#if landingImage || mainImage}
                                     <div class="landing-hero-media">
-                                        <span class="landing-hero-frame">
-                                            <img src={landingImage || mainImage} alt={title} />
-                                        </span>
+                                        <img src={landingImage || mainImage} alt={title} />
                                     </div>
                                 {/if}
                             </div>
@@ -1419,21 +1417,14 @@
     }
     .landing-hero-content { min-width: 0; }
     .landing-hero-media { min-width: 0; }
-    /* העטיפה חותכת בזום מסגרות לבנות שמגיעות בתוך התמונה — כמו בדף האמיתי */
-    .landing-hero-frame {
-        display: block;
-        width: fit-content;
-        margin-inline: auto;
-        border-radius: 0.7rem;
-        overflow: hidden;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-    }
     .landing-hero-media img {
         display: block;
         width: auto;
         max-width: 100%;
         max-height: 12rem;
-        transform: scale(1.18);
+        margin-inline: auto;
+        border-radius: 0.7rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
     }
     @media (min-width: 700px) {
         .landing-hero-media img { max-height: 19rem; }

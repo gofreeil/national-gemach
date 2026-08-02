@@ -1,7 +1,7 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
     import { page } from '$app/stores';
-    import type { CategoryDef } from '$lib/gemachData';
+    import { catZoom, type CategoryDef } from '$lib/gemachData';
     import { compressTileImage, dataUriWeightKb, MAX_CATEGORY_IMAGES_KB } from '$lib/imageCompress';
     import { imageDrop } from '$lib/imageDrop';
 
@@ -107,7 +107,9 @@
                     title="גרור תמונה לכאן, הדבק עם Ctrl+V, או לחץ לבחירת קובץ"
                     class="relative flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-[#4c6cb0] bg-[#0f1c3d] transition-colors hover:border-purple-500 focus-within:border-purple-500">
                     {#if previewOf(cat.image)}
-                        <img src={previewOf(cat.image)} alt="" class="h-full w-full object-cover" />
+                        <!-- תמונות ברירת-המחדל מגיעות עם מסגרת קרם אפויה — אותו זום כמו באריחים חותך אותה -->
+                        <img src={previewOf(cat.image)} alt="" class="h-full w-full object-cover"
+                            style:transform={cat.image?.startsWith('/images/categories/') ? `scale(${catZoom(cat.key)})` : undefined} />
                     {:else}
                         <span class="text-lg leading-none" aria-hidden="true">🖼️</span>
                     {/if}

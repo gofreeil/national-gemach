@@ -125,7 +125,7 @@
 													<img
 														src={ad.mainImage}
 														alt={ad.title}
-														class="absolute inset-0 h-full w-full scale-[1.18] object-cover"
+														class="absolute inset-0 h-full w-full object-cover"
 													/>
 												{:else}
 													<span

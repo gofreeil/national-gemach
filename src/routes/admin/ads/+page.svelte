@@ -614,8 +614,6 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        /* זום שחותך מסגרות לבנות שמגיעות בתוך תמונות המפרסמים */
-        transform: scale(1.18);
         display: block;
     }
     .no-img {
