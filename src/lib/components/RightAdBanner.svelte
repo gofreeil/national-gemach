@@ -113,6 +113,13 @@
                         <p class="text-white font-bold text-xs leading-tight">{item.ad.cta || 'לפרטים'}</p>
                     </div>
                 </a>
+            {:else if item.kind === 'pending'}
+                <!-- שלד בזמן הטעינה הראשונה — ניטרלי, בלי "מקום פרסום זה"
+                     ובלי מספור, כדי שהטור לא ייראה פנוי לרגע ואז יקפוץ -->
+                <div
+                    class="h-[490px] rounded-2xl border border-white/10 bg-white/5 animate-pulse"
+                    aria-hidden="true"
+                ></div>
             {:else}
                 {@const ad = item.slot}
                 <!-- משבצת פנויה — כל הבאנר הוא קישור לדף הפרסום, לא רק כפתור "לפרטים" -->
