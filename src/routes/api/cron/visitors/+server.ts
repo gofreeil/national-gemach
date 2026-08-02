@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
-import { refreshVisitorStatsIfStale } from '$lib/server/visitorStats';
+import { refreshVisitorStatsIfStale, getVisitorCount } from '$lib/server/visitorStats';
 import type { RequestHandler } from './$types';
 
 // נקרא ע"י Vercel Cron כל 15 דקות — ראה vercel.json.
@@ -18,5 +18,8 @@ export const GET: RequestHandler = async ({ request }) => {
 		console.error('[cron/visitors] refresh failed:', e);
 	});
 
-	return json({ ok: true });
+	// מחזיר את הערך שנשמר — כך שפנייה ידנית לכתובת משמשת גם כבדיקת-חיבור:
+	// visitors=null → הקריאה ל-GA נכשלה (הרשאה/הגדרה); visitors.count → עובד.
+	const visitors = await getVisitorCount();
+	return json({ ok: true, visitors });
 };
