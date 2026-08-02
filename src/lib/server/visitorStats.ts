@@ -147,6 +147,8 @@ async function fetchFromGA(): Promise<number | null> {
         }
         const j = (await res.json()) as { rows?: { metricValues?: { value?: string }[] }[] };
         const raw = j.rows?.[0]?.metricValues?.[0]?.value;
+        // אין שורות = אין תנועה = 0 גולשים (זה נתון תקין, לא כשל — ולכן נשמר).
+        if (raw === undefined) return 0;
         const n = Number(raw);
         return isNaN(n) ? null : n;
     } catch (e) {
