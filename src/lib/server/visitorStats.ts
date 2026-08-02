@@ -17,6 +17,9 @@ import { env } from '$env/dynamic/private';
 import { getConfigValue, setConfigValue } from './adminStore.js';
 
 const PROPERTY_ID = (env.GA_PROPERTY_ID ?? '').trim();
+// הדומיין של האתר הזה — מסננים לפיו כדי לספור רק את הגולשים של האתר הזה
+// (הנכס ב-GA משותף לכמה אתרים; כל אתר סופר רק את עצמו). ניתן לעקוף ב-GA_HOSTNAME.
+const HOSTNAME = (env.GA_HOSTNAME ?? 'gemach.gofreeil.com').trim();
 
 // טעינת פרטי ה-service account. שתי דרכים:
 //  1. GA_SA_JSON — כל קובץ ה-JSON שהורד (הכי קל: העתק-הדבק את כולו).
@@ -124,7 +127,17 @@ async function fetchFromGA(): Promise<number | null> {
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
-                    metrics: [{ name: 'activeUsers' }]
+                    metrics: [{ name: 'activeUsers' }],
+                    ...(HOSTNAME
+                        ? {
+                            dimensionFilter: {
+                                filter: {
+                                    fieldName: 'hostName',
+                                    stringFilter: { matchType: 'EXACT', value: HOSTNAME }
+                                }
+                            }
+                        }
+                        : {})
                 })
             }
         );
