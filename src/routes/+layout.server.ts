@@ -2,7 +2,7 @@ import type { LayoutServerLoad } from './$types';
 import { env } from '$env/dynamic/private';
 import { resolveRole } from '$lib/server/admin';
 import { getPinnedIds } from '$lib/server/adminStore';
-import { getVisitorCount } from '$lib/server/visitorStats';
+import { getVisitorCount, refreshVisitorStatsIfStale } from '$lib/server/visitorStats';
 import { listPendingAds } from '$lib/server/adsStore';
 
 // חושף את הסשן (אם יש) לכל הדפים — כדי שההאדר יציג מצב מחובר/כפתור התחברות,
@@ -12,8 +12,11 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	const session = await locals.auth();
 	const u = session?.user;
 
-	// מונה הגולשים ומזהה GA — משותפים לכל המשתמשים (כולל אנונימיים)
-	const [visitors] = await Promise.all([getVisitorCount()]);
+	// רענון מונה הגולשים מ-GA — מוגבל ל-15 דק' (חותמת-זמן ב-config), כך שבפועל
+	// יש קריאה אחת ל-GA לכל היותר כל רבע שעה, לא משנה כמה גולשים. הבדיקה עצמה
+	// זולה (מטמון config, בלי סבב GA). לא חוסם ולא מפיל אם GA לא מוגדר.
+	await refreshVisitorStatsIfStale().catch(() => {});
+	const visitors = await getVisitorCount();
 	const gaId = (env.GA_MEASUREMENT_ID ?? '').trim();
 
 	if (!u) return { user: null, adminRole: null, pinnedIds: null, pendingAds: 0, visitors, gaId };
