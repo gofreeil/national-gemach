@@ -72,13 +72,14 @@
                 >
                     <div class="flex-1 relative overflow-hidden bg-black/30">
                         {#if item.ad.mainImage}
-                            <!-- בריחוף העכבר התמונה נמוגה ומפנה מקום לתוכן שהמפרסם כתב -->
+                            <!-- בריחוף העכבר התמונה נמוגה ומפנה מקום לתוכן שהמפרסם כתב.
+                                 הזום (scale) חותך מסגרות לבנות שמגיעות בתוך תמונות שהמפרסמים מעלים -->
                             <img
                                 src={item.ad.mainImage}
                                 alt={item.ad.title}
                                 loading="lazy"
                                 decoding="async"
-                                class="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 group-hover:opacity-0"
+                                class="absolute inset-0 w-full h-full object-cover scale-[1.18] transition-opacity duration-700 group-hover:opacity-0"
                             />
                         {/if}
                         <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2 pt-8 text-center transition-opacity duration-700 group-hover:opacity-0">

@@ -158,7 +158,7 @@
                 <div class="overflow-hidden rounded-xl border border-[#3b5794]"
                      style="background: {ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}">
                     {#if ad.mainImage}
-                        <img src={ad.mainImage} alt="" class="h-40 w-full object-cover md:h-48" />
+                        <img src={ad.mainImage} alt="" class="h-40 w-full scale-[1.18] object-cover md:h-48" />
                     {:else}
                         <div class="flex h-40 items-center justify-center text-5xl md:h-48" aria-hidden="true">📢</div>
                     {/if}

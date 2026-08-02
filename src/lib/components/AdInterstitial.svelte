@@ -47,8 +47,11 @@
                class="ad-int-creative bg-gradient-to-br {ad.color}"
                style={ad.gradientCss ? `background:${ad.gradientCss}` : undefined}>
                 {#if ad.image}
-                    <img class="ad-int-img" src={ad.image} alt={ad.title} draggable="false"
-                         style={`${ad.imageHeight ? `max-height:${ad.imageHeight};` : ''}${ad.imageScale ? `transform:scale(${ad.imageScale});` : ''}`} />
+                    <!-- העטיפה חותכת בזום מסגרות לבנות שמגיעות בתוך תמונות המפרסמים -->
+                    <span class="ad-int-imgwrap">
+                        <img class="ad-int-img" src={ad.image} alt={ad.title} draggable="false"
+                             style={`${ad.imageHeight ? `max-height:${ad.imageHeight};` : ''}${ad.imageScale ? `transform:scale(${ad.imageScale});` : ''}`} />
+                    </span>
                 {:else}
                     <!-- משבצת פנויה (בלי קריאייטיב) — 📢 כמו בטור הדסקטופ -->
                     <div class="ad-int-emoji" aria-hidden="true">📢</div>
@@ -135,11 +138,18 @@
     }
     .ad-int-creative:hover { transform: translateY(-2px); filter: brightness(1.05); }
 
+    .ad-int-imgwrap {
+        display: block;
+        max-width: 100%;
+        border-radius: 0.75rem;
+        overflow: hidden;
+    }
     .ad-int-img {
         max-height: 130px;
         max-width: 100%;
         object-fit: contain;
-        border-radius: 0.75rem;
+        display: block;
+        transform: scale(1.18);
         -webkit-user-drag: none;
     }
     .ad-int-emoji { font-size: 3rem; line-height: 1; }
