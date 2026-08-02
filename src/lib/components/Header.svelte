@@ -15,9 +15,9 @@
         pendingAds?: number;
     } = $props();
 
-    // מוצג רק כשיש נתון אמיתי מ-GA (אין מספרים מזויפים). count מעוצב עם מפריד אלפים.
+    // מוצג כשיש נתון אמיתי מ-GA (כולל 0, לאימות שהחיבור עובד). count מעוצב עם מפריד אלפים.
     const visitorText = $derived(
-        visitors && visitors.count > 0
+        visitors && typeof visitors.count === 'number'
             ? new Intl.NumberFormat('he-IL').format(visitors.count)
             : null
     );
