@@ -598,6 +598,16 @@
                 <div class="text-xl md:text-2xl font-black text-purple-300 leading-tight">{cityCount}</div>
                 <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">ערים</div>
             </div>
+            {#if data.visitors}
+                <div class="mx-auto my-2 h-px w-3/5 bg-[#3b5794]" aria-hidden="true"></div>
+                <div class="text-center">
+                    <div class="flex items-center justify-center gap-1.5">
+                        <span class="text-green-400 text-[10px] leading-none" aria-hidden="true">●</span>
+                        <span class="text-xl md:text-2xl font-black text-green-300 leading-tight">{new Intl.NumberFormat('he-IL').format(data.visitors.count)}</span>
+                    </div>
+                    <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">{data.visitors.label}</div>
+                </div>
+            {/if}
         </div>
     </div>
     <h1 class="sr-only">הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</h1>
@@ -970,7 +980,7 @@
 <!-- (3) כל השאר — מעבר לרשימה המעומדת. אותה כותרת בדיוק כמו שתי הקודמות,
      ומתחתיה קישור אחד רזה במקום קופסת-ענק. -->
 <section class="px-2 md:px-4 pb-6 pt-2">
-    {@render sectionHead('🗂️', 'כל שאר הגמ"חים', `עיון בכל ${gemachim.length} הגמ"חים במאגר, לפי עיר ולפי נושא`)}
+    {@render sectionHead('🗂️', 'כל שאר הגמ"חים', `עיון בכל ${gemachim.length} הגמ"חים במאגר, לפי נושא או לפי עיר`)}
     <div class="flex justify-center">
         <a
             href="/gemachim"
