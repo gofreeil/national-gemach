@@ -12,7 +12,7 @@ import {
 	restoreDraft,
 } from '$lib/server/discoveryStore';
 import { deleteGemach } from '$lib/server/db';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
 import { triggerCloudScan } from '$lib/server/githubDispatch';
 
 // מסך "גילוי חכם" — אדמין וסופר-אדמין (שניהם): הפעלת סריקת גילוי,
@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		listGemachimForReview('draft'),
 		listGemachimForReview('rejected'),
 		listDiscoveryJobs(12),
-		getCategories(),
+		getPublicCategories(),
 	]);
 
 	return { drafts, rejected, jobs, categories, queueBusy: hasActiveJob(jobs) };

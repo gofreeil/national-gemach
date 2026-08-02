@@ -1,13 +1,13 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createGemach } from '$lib/server/db';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
 import { pinGemach } from '$lib/server/pinned';
 import { parseGemachForm, saveErrorMessage } from '$lib/server/gemachForm';
 import { cities } from '$lib/gemachData';
 
 export const load: PageServerLoad = async () => {
-	return { categories: await getCategories(), cities };
+	return { categories: await getPublicCategories(), cities };
 };
 
 export const actions: Actions = {

@@ -240,6 +240,27 @@ export async function saveCategories(list: CategoryDef[]): Promise<void> {
     await saveConfig({ categories: list });
 }
 
+// תמונת קטגוריה שהועלתה בפאנל נשמרת כ-data URI בקונפיג. כמו בתמונות הגמ"חים
+// (withImageUrls ב-gemachSource), לא מטמיעים את ה-base64 בכל עמוד אלא שולחים
+// כתובת endpoint קצרה עם מטמון. פרמטר v (אורך התמונה) מנפץ מטמון בהחלפה.
+const BASE64_URI = /^data:[^;,]+;base64,/;
+
+/** קטגוריות לצירוף לנתוני עמוד: תמונות data-URI מוחלפות בכתובת endpoint.
+ *  לא לשימוש בעורך הקטגוריות עצמו — הוא שומר את הרשימה חזרה לקונפיג,
+ *  והמרה שם הייתה דורסת את התמונה השמורה בכתובת. */
+export function toPublicCategories(cats: CategoryDef[]): CategoryDef[] {
+    return cats.map(c =>
+        c.image && BASE64_URI.test(c.image)
+            ? { ...c, image: `/api/category-image/${encodeURIComponent(c.key)}?v=${c.image.length.toString(36)}` }
+            : c,
+    );
+}
+
+/** getCategories לצירוף לנתוני עמוד — תמונות ככתובות ולא כ-data URI מוטמע */
+export async function getPublicCategories(): Promise<CategoryDef[]> {
+    return toPublicCategories(await getCategories());
+}
+
 // ---------- 📌 נעוצים ----------
 // מזהי הגמ"חים שמופיעים בראש דף הבית, לפי סדר התצוגה. נשמרים כאן ולא
 // בדגל featured כדי שאפשר יהיה לנעוץ גם פריטים מהרשימה הסטטית (שאינם ב-DB).

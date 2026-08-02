@@ -1,8 +1,9 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAllGemachimWithDrafts, deleteGemach, patchGemachOrder, setGemachStatus, setGemachVerified } from '$lib/server/db';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
 import { getPinnedIdsResolved, pinGemach, unpinGemach } from '$lib/server/pinned';
+import { withImageUrls } from '$lib/server/gemachSource';
 import type { Gemach } from '$lib/gemachData';
 
 const PAGE_SIZE = 50;
@@ -12,7 +13,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
 	// כולל טיוטות — מוצגות עם תג "טיוטה" וכפתור פרסום
-	const [all, categories] = await Promise.all([getAllGemachimWithDrafts(), getCategories()]);
+	const [all, categories] = await Promise.all([getAllGemachimWithDrafts(), getPublicCategories()]);
 	// מצב הנעיצה מגיע מרשימת הנעוצים (/admin/pinned) — היא מקור האמת
 	const pinnedIds = await getPinnedIdsResolved(all);
 
@@ -28,7 +29,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	const total = filtered.length;
 	const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 	const safePage = Math.min(page, pages);
-	const items = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+	// תמונות ככתובות endpoint ולא כ-data URI מוטמע — הרשימה נטענת מהר
+	const items = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE).map(withImageUrls);
 
 	return {
 		items,

@@ -1,8 +1,8 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getMergedGemachim } from '$lib/server/gemachSource';
+import { getMergedGemachim, withImageUrls } from '$lib/server/gemachSource';
 import { getPinnedGemachim, pinGemach, unpinGemach, movePinned } from '$lib/server/pinned';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
 
 const MAX_RESULTS = 30;
 
@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	const rawQ = url.searchParams.get('q') ?? '';
 	const q = rawQ.trim().toLowerCase();
 
-	const [all, categories] = await Promise.all([getMergedGemachim(), getCategories()]);
+	const [all, categories] = await Promise.all([getMergedGemachim(), getPublicCategories()]);
 	const pinned = await getPinnedGemachim(all);
 	const pinnedSet = new Set(pinned.map(g => g.id));
 
@@ -25,10 +25,11 @@ export const load: PageServerLoad = async ({ url }) => {
 		: [];
 
 	return {
-		pinned,
+		// תמונות ככתובות endpoint ולא כ-data URI מוטמע — העמוד נטען מהר
+		pinned: pinned.map(withImageUrls),
 		categories,
 		q: rawQ,
-		results: matches.slice(0, MAX_RESULTS),
+		results: matches.slice(0, MAX_RESULTS).map(withImageUrls),
 		resultsTotal: matches.length,
 		total: all.length
 	};

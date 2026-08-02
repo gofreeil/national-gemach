@@ -1,12 +1,12 @@
 import type { PageServerLoad } from './$types';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
 import { getMergedGemachim, toListItem } from '$lib/server/gemachSource';
 
 /** 20 גמ"חים בכל עמוד — לפי בקשת המשתמש */
 const PAGE_SIZE = 20;
 
 export const load: PageServerLoad = async ({ url }) => {
-    const [all, categories] = await Promise.all([getMergedGemachim(), getCategories()]);
+    const [all, categories] = await Promise.all([getMergedGemachim(), getPublicCategories()]);
 
     const total = all.length;
     const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));

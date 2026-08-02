@@ -177,23 +177,48 @@ export async function getAllGemachim(): Promise<Gemach[]> {
     }
 }
 
+// ---------- מטמון רשימת הגמ"חים ----------
+// כל דף ציבורי (בית, /gemachim, דף גמ"ח, sitemap) מתחיל ב"תן את כל הרשימה",
+// ובלי מטמון זה סבב שליפה מלא מ-Strapi בכל בקשה — עיקר זמן-התגובה של האתר.
+// TTL קצר + שיתוף בקשה-בטיסה: אינסטנס חם עונה מהזיכרון, בקשות מקבילות
+// חולקות שליפה אחת, וכל כתיבה (יצירה/עריכה/סטטוס) מאפסת את המטמון מיד —
+// כך אדמין שמפרסם טיוטה רואה את השינוי בלי להמתין ל-TTL.
+let listCache: { at: number; data: Gemach[] } | null = null;
+let listInflight: Promise<Gemach[]> | null = null;
+const LIST_TTL_MS = 60_000;
+
+export function invalidateGemachCache(): void {
+    listCache = null;
+    listInflight = null;
+}
+
 /** כמו getAllGemachim אבל כולל גם טיוטות ('draft') — לרשימת הניהול בפאנל,
  *  שם האדמין רואה טיוטה עם תג ויכול לפרסם/להחזיר. 'rejected' לא נכלל —
  *  הוא שייך למסך הגילוי בלבד. */
 export async function getAllGemachimWithDrafts(): Promise<Gemach[]> {
-    try {
-        const data = await strapiGetAll<StrapiItem>('/api/items', {
-            'filters[category][$eq]':    CATEGORY,
-            'filters[status1][$in][0]':  'active',
-            'filters[status1][$in][1]':  DRAFT_ITEM_STATUS,
-            'sort':                      'createdAt:desc',
-        });
-        return data.map((item) => mapItemToGemach(item)).sort(sortManaged);
-    } catch (e) {
-        if (e instanceof StrapiContentTypeError) return [];
-        console.error('[national-gemach] getAllGemachimWithDrafts failed:', e);
-        return [];
-    }
+    if (listCache && Date.now() - listCache.at < LIST_TTL_MS) return listCache.data;
+    if (listInflight) return listInflight;
+    listInflight = (async () => {
+        try {
+            const data = await strapiGetAll<StrapiItem>('/api/items', {
+                'filters[category][$eq]':    CATEGORY,
+                'filters[status1][$in][0]':  'active',
+                'filters[status1][$in][1]':  DRAFT_ITEM_STATUS,
+                'sort':                      'createdAt:desc',
+            });
+            const mapped = data.map((item) => mapItemToGemach(item)).sort(sortManaged);
+            listCache = { at: Date.now(), data: mapped };
+            return mapped;
+        } catch (e) {
+            if (e instanceof StrapiContentTypeError) return [];
+            console.error('[national-gemach] getAllGemachimWithDrafts failed:', e);
+            // Strapi לא זמין כרגע — רשימה ישנה עדיפה על אתר ריק
+            return listCache?.data ?? [];
+        } finally {
+            listInflight = null;
+        }
+    })();
+    return listInflight;
 }
 
 /** הגמ"חים שבבעלות המשתמש המחובר — ל"הנכסים שלי".
@@ -266,6 +291,7 @@ export async function setGemachStatus(
         extra.discovery = { ...prev, ...discoveryPatch };
     }
     await strapiPut(`/api/items/${documentId}`, { data: { status1: toItemStatus(status), extra_fields: extra } });
+    invalidateGemachCache();
 }
 
 /** מעניק/מסיר את חותמת "מאושר" (extra_fields.verified) — הגמ"ח עבר בדיקת
@@ -286,6 +312,7 @@ export async function setGemachVerified(documentId: string, verified: boolean): 
         delete extra.verified_at;
     }
     await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: extra } });
+    invalidateGemachCache();
 }
 
 /** מחזיר גמ"ח בודד לפי documentId (לעריכה בפאנל / ע"י הבעלים). כולל ownerId. */
@@ -399,6 +426,7 @@ export async function createGemach(
             publishedAt:  new Date().toISOString(),
         },
     });
+    invalidateGemachCache();
     return { id: res.data.documentId };
 }
 
@@ -472,6 +500,7 @@ export async function claimGuestDraft(
     await strapiPut(`/api/items/${documentId}`, {
         data: { user_id: ownerId, status1: 'active', extra_fields: extra },
     });
+    invalidateGemachCache();
     return true;
 }
 
@@ -533,11 +562,13 @@ export async function updateGemach(
     }
 
     await strapiPut(`/api/items/${documentId}`, { data });
+    invalidateGemachCache();
 }
 
 /** מוחק גמ"ח (נעלם גם מהקהילה) */
 export async function deleteGemach(documentId: string): Promise<void> {
     await strapiDelete(`/api/items/${documentId}`);
+    invalidateGemachCache();
 }
 
 /** קובע את שדה ה-order/featured בלבד (לשימוש בסידור מהיר) */
@@ -553,6 +584,7 @@ export async function patchGemachOrder(documentId: string, patch: { order?: numb
         if (patch.featured) merged.featured = true; else delete merged.featured;
     }
     await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: merged } });
+    invalidateGemachCache();
 }
 
 /**
@@ -578,6 +610,7 @@ export async function patchGemachLocation(
         data.lng = coords.lng;
     }
     await strapiPut(`/api/items/${documentId}`, { data });
+    invalidateGemachCache();
     return coords;
 }
 
@@ -598,5 +631,6 @@ export async function geocodeGemachById(
     });
     if (coords.lat === null || coords.lng === null) return coords;
     await strapiPut(`/api/items/${documentId}`, { data: { lat: coords.lat, lng: coords.lng } });
+    invalidateGemachCache();
     return coords;
 }

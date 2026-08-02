@@ -79,7 +79,7 @@
 			<div class="w-full max-w-none sm:max-w-3xl lg:max-w-5xl text-center">
 				{#if kind === 'new'}
 					<img
-						src="/images/logo.png"
+						src="/images/logo-hero.webp"
 						alt="הגמ&quot;ח הארצי"
 						class="mx-auto w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover bg-white ring-2 ring-purple-400/40 shadow-lg mb-4"
 					/>

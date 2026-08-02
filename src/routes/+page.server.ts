@@ -1,10 +1,10 @@
 import type { PageServerLoad } from './$types';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
 import { getMergedGemachim, toListItem } from '$lib/server/gemachSource';
 import { getPinnedGemachim } from '$lib/server/pinned';
 
 export const load: PageServerLoad = async () => {
-    const [gemachim, categories] = await Promise.all([getMergedGemachim(), getCategories()]);
+    const [gemachim, categories] = await Promise.all([getMergedGemachim(), getPublicCategories()]);
     const pinned = await getPinnedGemachim(gemachim);
     // הרשימות נשלחות בלי טלפונים — הכרטיסים לא מציגים אותם, והחשיפה
     // היא רק בעמוד הגמ"ח אחרי "גלה טלפון"

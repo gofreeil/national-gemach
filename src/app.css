@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
+/* פונט Assistant נטען מ-app.html (preconnect + link) — לא ב-@import כאן,
+   כדי לא לשרשר בקשה חוסמת-רינדור אחרי הורדת הגיליון */
 @import "tailwindcss";
 
 @theme {

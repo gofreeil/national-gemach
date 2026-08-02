@@ -1,7 +1,7 @@
 import { fail, redirect, error } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getGemachById, updateGemach } from '$lib/server/db';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
 import { parseGemachForm, saveErrorMessage } from '$lib/server/gemachForm';
 import { isGemachOwner } from '$lib/server/ownership';
 import { cities } from '$lib/gemachData';
@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const session = await locals.auth();
 	if (!session?.user) throw redirect(302, `/login?redirect=${encodeURIComponent(url.pathname)}`);
 
-	const [gemach, categories] = await Promise.all([getGemachById(params.id), getCategories()]);
+	const [gemach, categories] = await Promise.all([getGemachById(params.id), getPublicCategories()]);
 	if (!gemach) throw error(404, 'הגמ"ח לא נמצא (ייתכן שנמחק או שאינו מנוהל ב-DB)');
 
 	if (!isGemachOwner(session.user, gemach.ownerId)) {

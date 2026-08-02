@@ -36,9 +36,10 @@
     <!-- כותרת גיבוי בלבד: כל דף ציבורי דורס אותה דרך <Seo> ($lib/components/Seo.svelte) -->
     <title>הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</title>
 
-    <link rel="icon" href="/images/logo.png" type="image/png" />
-    <link rel="shortcut icon" href="/images/logo.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/images/logo.png" />
+    <!-- אייקונים בגדלים אמיתיים — הקובץ המלא (709KB) נשאר רק לסכימת ה-SEO -->
+    <link rel="icon" href="/images/favicon.png" type="image/png" />
+    <link rel="shortcut icon" href="/images/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
 
     <!-- תגי Open Graph ו-Twitter מוגדרים פר-דף ברכיב <Seo>. תג גלובלי כאן היה
          מקדים את הפר-דפי ב-HTML, וכל שיתוף של דף גמ"ח בוואטסאפ היה מציג את שם

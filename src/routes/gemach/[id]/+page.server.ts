@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getCategories } from '$lib/server/adminStore';
-import { findGemachById, getMergedGemachim, toListItem } from '$lib/server/gemachSource';
+import { getPublicCategories } from '$lib/server/adminStore';
+import { findGemachById, getMergedGemachim, toListItem, withImageUrls } from '$lib/server/gemachSource';
 import { getPinnedIdsResolved } from '$lib/server/pinned';
 import { getGemachOwnerId } from '$lib/server/db';
 import { isGemachOwner } from '$lib/server/ownership';
@@ -9,7 +9,7 @@ import { resolveRole } from '$lib/server/admin';
 import { categoryKeys } from '$lib/gemachData';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-    const [gemach, categories] = await Promise.all([findGemachById(params.id), getCategories()]);
+    const [gemach, categories] = await Promise.all([findGemachById(params.id), getPublicCategories()]);
     if (!gemach) throw error(404, 'הגמ"ח המבוקש לא נמצא במאגר');
 
     // טיוטה גלויה רק לאדמין (שרואה אותה עם באנר "טיוטה") — לכל השאר 404,
@@ -42,5 +42,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         }
     }
 
-    return { gemach, categories, related, canEdit, pinned };
+    // התמונות נשלחות ככתובות endpoint ולא כ-data URI מוטמע — העמוד נטען מיד
+    // והתמונות מגיעות בנפרד עם מטמון (ראה withImageUrls ב-gemachSource)
+    return { gemach: withImageUrls(gemach), categories, related, canEdit, pinned };
 };

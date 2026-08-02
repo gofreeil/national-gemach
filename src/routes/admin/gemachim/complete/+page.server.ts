@@ -5,7 +5,8 @@ import {
     patchGemachLocation,
     geocodeGemachById,
 } from '$lib/server/db';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
+import { withImageUrls } from '$lib/server/gemachSource';
 import { hasValidCoords } from '$lib/server/geocode';
 import { cities } from '$lib/gemachData';
 import type { Gemach } from '$lib/gemachData';
@@ -36,7 +37,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
     const [all, categories] = await Promise.all([
         getAllGemachim(),
-        getCategories(),
+        getPublicCategories(),
     ]);
 
     const enriched = all.map(g => ({
@@ -59,7 +60,8 @@ export const load: PageServerLoad = async ({ url }) => {
     const total = filtered.length;
     const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const safePage = Math.min(page, pages);
-    const items = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    // תמונות ככתובות endpoint ולא כ-data URI מוטמע — הרשימה נטענת מהר
+    const items = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE).map(withImageUrls);
 
     // כל המזהים שאפשר לגזור להם קואורדינטות אך עדיין חסרים (בכל העמודים) —
     // לשימוש כפתור "גזור מיקום לכל החסרים" (אצווה עם המשך אוטומטי).

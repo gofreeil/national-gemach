@@ -24,6 +24,41 @@ function withoutPhones(text: string | undefined): string | undefined {
     return clean || undefined;
 }
 
+// ---------- תמונות: מ-data URI מוטמע לכתובת endpoint ----------
+// התמונות שמורות כ-data URI בתוך extra_fields (עד ~1MB לתמונה). הטמעתן ישירות
+// בנתוני העמוד ניפחה את דף הבית ל-2.8MB של HTML. במקום זה העמודים הציבוריים
+// נושאים כתובת קצרה ל-/api/gemach-image, שמגיש את התמונה עם מטמון CDN —
+// הדף נטען מיד והתמונות מגיעות בנפרד, פעם אחת, ונשמרות במטמון.
+const BASE64_URI = /^data:[^;,]+;base64,/;
+
+/** פרמטר גרסה לכתובת — תמונה שהוחלפה מקבלת כתובת חדשה ולא נתקעת במטמון */
+function imgVersion(src: string): string {
+    return src.length.toString(36);
+}
+
+function imageEndpointUrl(id: string, src: string, galleryIndex?: number): string {
+    const q = new URLSearchParams();
+    if (galleryIndex !== undefined) q.set('i', String(galleryIndex));
+    q.set('v', imgVersion(src));
+    return `/api/gemach-image/${encodeURIComponent(id)}?${q}`;
+}
+
+/** מחליף תמונות data-URI בכתובות endpoint. תמונות שהן ממילא כתובת (סטטיות /
+ *  חיצוניות) נשארות כמות שהן. לשימוש בכל מה שנשלח לדפדפן בעמודים ציבוריים.
+ *  תמונה ראשית שמקורה בגלריה (pickImage נופל ל-images[0]) מקבלת את אותה
+ *  כתובת כמו רשומת הגלריה — דף הגמ"ח מסנן כפילויות בהשוואת מחרוזות. */
+export function withImageUrls<T extends { id: string; image?: string; gallery?: string[] }>(g: T): T {
+    const gallery = g.gallery?.map((src, i) =>
+        BASE64_URI.test(src) ? imageEndpointUrl(g.id, src, i) : src,
+    );
+    let image = g.image;
+    if (image && BASE64_URI.test(image)) {
+        const gi = g.gallery?.indexOf(image) ?? -1;
+        image = gi >= 0 && gallery ? gallery[gi] : imageEndpointUrl(g.id, image);
+    }
+    return { ...g, image, gallery };
+}
+
 /**
  * הצורה שנשלחת ללקוח ברשימות: בלי הטלפון, וגם בלי מספרים שנכתבו בתוך
  * הטקסט. הכרטיסים ממילא לא מציגים טלפון (הוא נחשף רק בעמוד הגמ"ח, אחרי
@@ -32,14 +67,14 @@ function withoutPhones(text: string | undefined): string | undefined {
  */
 export function toListItem(g: Gemach): ListGemach {
     const { phone, ...rest } = g;
-    return {
+    return withImageUrls({
         ...rest,
         description: withoutPhones(g.description) ?? '',
         contact: withoutPhones(g.contact),
         notes: withoutPhones(g.notes),
         arrivalNotes: withoutPhones(g.arrivalNotes),
         hasPhone: Boolean(phone),
-    };
+    });
 }
 
 /**

@@ -584,9 +584,12 @@
 <section class="text-center py-6 md:py-8 px-4">
     <div class="flex items-center justify-center gap-4 md:gap-6 mb-5">
         <div class="h-40 w-40 md:h-52 md:w-52 flex-shrink-0 rounded-2xl overflow-hidden bg-white shadow-xl border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+            <!-- זהו רכיב ה-LCP של דף הבית — גרסת webp קלה (33KB במקום 709KB)
+                 עם fetchpriority כדי שהדפדפן יוריד אותה ראשונה -->
             <img
-                src="/images/logo.png"
+                src="/images/logo-hero.webp"
                 alt="הגמח הארצי לוגו"
+                fetchpriority="high"
                 class="w-full h-full object-cover scale-[1.15]"
                 style="object-position: center; translate: 0 4%;"
             />

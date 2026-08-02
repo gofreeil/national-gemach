@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createGemach } from '$lib/server/db';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
 import { parseGemachForm, saveErrorMessage } from '$lib/server/gemachForm';
 import { ownerIdForSession } from '$lib/server/ownership';
 import { newDraftToken, setDraftTicket } from '$lib/server/guestDraft';
@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	// מסך התחברות. אורח שישלח יקבל טיוטה שמורה, וההתחברות בסוף (/gemach/claim)
 	// היא זו שרושמת את הגמ"ח על שמו ומפרסמת אותו.
 	const session = await locals.auth();
-	const categories = await getCategories();
+	const categories = await getPublicCategories();
 
 	// ?category=<key> — מי שהגיע מסינון קטגוריה בדף הבית מקבל אותה בחורה מראש.
 	// מאומת מול הרשימה, כדי שערך מומצא בכתובת לא יזרע את הטופס.

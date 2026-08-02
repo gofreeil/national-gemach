@@ -1,13 +1,13 @@
 import { fail, redirect, error } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getGemachById, updateGemach, deleteGemach } from '$lib/server/db';
-import { getCategories } from '$lib/server/adminStore';
+import { getPublicCategories } from '$lib/server/adminStore';
 import { pinGemach, unpinGemach } from '$lib/server/pinned';
 import { parseGemachForm, saveErrorMessage } from '$lib/server/gemachForm';
 import { cities } from '$lib/gemachData';
 
 export const load: PageServerLoad = async ({ params }) => {
-	const [gemach, categories] = await Promise.all([getGemachById(params.id), getCategories()]);
+	const [gemach, categories] = await Promise.all([getGemachById(params.id), getPublicCategories()]);
 	if (!gemach) throw error(404, 'הגמ"ח לא נמצא (ייתכן שנמחק או שאינו מנוהל ב-DB)');
 	return { gemach, categories, cities };
 };
