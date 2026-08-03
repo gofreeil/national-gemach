@@ -4,7 +4,6 @@ import { getCategories, getAdmins } from '$lib/server/adminStore';
 import { getMergedGemachim } from '$lib/server/gemachSource';
 import { getPinnedGemachim } from '$lib/server/pinned';
 import { hasValidCoords } from '$lib/server/geocode';
-import { getMonthlyVisits } from '$lib/server/visitStats';
 import { getMonthlyVisitorStats } from '$lib/server/visitorStats';
 import { listAllForAdmin } from '$lib/server/adsStore';
 import { countDraftGemachim } from '$lib/server/discoveryStore';
@@ -44,11 +43,10 @@ async function buildAdsSummary(): Promise<AdsSummary | null> {
 export const load: PageServerLoad = async ({ locals }) => {
 	await getAdminContext(locals);
 
-	const [all, categories, admins, visits, adsSummary, discoveryDrafts, gaMonthly] = await Promise.all([
+	const [all, categories, admins, adsSummary, discoveryDrafts, gaMonthly] = await Promise.all([
 		getMergedGemachim(),
 		getCategories(),
 		getAdmins(),
-		getMonthlyVisits(12),
 		// תמצית הפרסומות — לשני התפקידים; מסך /admin/ads פתוח לכל אדמין
 		buildAdsSummary(),
 		// טיוטות שאוטומציית הגילוי ייבאה וממתינות לאישור (לשני התפקידים)
@@ -62,7 +60,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const pinned = await getPinnedGemachim(all);
 
 	return {
-		visits,
 		gaMonths: gaMonthly?.rows ?? null,
 		gaUpdatedAt: gaMonthly?.updatedAt ?? null,
 		adsSummary,
