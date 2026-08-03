@@ -5,12 +5,14 @@
     // משתמש מחובר (מגיע מ-+layout.server דרך +layout.svelte); null = אנונימי
     let {
         user = null,
-        pendingAds = 0
+        pendingCount = 0
     }: {
         user?: { name: string; email: string } | null;
-        /** פרסומות שממתינות לאישור — 0 לכל מי שאינו אדמין. מסמן את כפתור
-         *  האזור האישי בנקודה אדומה עד שמישהו מהאדמינים מאשר/דוחה. */
-        pendingAds?: number;
+        /** פריטים שממתינים לטיפול אדמין (פרסומות לאישור + תביעות בעלות +
+         *  טיוטות גמ"חים) — 0 לכל מי שאינו אדמין. מסמן את תמונת הפרופיל
+         *  בבועה אדומה עד שמישהו מהאדמינים מטפל. אותו מספר מוצג גם על
+         *  האריחים בפאנל שבאזור האישי — מסונכרן. */
+        pendingCount?: number;
     } = $props();
 
     let languages = [
@@ -115,19 +117,19 @@
                 <!-- התחברות / אזור אישי (שמאל) -->
                 {#if user}
                     <a
-                        href={pendingAds > 0 ? '/profile#admin' : '/profile'}
+                        href={pendingCount > 0 ? '/profile#admin' : '/profile'}
                         class="relative flex items-center justify-center w-8 h-8 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] transition-colors"
-                        aria-label={pendingAds > 0
-                            ? `האזור האישי שלי — ${pendingAds} פרסומות ממתינות לאישור`
+                        aria-label={pendingCount > 0
+                            ? `האזור האישי שלי — ${pendingCount} פריטים ממתינים לטיפול`
                             : 'האזור האישי שלי'}
-                        title={pendingAds > 0
-                            ? `${pendingAds} פרסומות ממתינות לאישור`
+                        title={pendingCount > 0
+                            ? `${pendingCount} פריטים ממתינים לטיפול`
                             : user.name || user.email}
                     >
                         <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-[10px]" aria-hidden="true">👤</span>
-                        {#if pendingAds > 0}
+                        {#if pendingCount > 0}
                             <span class="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-[#874b90]" aria-hidden="true">
-                                {pendingAds}
+                                {pendingCount}
                             </span>
                         {/if}
                     </a>
@@ -220,15 +222,15 @@
                 <!-- התחברות / אזור אישי (שמאל) -->
                 {#if user}
                     <a
-                        href={pendingAds > 0 ? '/profile#admin' : '/profile'}
+                        href={pendingCount > 0 ? '/profile#admin' : '/profile'}
                         class="relative flex items-center gap-2 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-2 text-sm font-bold text-white transition-colors"
-                        title={pendingAds > 0 ? `${pendingAds} פרסומות ממתינות לאישור` : 'האזור האישי שלי'}
+                        title={pendingCount > 0 ? `${pendingCount} פריטים ממתינים לטיפול` : 'האזור האישי שלי'}
                     >
                         <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-xs">👤</span>
                         <span class="hidden sm:inline max-w-[120px] truncate">{user.name || user.email}</span>
-                        {#if pendingAds > 0}
+                        {#if pendingCount > 0}
                             <span class="absolute -top-1.5 -left-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-black leading-none text-white ring-2 ring-[#874b90]">
-                                <span class="sr-only">פרסומות ממתינות לאישור:</span>{pendingAds}
+                                <span class="sr-only">פריטים ממתינים לטיפול:</span>{pendingCount}
                             </span>
                         {/if}
                     </a>

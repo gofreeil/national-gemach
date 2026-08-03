@@ -46,11 +46,17 @@ function loadCredentials(): { clientEmail: string; privateKey: string } | null {
 const REFRESH_MS = 15 * 60 * 1000;           // 15 דקות בין רענוני GA (96 פעמים ביום, מתוזמן ב-Cron)
 const STALE_MS   = 30 * 24 * 60 * 60 * 1000; // מעבר לכך — נחשב ישן מדי, נחזיר fallback
 const LABEL = 'כניסות החודש';
+// אותו מדד כמו כרטיס "סטטיסטיקת כניסות" בפאנל (screenPageViews) — כדי שהמונה
+// בדף הבית והפירוט החודשי בפאנל יראו את אותו מספר. בעבר נמדד כאן activeUsers
+// (גולשים ייחודיים), ואז דף הבית הציג פחות מהפאנל ונראה כמו באג.
+const METRIC = 'screenPageViews';
 
 interface VisitorStat {
     count: number;
     updatedAt: number;
     label?: string;
+    /** המדד שנמדד ב-GA; שינוי מדד בקוד מרענן מיד ולא ממתין ל-TTL */
+    metric?: string;
 }
 
 // מונע רענון כפול באותו מופע (thundering herd)
@@ -122,7 +128,7 @@ function monthStartDate(): string {
     return `${ym}-01`;
 }
 
-/** קורא מ-GA את מספר הגולשים מתחילת החודש הלועזי הנוכחי */
+/** קורא מ-GA את מספר הצפיות מתחילת החודש הלועזי הנוכחי (אותו מדד כמו בפאנל) */
 async function fetchFromGA(): Promise<number | null> {
     if (!PROPERTY_ID) return null;
     const token = await getAccessToken();
@@ -135,7 +141,7 @@ async function fetchFromGA(): Promise<number | null> {
                 headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     dateRanges: [{ startDate: monthStartDate(), endDate: 'today' }],
-                    metrics: [{ name: 'activeUsers' }],
+                    metrics: [{ name: METRIC }],
                     ...(HOSTNAME
                         ? {
                             dimensionFilter: {
@@ -174,14 +180,27 @@ export async function refreshVisitorStatsIfStale(force = false): Promise<void> {
     if (refreshing) return;
 
     const cur = await getConfigValue<VisitorStat>('visitors');
-    // label שונה = טווח המדידה השתנה בקוד (שבוע→חודש) — מרעננים מיד ולא מחכים
-    if (!force && cur?.updatedAt && cur.label === LABEL && Date.now() - cur.updatedAt < REFRESH_MS) return;
+    // label/metric שונים = טווח או מדד המדידה השתנו בקוד — מרעננים מיד ולא מחכים
+    if (
+        !force &&
+        cur?.updatedAt &&
+        cur.label === LABEL &&
+        cur.metric === METRIC &&
+        Date.now() - cur.updatedAt < REFRESH_MS
+    ) {
+        return;
+    }
 
     refreshing = true;
     try {
         const count = await fetchFromGA();
         if (count !== null) {
-            await setConfigValue('visitors', { count, updatedAt: Date.now(), label: LABEL } satisfies VisitorStat);
+            await setConfigValue('visitors', {
+                count,
+                updatedAt: Date.now(),
+                label: LABEL,
+                metric: METRIC,
+            } satisfies VisitorStat);
         }
     } finally {
         refreshing = false;
@@ -266,6 +285,119 @@ async function fetchMonthlyFromGA(): Promise<MonthlyStat[] | null> {
             .filter((r) => /^\d{6}$/.test(r.yearMonth));
     } catch (e) {
         console.error('[visitorStats] monthly runReport error:', e);
+        return null;
+    }
+}
+
+// ------------------------------------------------------------
+// תובנות שנתיות — לדף /admin/stats: הגמ"חים הנצפים ביותר, ערי הגולשים,
+// מכשירים ומקורות תנועה. batchRunReports אחד (4 דוחות בקריאה אחת),
+// מטמון שעה ב-config שמוגש גם אם GA נופל רגעית.
+// ------------------------------------------------------------
+
+export interface RankRow {
+    /** ערך המימד כפי שהוחזר מ-GA (נתיב / שם עיר באנגלית / mobile וכו') */
+    key: string;
+    count: number;
+}
+
+export interface YearlyInsights {
+    /** נתיבי /gemach/{id} עם צפיות — ההמרה לשמות נעשית בדף */
+    gemachPages: RankRow[];
+    cities: RankRow[];
+    devices: RankRow[];
+    channels: RankRow[];
+}
+
+interface InsightsCache {
+    data: YearlyInsights;
+    updatedAt: number;
+}
+
+const INSIGHTS_REFRESH_MS = 60 * 60 * 1000;
+
+/** תובנות שנה אחורה. null = GA לא מוגדר/נכשל ואין מטמון. */
+export async function getYearlyInsights(): Promise<InsightsCache | null> {
+    const cached = await getConfigValue<InsightsCache>('visitors_insights').catch(() => null);
+    if (cached?.data && Date.now() - cached.updatedAt < INSIGHTS_REFRESH_MS) return cached;
+
+    const data = await fetchInsightsFromGA();
+    if (data) {
+        const value: InsightsCache = { data, updatedAt: Date.now() };
+        await setConfigValue('visitors_insights', value).catch(() => {});
+        return value;
+    }
+    return cached?.data ? cached : null;
+}
+
+async function fetchInsightsFromGA(): Promise<YearlyInsights | null> {
+    if (!PROPERTY_ID) return null;
+    const token = await getAccessToken();
+    if (!token) return null;
+
+    // דוח אחד: מימד + מטריקה, ממוין יורד, עם סינון hostName (הנכס משותף לכמה אתרים)
+    const mkRequest = (dimension: string, metric: string, limit: number, extraFilter?: object) => {
+        const expressions = [
+            ...(HOSTNAME
+                ? [{ filter: { fieldName: 'hostName', stringFilter: { matchType: 'EXACT', value: HOSTNAME } } }]
+                : []),
+            ...(extraFilter ? [extraFilter] : [])
+        ];
+        return {
+            dateRanges: [{ startDate: '365daysAgo', endDate: 'today' }],
+            dimensions: [{ name: dimension }],
+            metrics: [{ name: metric }],
+            orderBys: [{ metric: { metricName: metric }, desc: true }],
+            limit: String(limit),
+            ...(expressions.length === 1
+                ? { dimensionFilter: expressions[0] }
+                : expressions.length > 1
+                    ? { dimensionFilter: { andGroup: { expressions } } }
+                    : {})
+        };
+    };
+
+    try {
+        const res = await fetch(
+            `https://analyticsdata.googleapis.com/v1beta/properties/${PROPERTY_ID}:batchRunReports`,
+            {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    requests: [
+                        // צפיות בדפי גמ"ח — limit גבוה כי הסינון לפי id נעשה בדף
+                        mkRequest('pagePath', 'screenPageViews', 100, {
+                            filter: { fieldName: 'pagePath', stringFilter: { matchType: 'BEGINS_WITH', value: '/gemach/' } }
+                        }),
+                        mkRequest('city', 'activeUsers', 15),
+                        mkRequest('deviceCategory', 'activeUsers', 10),
+                        mkRequest('sessionDefaultChannelGroup', 'sessions', 10)
+                    ]
+                })
+            }
+        );
+        if (!res.ok) {
+            console.error('[visitorStats] batchRunReports failed:', res.status, await res.text());
+            return null;
+        }
+        const j = (await res.json()) as {
+            reports?: { rows?: { dimensionValues?: { value?: string }[]; metricValues?: { value?: string }[] }[] }[];
+        };
+        const toRows = (i: number): RankRow[] =>
+            (j.reports?.[i]?.rows ?? [])
+                .map((r) => ({
+                    key: r.dimensionValues?.[0]?.value ?? '',
+                    count: Number(r.metricValues?.[0]?.value) || 0
+                }))
+                .filter((r) => r.key && r.count > 0);
+        return {
+            gemachPages: toRows(0),
+            cities: toRows(1),
+            devices: toRows(2),
+            channels: toRows(3)
+        };
+    } catch (e) {
+        console.error('[visitorStats] batchRunReports error:', e);
         return null;
     }
 }

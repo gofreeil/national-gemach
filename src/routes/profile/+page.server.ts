@@ -2,9 +2,45 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { isOwner } from '$lib/server/admin';
 import { getOwnerAssets } from '$lib/server/ownerAssets';
-import { listPendingAdsPreview } from '$lib/server/adsStore';
+import { listApproved, listPendingAdsPreview } from '$lib/server/adsStore';
 import { findClaimableByPhone, countPendingClaims } from '$lib/server/claimsStore';
 import { getMonthlyVisitorStats } from '$lib/server/visitorStats';
+import { getAllGemachimWithDrafts } from '$lib/server/db';
+import { getMergedGemachim } from '$lib/server/gemachSource';
+import { getPinnedGemachim } from '$lib/server/pinned';
+import { getAdmins, getPublicCategories } from '$lib/server/adminStore';
+import { hasValidCoords } from '$lib/server/geocode';
+
+/**
+ * מוני האריחים בפאנל הניהול — "כמה נתונים יש" בכל מסך. המספר מוצג בתוך
+ * שורת התיאור של האריח (באותו פונט וצבע), ולא כהתראה.
+ * הכול נשען על מטמונים קיימים (רשימת הגמ"חים 60 שנ', config 20 שנ',
+ * פרסומות 15-60 שנ') — אין כאן סבב Strapi חדש מעבר למה שהדף ממילא טוען.
+ */
+async function loadTileStats() {
+	const [withDrafts, merged, admins, categories, liveAds] = await Promise.all([
+		getAllGemachimWithDrafts(),
+		getMergedGemachim(),
+		getAdmins().catch(() => []),
+		getPublicCategories().catch(() => []),
+		listApproved().catch(() => [])
+	]);
+	const pinned = await getPinnedGemachim(merged).catch(() => []);
+	const managedActive = withDrafts.filter((g) => g.status !== 'draft');
+	// אותו קריטריון כמו מסך "גמ"חים לא מלאים" (missingFields): עיר, רחוב/שכונה, קואורדינטות
+	const incomplete = managedActive.filter(
+		(g) => !g.city || (!g.address && !g.neighborhood) || !hasValidCoords(g.lat, g.lng)
+	).length;
+	return {
+		gemachim: merged.length,
+		incomplete,
+		pinned: pinned.length,
+		drafts: withDrafts.length - managedActive.length,
+		adsLive: liveAds.length,
+		admins: admins.length,
+		categories: categories.length
+	};
+}
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const session = await locals.auth();
@@ -26,11 +62,13 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	// זיהוי אוטומטי: גמ"חים שהטלפון שלהם תואם לטלפון של המשתמש — "האם זה שלך?".
 	// ריק כשאין למשתמש טלפון בסשן (נפוץ). pendingClaims — מונה בקשות הבעלות
 	// שממתינות לאישור, להתראה לאדמינים (בדומה ל-pendingAds).
-	// סטטיסטיקת הכניסות (GA) נטענת רק לאדמינים — מוצגת פרוסה בפאנל הניהול שבדף
-	const [claimable, pendingClaims, gaMonthly] = await Promise.all([
+	// סטטיסטיקת הכניסות (GA) נטענת רק לאדמינים — מוצגת פרוסה בפאנל הניהול שבדף.
+	// tileStats — מוני האריחים; כשל בשליפה לא מפיל את הדף (null = בלי מונים).
+	const [claimable, pendingClaims, gaMonthly, tileStats] = await Promise.all([
 		findClaimableByPhone(session.user),
 		adminRole ? countPendingClaims() : Promise.resolve(0),
-		adminRole ? getMonthlyVisitorStats().catch(() => null) : Promise.resolve(null)
+		adminRole ? getMonthlyVisitorStats().catch(() => null) : Promise.resolve(null),
+		adminRole ? loadTileStats().catch(() => null) : Promise.resolve(null)
 	]);
 
 	return {
@@ -42,6 +80,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		pendingAds,
 		claimable,
 		pendingClaims,
+		tileStats,
 		gaMonths: gaMonthly?.rows ?? null,
 		gaUpdatedAt: gaMonthly?.updatedAt ?? null
 	};

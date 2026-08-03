@@ -19,12 +19,15 @@
         months,
         updatedAt = null,
         nested = false,
+        href = null,
     }: {
         /** null = GA לא זמין; [] = אין עדיין נתונים */
         months: MonthRow[] | null;
         updatedAt?: number | null;
         /** true כשהכרטיס יושב בתוך כרטיס כהה אחר (למשל באזור האישי) */
         nested?: boolean;
+        /** כשמוגדר — כל הכרטיס הופך לקישור (לדף הסטטיסטיקה המלאה) */
+        href?: string | null;
     } = $props();
 
     // GA מחזיר ישן→חדש; הגרף נשאר כרונולוגי, הפירוט מוצג חדש→ישן
@@ -55,9 +58,16 @@
     }
 </script>
 
-<div class="space-y-3 rounded-2xl border border-[#3b5794] {nested ? 'bg-[#1c2f5a]' : 'bg-[#16264d]'} p-4">
+<svelte:element
+    this={href ? 'a' : 'div'}
+    href={href ?? undefined}
+    class="block space-y-3 rounded-2xl border border-[#3b5794] {nested ? 'bg-[#1c2f5a]' : 'bg-[#16264d]'} p-4 {href ? 'transition-colors hover:border-emerald-400/60' : ''}"
+>
     <div>
-        <h2 class="text-base font-black text-white">📈 סטטיסטיקת כניסות</h2>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-base font-black text-white">📈 סטטיסטיקת כניסות</h2>
+            {#if href}<span class="text-xs font-bold text-emerald-300">לפירוט המלא ←</span>{/if}
+        </div>
         <p class="mt-0.5 text-xs text-gray-400">
             כמה צפיות היו לאתר בכל חודש (מתוך Google Analytics). הנתונים מתעדכנים אחת לשעה.
             {#if updatedAt}<span class="text-gray-500">עודכן {updatedAgo(updatedAt)}.</span>{/if}
@@ -115,4 +125,4 @@
             {/each}
         </div>
     {/if}
-</div>
+</svelte:element>

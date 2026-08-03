@@ -4,6 +4,8 @@ import { resolveRole } from '$lib/server/admin';
 import { getPinnedIds } from '$lib/server/adminStore';
 import { getVisitorCount, refreshVisitorStatsIfStale } from '$lib/server/visitorStats';
 import { listPendingAds } from '$lib/server/adsStore';
+import { countPendingClaims } from '$lib/server/claimsStore';
+import { getAllGemachimWithDrafts } from '$lib/server/db';
 
 // חושף את הסשן (אם יש) לכל הדפים — כדי שההאדר יציג מצב מחובר/כפתור התחברות,
 // את תפקיד הניהול (adminRole) לפאנל שבאזור האישי ולתפריט האדמין שעל הכרטיסים,
@@ -19,7 +21,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	const visitors = await getVisitorCount();
 	const gaId = (env.GA_MEASUREMENT_ID ?? '').trim();
 
-	if (!u) return { user: null, adminRole: null, pinnedIds: null, pendingAds: 0, visitors, gaId };
+	if (!u) return { user: null, adminRole: null, pinnedIds: null, pendingCount: 0, visitors, gaId };
 
 	const adminRole = await resolveRole({
 		email: u.email,
@@ -31,12 +33,20 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	// או "הסר מהנעוצים". קריאה למטמון של config (20 שנ'), בלי סבב נוסף ל-Strapi.
 	// null = הרשימה מעולם לא נשמרה; אז התפריט נופל חזרה לדגל featured, בדיוק
 	// כמו getPinnedIdsResolved בשרת.
-	// pendingAds — מונה הפרסומות שממתינות לאישור, לנקודה האדומה על כפתור
-	// האזור האישי בהאדר. רק לאדמין, ומקאש של דקה (שאילתה רזה בלי תמונות).
-	const [pinnedIds, pendingAds] = adminRole
+	// pendingCount — סך כל הפריטים שממתינים לטיפול אדמין (פרסומות לאישור +
+	// תביעות בעלות + טיוטות גמ"חים), לבועה האדומה על כפתור האזור האישי בהאדר.
+	// אותו סכום בדיוק מוצג על תמונת הפרופיל ועל אריחי הפאנל — מסונכרן.
+	// רק לאדמין, וכולו ממטמונים קצרים (דקה) — בלי סבבים כבדים ל-Strapi.
+	const [pinnedIds, pendingCount] = adminRole
 		? await Promise.all([
 				getPinnedIds().then((ids) => ids ?? null),
-				listPendingAds().then((list) => list.length)
+				Promise.all([
+					listPendingAds().then((list) => list.length).catch(() => 0),
+					countPendingClaims().catch(() => 0),
+					getAllGemachimWithDrafts()
+						.then((list) => list.filter((g) => g.status === 'draft').length)
+						.catch(() => 0)
+				]).then(([ads, claims, drafts]) => ads + claims + drafts)
 			])
 		: [null, 0];
 
@@ -44,7 +54,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		user: { id: u.id, name: u.name ?? '', email: u.email ?? '' },
 		adminRole,
 		pinnedIds,
-		pendingAds,
+		pendingCount,
 		visitors,
 		gaId
 	};

@@ -14,6 +14,38 @@
 	// ולכן היא זהה אצל כל האדמינים ונעלמת מעצמה כשמישהו מאשר או דוחה.
 	const pending = $derived(data.pendingAds ?? []);
 
+	// סך הממתינים לטיפול — מגיע מה-layout (אותו חישוב של הבועה שבהאדר:
+	// פרסומות + תביעות בעלות + טיוטות), כדי שתמונת הפרופיל וההאדר יראו
+	// תמיד את אותו מספר.
+	const totalPending = $derived(data.pendingCount ?? 0);
+
+	// מוני האריחים: המספר משולב בתוך שורת התיאור — אותו פונט ואותו צבע של
+	// הטקסט. ההתראות (מה שממתין לטיפול) מוצגות בנפרד, כבועה בולטת בפינה.
+	const stats = $derived(data.tileStats);
+	function tileCount(href: string): string {
+		if (!stats) return '';
+		switch (href) {
+			case '/admin/gemachim': return `${stats.gemachim} גמ"חים`;
+			case '/admin/gemachim/complete': return `${stats.incomplete} להשלמה`;
+			case '/admin/pinned': return `${stats.pinned} נעוצים`;
+			case '/admin/discovery': return `${stats.drafts} טיוטות ממתינות`;
+			case '/admin/ads': return `${stats.adsLive} באוויר`;
+			case '/admin/claims': return `${data.pendingClaims ?? 0} ממתינות לאישור`;
+			case '/admin/admins': return `${stats.admins} אדמינים`;
+			case '/admin/categories': return `${stats.categories} קטגוריות`;
+			default: return '';
+		}
+	}
+
+	// הבועה האדומה על אריח = פריטים שממתינים לטיפול באותו מסך. הסכום של
+	// שלושת אלה הוא בדיוק totalPending — הבועות על האריחים, על תמונת
+	// הפרופיל ובהאדר מסונכרנות.
+	const tileAlerts: Record<string, number> = $derived({
+		'/admin/ads': pending.length,
+		'/admin/claims': data.pendingClaims ?? 0,
+		'/admin/discovery': stats?.drafts ?? 0
+	});
+
 	// יש תוכן לעמודה הרחבה (פאנל ניהול / "אולי שלך")? בלי — עמודה צרה ממורכזת.
 	const hasSide = $derived(Boolean(role) || (data.claimable?.length ?? 0) > 0);
 
@@ -46,8 +78,21 @@
 		<div class="flex flex-col gap-4">
 			<!-- כרטיס אישי -->
 			<section class="rounded-3xl border border-[#3b5794] bg-[#16264d] p-5 text-center shadow-2xl">
-				<div class="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-2xl">
-					👤
+				<!-- תמונת הפרופיל. כשיש פריטים שממתינים לטיפול (אדמין) — בועה אדומה
+				     בפינה, חצי מעל התמונה, עם אותו מספר שמוצג בהאדר ועל האריחים. -->
+				<div class="relative mx-auto mb-3 h-16 w-16">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-2xl">
+						👤
+					</div>
+					{#if totalPending > 0}
+						<a
+							href="#admin"
+							class="absolute -top-1 -left-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 text-xs font-black leading-none text-white shadow-lg ring-2 ring-[#16264d] transition hover:bg-rose-400"
+							title="{totalPending} פריטים ממתינים לטיפול"
+						>
+							<span class="sr-only">פריטים ממתינים לטיפול: </span>{totalPending}
+						</a>
+					{/if}
 				</div>
 				<h1 class="text-xl font-black text-white">{data.user.name || 'ברוך הבא'}</h1>
 				<p class="mt-0.5 text-sm text-gray-400">{data.user.email}</p>
@@ -259,21 +304,34 @@
 							</div>
 						{/if}
 
-						<!-- סטטיסטיקת הכניסות — פרוסה כאן מול העיניים, בלי מעבר ל-/admin/stats -->
+						<!-- סטטיסטיקת הכניסות — פרוסה כאן, וכל הכרטיס קישור לפירוט המלא -->
 						<div class="mt-3">
-							<VisitorStatsCard months={data.gaMonths} updatedAt={data.gaUpdatedAt} nested />
+							<VisitorStatsCard months={data.gaMonths} updatedAt={data.gaUpdatedAt} nested href="/admin/stats" />
 						</div>
 
 						<div class="mt-3 grid gap-2 sm:grid-cols-2">
 							{#each tiles as tile (tile.href)}
+								{@const count = tileCount(tile.href)}
+								{@const alert = tileAlerts[tile.href] ?? 0}
 								<a
 									href={tile.href}
-									class="flex items-center gap-3 rounded-xl border border-[#3b5794] bg-[#1c2f5a] px-3 py-2.5 transition hover:bg-[#2a4379]"
+									class="relative flex items-center gap-3 rounded-xl border border-[#3b5794] bg-[#1c2f5a] px-3 py-2.5 transition hover:bg-[#2a4379]"
 								>
+									<!-- בועת "ממתין לטיפול" — בפינה, חצי מעל האריח, בצבע ובצורה
+									     שונים מהטקסט כדי שתבלוט. מוצגת רק כשבאמת יש מה לאשר. -->
+									{#if alert > 0}
+										<span
+											class="absolute -top-2 -left-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-black leading-none text-white shadow-lg ring-2 ring-[#16264d]"
+										>
+											<span class="sr-only">ממתינים לטיפול: </span>{alert}
+										</span>
+									{/if}
 									<span class="text-xl" aria-hidden="true">{tile.icon}</span>
 									<span class="min-w-0">
 										<span class="block truncate text-sm font-bold text-white">{tile.title}</span>
-										<span class="block truncate text-[11px] text-gray-400">{tile.desc}</span>
+										<!-- המונה משולב בתחילת שורת התיאור — אותו פונט, אותו צבע.
+										     בתחילתה ולא בסופה, כדי שה-truncate לא יבלע אותו במסכים צרים. -->
+										<span class="block truncate text-[11px] text-gray-400">{count ? `${count} · ` : ''}{tile.desc}</span>
 									</span>
 								</a>
 							{/each}
