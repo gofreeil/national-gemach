@@ -179,19 +179,11 @@
 						id="admin"
 						class="scroll-mt-28 rounded-3xl border border-emerald-500/30 bg-[#16264d] p-4 shadow-2xl sm:p-5"
 					>
-						<div class="flex flex-wrap items-center justify-between gap-2">
-							<div>
-								<h2 class="flex items-center gap-2 text-lg font-black text-white">
-									<span aria-hidden="true">🛠️</span> ניהול האתר
-								</h2>
-								<p class="mt-0.5 text-xs text-gray-400">כל מסכי הניהול — פרוסים כאן, בלחיצה אחת</p>
-							</div>
-							<a
-								href="/admin"
-								class="rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg transition hover:opacity-90"
-							>
-								לפאנל המלא ←
-							</a>
+						<div>
+							<h2 class="flex items-center gap-2 text-lg font-black text-white">
+								<span aria-hidden="true">🛠️</span> ניהול האתר
+							</h2>
+							<p class="mt-0.5 text-xs text-gray-400">כל מסכי הניהול — פרוסים כאן, בלחיצה אחת</p>
 						</div>
 
 						<!-- התראת אישור פרסומות — הדבר הראשון שאדמין רואה בפאנל, ונשארת

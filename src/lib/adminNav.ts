@@ -20,8 +20,6 @@ export interface AdminNavItem {
     desc: string;
     /** האם הקישור פעיל רק בהתאמה מדויקת (ולא גם למסלולי-בן) */
     exact: boolean;
-    /** מסך הסקירה עצמו — מוצג בניווט, אך לא כאריח (יש כפתור "לפאנל המלא") */
-    overview?: boolean;
 }
 
 /** המסכים שהמשתמש רשאי לראות, לפי תפקיד. owner = הבעלים עצמו, לא כל סופר-אדמין. */
@@ -30,11 +28,6 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
     const isSuper = role === 'super_admin';
 
     return [
-        {
-            href: '/admin', icon: '📊', label: 'סקירה', exact: true, overview: true,
-            title: 'סקירה ונתונים',
-            desc: 'כניסות לאתר, מוני גמ"חים ומצב הפרסומות'
-        },
         {
             href: '/admin/gemachim', icon: '🤝', label: 'גמ"חים', exact: false,
             title: 'ניהול גמ"חים',
@@ -92,7 +85,7 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
     ];
 }
 
-/** האריחים לפאנל הפרוס — כל המסכים חוץ ממסך הסקירה עצמו */
+/** האריחים לפאנל הפרוס באזור האישי — אותה רשימה; שם נפרד לקריאוּת אצל הצרכן */
 export function adminTiles(role: AdminNavRole | null, owner = false): AdminNavItem[] {
-    return adminNav(role, owner).filter((item) => !item.overview);
+    return adminNav(role, owner);
 }
