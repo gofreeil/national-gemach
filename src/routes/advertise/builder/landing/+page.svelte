@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { browser } from "$app/environment";
     import { goto } from "$app/navigation";
-    import { adPlans, planFor, DEFAULT_PLAN_DAYS } from "$lib/adPlans";
+    import { adPlans, planFor, normalizePlanDays, DEFAULT_PLAN_DAYS } from "$lib/adPlans";
 
     // עורך דף הנחיתה + שליחה סופית - פורט מקבוצות רכישה (במקור מ"קהילה בשכונה").
     // חולק את אותה טיוטת localStorage עם ה-builder הראשי.
@@ -249,10 +249,17 @@
     let payCodeOk = $state(false);
     let payCodeError = $state(false);
     let payCodeChecking = $state(false);
-    // תקופת הפרסום שהמפרסם בוחר — עוברת לאדמין ומקבעת את ברירת המחדל באישור
+    // תקופת הפרסום שהמפרסם בוחר — עוברת לאדמין ומקבעת את ברירת המחדל באישור.
+    // נשמרת גם ל-localStorage כדי שהבילדר יציג "הפרסום ירוץ עד" לפי המסלול הזה.
+    const PLAN_DAYS_KEY = "ad_plan_days";
     let payDuration = $state(DEFAULT_PLAN_DAYS);
     const payPlan = $derived(planFor(payDuration));
     const payDurationLabel = $derived(payPlan.label);
+    /** @param {number} days */
+    function setPayDuration(days) {
+        payDuration = days;
+        try { localStorage.setItem(PLAN_DAYS_KEY, String(days)); } catch {}
+    }
     /** @param {SubmitEvent} e */
     async function tryPayCode(e) {
         e.preventDefault();
@@ -281,6 +288,10 @@
     onMount(() => {
         if (!browser) return;
         checkAccess();
+
+        // שחזור התקופה שנבחרה בביקור קודם - עקבי עם הבילדר
+        const storedPlanDays = localStorage.getItem(PLAN_DAYS_KEY);
+        if (storedPlanDays) payDuration = normalizePlanDays(storedPlanDays);
 
         try { editId = localStorage.getItem(EDIT_KEY) ?? ""; } catch {}
 
@@ -866,7 +877,7 @@
                                 type="button"
                                 class="pay-duration-btn"
                                 class:active={payDuration === plan.days}
-                                onclick={() => (payDuration = plan.days)}
+                                onclick={() => setPayDuration(plan.days)}
                             >
                                 <span class="pay-plan-label">{plan.title}</span>
                                 <span class="pay-plan-price">{plan.price} ₪</span>

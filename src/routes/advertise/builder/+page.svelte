@@ -3,6 +3,7 @@
     import { browser } from "$app/environment";
     import { goto } from "$app/navigation";
     import { adImgFit, AD_ZOOM_MIN, AD_ZOOM_MAX } from "$lib/adImageFit";
+    import { normalizePlanDays } from "$lib/adPlans";
 
     // בונה הפרסומות - פורט מקבוצות רכישה (במקור מ"קהילה בשכונה") והותאם לגמ"ח הארצי:
     // עברית בלבד, CSS רגיל (בלי Tailwind), גרדיאנטים כמחרוזות CSS.
@@ -38,6 +39,12 @@
     });
     let freeMsRemaining = $derived(freeEditUntil ? Math.max(0, freeEditUntil.getTime() - now.getTime()) : 0);
     let freeEditExpired = $derived(Boolean(freeEditUntil) && freeMsRemaining === 0);
+
+    // התקופה שנבחרה בעורך דף הנחיתה - נשמרת שם ל-localStorage, כדי
+    // ש"הפרסום ירוץ עד" ישקף את המסלול האמיתי (עד שנה) ולא חודש קבוע.
+    const PLAN_DAYS_KEY = "ad_plan_days";
+    let planDays = $state(30);
+
     /** @param {number} ms */
     function fmtCountdown(ms) {
         const totalMin = Math.floor(ms / 60000);
@@ -555,6 +562,10 @@
             if (!isNaN(d.getTime())) paidAt = d;
         }
 
+        // המסלול שנבחר; ערך לא מוכר מצטמצם למסלול ברירת המחדל (30 יום)
+        const storedPlanDays = localStorage.getItem(PLAN_DAYS_KEY);
+        if (storedPlanDays) planDays = normalizePlanDays(storedPlanDays);
+
         const tickId = window.setInterval(() => { now = new Date(); }, 60_000);
 
         /** @param {BeforeUnloadEvent} e */
@@ -777,7 +788,7 @@
                         <p class="b-cd-text">
                             נותרו <strong>{fmtCountdown(freeMsRemaining)}</strong>
                             שעות לסיום העריכה בחינם. <strong>כדאי לסיים היום!</strong>
-                            הפרסום ירוץ עד {fmtDateShort(new Date(paidAt.getTime() + 30 * 24 * 60 * 60 * 1000))}.
+                            הפרסום ירוץ עד {fmtDateShort(new Date(paidAt.getTime() + planDays * 24 * 60 * 60 * 1000))}.
                         </p>
                     </div>
                 </div>
