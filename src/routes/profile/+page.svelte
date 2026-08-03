@@ -14,6 +14,9 @@
 	// ולכן היא זהה אצל כל האדמינים ונעלמת מעצמה כשמישהו מאשר או דוחה.
 	const pending = $derived(data.pendingAds ?? []);
 
+	// יש תוכן לעמודה הרחבה (פאנל ניהול / "אולי שלך")? בלי — עמודה צרה ממורכזת.
+	const hasSide = $derived(Boolean(role) || (data.claimable?.length ?? 0) > 0);
+
 	function timeAgo(iso: string): string {
 		const ts = Date.parse(iso);
 		if (Number.isNaN(ts)) return '';
@@ -36,248 +39,99 @@
 
 <svelte:head><title>האזור האישי</title></svelte:head>
 
-<div class="min-h-[80vh] px-4 py-10" dir="rtl">
-	<!-- הכרטיס האישי מימין, והתוכן (הנכסים ולמנהל גם פאנל הניהול) לצדו —
-	     פרוס מול העיניים ולא מאחורי גלילה. -->
-	<div class="mx-auto grid w-full max-w-5xl items-start gap-6 lg:grid-cols-[19rem_minmax(0,1fr)]">
-		<!-- כרטיס אישי -->
-		<section class="rounded-3xl border border-[#3b5794] bg-[#16264d] p-6 text-center shadow-2xl">
-			<div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-3xl">
-				👤
-			</div>
-			<h1 class="text-2xl font-black text-white">{data.user.name || 'ברוך הבא'}</h1>
-			<p class="mt-1 text-sm text-gray-400">{data.user.email}</p>
-			{#if role}
-				<p class="mt-3 inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-300">
-					{role === 'super_admin' ? '★ סופר-אדמין' : 'אדמין'}
-				</p>
-			{/if}
-
-			<div class="mt-6 flex flex-col gap-3">
-				<a href="https://community.gofreeil.com/profile" class="rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-3 font-bold text-white transition hover:opacity-90">
-					🕊️ לפרופיל המלא בקהילה
-				</a>
-				<button
-					type="button"
-					onclick={() => signOut({ callbackUrl: '/' })}
-					class="rounded-2xl border border-[#3b5794] bg-[#16264d] px-4 py-3 font-bold text-gray-300 transition hover:bg-[#213569]"
-				>
-					התנתקות
-				</button>
-			</div>
-		</section>
-
-		<div class="flex flex-col gap-6">
-			<!-- זיהוי אוטומטי: גמ"חים שהטלפון שלהם תואם לשל המשתמש — "אולי שלך?".
-			     מוצג רק כשנמצאה התאמה. הבקשה עצמה נשלחת מדף הגמ"ח (כפתור "זה שלי"). -->
-			{#if data.claimable && data.claimable.length > 0}
-				<section class="rounded-3xl border border-blue-500/40 bg-blue-500/10 p-5 shadow-2xl sm:p-6">
-					<h2 class="flex items-center gap-2 text-lg font-black text-white">
-						<span aria-hidden="true">🤝</span> אולי אחד מאלה שלך?
-					</h2>
-					<p class="mt-1 text-sm text-gray-300">
-						מצאנו גמ"חים עם מספר טלפון שתואם לשלך. אם הגמ"ח שלך — פתח אותו ולחץ "כן, זה הגמ"ח שלי". אחרי אישור אדמין תוכל לערוך אותו בעצמך.
+<div class="min-h-[80vh] px-4 py-8" dir="rtl">
+	<!-- עמודה ימנית: הכרטיס האישי והנכסים שלי זה מתחת לזה — בלי חלל ריק.
+	     עמודה שמאלית (כשיש): פאנל הניהול ו"אולי שלך". -->
+	<div class="mx-auto grid w-full items-start gap-4 {hasSide ? 'max-w-5xl lg:grid-cols-[20rem_minmax(0,1fr)]' : 'max-w-sm'}">
+		<div class="flex flex-col gap-4">
+			<!-- כרטיס אישי -->
+			<section class="rounded-3xl border border-[#3b5794] bg-[#16264d] p-5 text-center shadow-2xl">
+				<div class="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-2xl">
+					👤
+				</div>
+				<h1 class="text-xl font-black text-white">{data.user.name || 'ברוך הבא'}</h1>
+				<p class="mt-0.5 text-sm text-gray-400">{data.user.email}</p>
+				{#if role}
+					<p class="mt-2 inline-block rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-black text-emerald-300">
+						{role === 'super_admin' ? '★ סופר-אדמין' : 'אדמין'}
 					</p>
-					<ul class="mt-3 flex flex-col gap-2">
-						{#each data.claimable as g (g.id)}
-							<li>
-								<a
-									href={`/gemach/${g.id}`}
-									class="flex items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-[#1c2f5a] px-4 py-3 transition hover:bg-[#2a4379]"
-								>
-									<span class="min-w-0">
-										<span class="block truncate font-bold text-white">{g.name}</span>
-										{#if g.city}<span class="text-xs text-gray-400">📍 {g.city}</span>{/if}
-									</span>
-									<span class="flex-shrink-0 text-sm font-bold text-blue-300">זה שלי ←</span>
-								</a>
-							</li>
-						{/each}
-					</ul>
-				</section>
-			{/if}
+				{/if}
 
-			<!-- פאנל הניהול חי כאן, ולא ככפתור נפרד בהדר. id="admin" נשאר כעוגן
-			     לקישור ישיר (/profile#admin). -->
-			{#if role}
-				<section
-					id="admin"
-					class="scroll-mt-28 rounded-3xl border border-emerald-500/30 bg-[#16264d] p-5 shadow-2xl sm:p-6"
-				>
-					<div class="flex flex-wrap items-center justify-between gap-3">
-						<div>
-							<h2 class="flex items-center gap-2 text-xl font-black text-white">
-								<span aria-hidden="true">🛠️</span> ניהול האתר
-							</h2>
-							<p class="mt-1 text-sm text-gray-400">כל מסכי הניהול — פרוסים כאן, בלחיצה אחת</p>
-						</div>
-						<a
-							href="/admin"
-							class="rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
-						>
-							לפאנל המלא ←
-						</a>
-					</div>
+				<div class="mt-4 flex flex-col gap-2">
+					<a href="https://community.gofreeil.com/profile" class="rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
+						🕊️ לפרופיל המלא בקהילה
+					</a>
+					<button
+						type="button"
+						onclick={() => signOut({ callbackUrl: '/' })}
+						class="rounded-xl border border-[#3b5794] bg-[#16264d] px-4 py-2 text-sm font-bold text-gray-300 transition hover:bg-[#213569]"
+					>
+						התנתקות
+					</button>
+				</div>
+			</section>
 
-					<!-- התראת אישור פרסומות — הדבר הראשון שאדמין רואה בפאנל, ונשארת
-					     כאן אצל כולם עד שמישהו מאשר/דוחה. הפריטים והכפתור זה לצד זה
-					     כדי לא להוסיף קומה שדורשת גלילה. -->
-					{#if pending.length > 0}
-						<div class="mt-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4">
-							<div class="flex flex-wrap items-center justify-between gap-3">
-								<p class="flex items-center gap-2 font-black text-rose-100">
-									<span class="relative flex h-2.5 w-2.5" aria-hidden="true">
-										<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
-										<span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500"></span>
-									</span>
-									{pending.length === 1
-										? 'פרסומת אחת ממתינה לאישור'
-										: `${pending.length} פרסומות ממתינות לאישור`}
-								</p>
-								<a
-									href="/admin/ads"
-									class="rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
-								>
-									לאישור עכשיו ←
-								</a>
-							</div>
-							<!-- הפרסומת עצמה מוצגת כאן — תמונה, כותרת ותוכן — כדי שכל אדמין
-							     יראה מיד על מה מדובר. לחיצה מובילה לכרטיס המלא במסך האישור. -->
-							<ul class="mt-3 flex flex-col gap-2">
-								{#each pending as ad (ad.id)}
-									<li>
-										<a
-											href="/admin/ads#ad-{ad.id}"
-											class="flex items-stretch overflow-hidden rounded-2xl border border-rose-500/30 bg-[#1c2f5a] transition hover:border-rose-400/70 hover:bg-[#2a4379]"
-										>
-											<span class="relative block w-28 flex-shrink-0 self-stretch overflow-hidden bg-black/30 sm:w-32">
-												{#if ad.mainImage}
-													<img
-														src={ad.mainImage}
-														alt={ad.title}
-														class="absolute inset-0 h-full w-full object-cover"
-													/>
-												{:else}
-													<span
-														class="absolute inset-0"
-														style="background: {ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}"
-													></span>
-												{/if}
-											</span>
-											<span class="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2.5">
-												<span class="truncate font-black text-white">{ad.title}</span>
-												{#if ad.subtitle}
-													<span class="truncate text-xs text-gray-300">{ad.subtitle}</span>
-												{/if}
-												{#if ad.hoverText}
-													<span class="truncate text-xs text-amber-200">{ad.hoverText}</span>
-												{/if}
-												<span class="flex flex-wrap items-center gap-2">
-													{#if ad.cta}
-														<span
-															class="rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white"
-															style="background: {ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}"
-														>{ad.cta}</span>
-													{/if}
-													<span class="truncate text-[11px] text-gray-400">
-														{ad.submittedBy.email || ad.submittedBy.name || 'מפרסם ללא זיהוי'} · {timeAgo(ad.submittedAt)}
-													</span>
-												</span>
-											</span>
-											<span class="flex items-center pe-3 text-sm font-black text-rose-300" aria-hidden="true">←</span>
-										</a>
-									</li>
-								{/each}
-							</ul>
-						</div>
-					{/if}
-
-					<!-- סטטיסטיקת הכניסות — פרוסה כאן מול העיניים, בלי מעבר ל-/admin/stats -->
-					<div class="mt-4">
-						<VisitorStatsCard months={data.gaMonths} updatedAt={data.gaUpdatedAt} nested />
-					</div>
-
-					<div class="mt-4 grid gap-3 sm:grid-cols-2">
-						{#each tiles as tile (tile.href)}
-							<a
-								href={tile.href}
-								class="rounded-2xl border border-[#3b5794] bg-[#1c2f5a] p-4 transition hover:bg-[#2a4379]"
-							>
-								<div class="text-2xl" aria-hidden="true">{tile.icon}</div>
-								<div class="mt-1 font-bold text-white">{tile.title}</div>
-								<div class="mt-0.5 text-xs text-gray-400">{tile.desc}</div>
-							</a>
-						{/each}
-					</div>
-				</section>
-			{/if}
-
-			<!-- הנכסים שלי — פרוסים כאן ולא מאחורי כפתור. הניהול המלא של כל
-			     פריט נשאר בדף שלו. -->
-			<section class="rounded-3xl border border-[#3b5794] bg-[#16264d] p-5 shadow-2xl sm:p-6">
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<h2 class="flex items-center gap-2 text-xl font-black text-white">
+			<!-- הנכסים שלי — צמוד לכרטיס האישי, ממלא את העמודה. הניהול המלא
+			     של כל פריט נשאר בדף שלו. -->
+			<section class="rounded-3xl border border-[#3b5794] bg-[#16264d] p-4 shadow-2xl">
+				<div class="flex items-center justify-between gap-2">
+					<h2 class="flex items-center gap-1.5 text-base font-black text-white">
 						<span aria-hidden="true">📢</span> הנכסים שלי
 					</h2>
-					<div class="flex flex-wrap gap-2">
-						<a href="/advertise" class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 transition-colors hover:bg-[#2a4379] hover:text-white">
-							➕ פרסומת חדשה
-						</a>
-						<a href="/advertise/manage" class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 transition-colors hover:bg-[#2a4379] hover:text-white">
-							לדף הנכסים ←
-						</a>
-					</div>
+					<a href="/advertise/manage" class="text-xs font-bold text-blue-300 transition-colors hover:text-blue-200">לדף הנכסים ←</a>
 				</div>
 
 				{#if data.gemachim.length > 0}
-					<h3 class="mt-5 mb-2 text-sm font-black text-gray-300">🤝 הגמ"חים שלי</h3>
-					<ul class="flex flex-col gap-2">
+					<h3 class="mt-3 mb-1.5 text-xs font-black text-gray-400">🤝 הגמ"חים שלי</h3>
+					<ul class="flex flex-col gap-1.5">
 						{#each data.gemachim as g (g.id)}
-							<li class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-[#3b5794] bg-[#1c2f5a] px-4 py-3">
-								<span class="text-lg" aria-hidden="true">{g.icon || '🤝'}</span>
-								<a href="/gemach/{g.id}" class="font-bold text-white hover:text-blue-300">{g.name}</a>
-								{#if g.status === 'draft'}
-									<span class="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-200">⏳ ממתין לאישור</span>
-								{:else}
-									<span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-200">● באוויר</span>
-								{/if}
-								<span class="text-xs text-gray-400">{g.categoryLabel} · 📍 {g.city}</span>
-								<a href="/gemach/{g.id}/edit" class="mr-auto rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 px-3 py-1.5 text-sm font-bold text-white transition hover:opacity-90">
-									✏️ עריכה
+							<li class="flex items-center gap-2 rounded-xl border border-[#3b5794] bg-[#1c2f5a] px-3 py-2">
+								<span class="text-base" aria-hidden="true">{g.icon || '🤝'}</span>
+								<a href="/gemach/{g.id}" class="min-w-0 flex-1">
+									<span class="block truncate text-sm font-bold text-white">{g.name}</span>
+									<span class="block truncate text-[11px] text-gray-400">
+										{#if g.status === 'draft'}<span class="font-bold text-amber-300">⏳ ממתין לאישור</span>{:else}<span class="font-bold text-emerald-300">● באוויר</span>{/if}
+										· 📍 {g.city}
+									</span>
 								</a>
+								<a href="/gemach/{g.id}/edit" class="flex-shrink-0 rounded-lg bg-gradient-to-r from-amber-500 to-pink-600 px-2 py-1 text-xs font-bold text-white transition hover:opacity-90" title="עריכה">✏️</a>
 							</li>
 						{/each}
 					</ul>
 				{/if}
 
-				<h3 class="mt-5 mb-2 text-sm font-black text-gray-300">📢 הפרסומות שלי</h3>
+				<div class="mt-3 mb-1.5 flex items-center justify-between gap-2">
+					<h3 class="text-xs font-black text-gray-400">📢 הפרסומות שלי</h3>
+					<a href="/advertise" class="text-xs font-bold text-blue-300 transition-colors hover:text-blue-200">➕ חדשה</a>
+				</div>
 				{#if data.loadFailed}
-					<div class="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm font-bold text-rose-200">
+					<div class="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-xs font-bold text-rose-200">
 						לא הצלחנו לטעון את הפרסומות שלך כרגע. רעננו את העמוד בעוד רגע.
 					</div>
 				{:else if data.ads.length === 0}
-					<p class="rounded-2xl border border-[#3b5794] bg-[#1c2f5a] px-4 py-4 text-sm text-gray-300">
+					<p class="rounded-xl border border-[#3b5794] bg-[#1c2f5a] px-3 py-2.5 text-xs text-gray-300">
 						אין לך עדיין פרסומות. <a href="/advertise" class="font-bold text-blue-300 hover:text-blue-200">לפרסום באתר ←</a>
 					</p>
 				{:else}
-					<ul class="flex flex-col gap-2">
+					<ul class="flex flex-col gap-1.5">
 						{#each data.ads as ad (ad.id)}
 							{@const sv = statusView(ad.status as AdStatusKind, ad.expiresAt)}
 							<li>
 								<a
 									href="/advertise/manage/{ad.id}"
-									class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-[#3b5794] bg-[#1c2f5a] px-4 py-3 transition-colors hover:bg-[#2a4379]"
+									class="block rounded-xl border border-[#3b5794] bg-[#1c2f5a] px-3 py-2 transition-colors hover:bg-[#2a4379]"
 								>
-									<span class="font-bold text-white">{ad.title}</span>
-									<span class="rounded-full border px-2 py-0.5 text-xs font-bold {TONE[sv.tone]}">{sv.label}</span>
-									{#if needsRenewal(ad.status as AdStatusKind, ad.expiresAt)}
-										<span class="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-200">⏳ לחידוש</span>
-									{/if}
-									<span class="text-xs text-gray-400">{sv.hint}</span>
-									<span class="mr-auto flex gap-3 text-xs text-gray-400">
+									<span class="flex items-center justify-between gap-2">
+										<span class="truncate text-sm font-bold text-white">{ad.title}</span>
+										<span class="flex-shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold {TONE[sv.tone]}">{sv.label}</span>
+									</span>
+									<span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-400">
 										<span>צפיות <b class="font-black tabular-nums text-white">{ad.totals.impressions}</b></span>
 										<span>הקלקות <b class="font-black tabular-nums text-white">{ad.totals.clicks}</b></span>
 										<span>פניות <b class="font-black tabular-nums text-emerald-300">{ad.totals.leads}</b></span>
+										{#if needsRenewal(ad.status as AdStatusKind, ad.expiresAt)}
+											<span class="font-bold text-amber-300">⏳ לחידוש</span>
+										{/if}
 									</span>
 								</a>
 							</li>
@@ -286,5 +140,155 @@
 				{/if}
 			</section>
 		</div>
+
+		{#if hasSide}
+			<div class="flex flex-col gap-4">
+				<!-- זיהוי אוטומטי: גמ"חים שהטלפון שלהם תואם לשל המשתמש — "אולי שלך?".
+				     מוצג רק כשנמצאה התאמה. הבקשה עצמה נשלחת מדף הגמ"ח (כפתור "זה שלי"). -->
+				{#if data.claimable && data.claimable.length > 0}
+					<section class="rounded-3xl border border-blue-500/40 bg-blue-500/10 p-4 shadow-2xl sm:p-5">
+						<h2 class="flex items-center gap-2 text-base font-black text-white">
+							<span aria-hidden="true">🤝</span> אולי אחד מאלה שלך?
+						</h2>
+						<p class="mt-1 text-xs text-gray-300">
+							מצאנו גמ"חים עם מספר טלפון שתואם לשלך. אם הגמ"ח שלך — פתח אותו ולחץ "כן, זה הגמ"ח שלי". אחרי אישור אדמין תוכל לערוך אותו בעצמך.
+						</p>
+						<ul class="mt-2.5 flex flex-col gap-1.5">
+							{#each data.claimable as g (g.id)}
+								<li>
+									<a
+										href={`/gemach/${g.id}`}
+										class="flex items-center justify-between gap-3 rounded-xl border border-blue-500/30 bg-[#1c2f5a] px-3 py-2 transition hover:bg-[#2a4379]"
+									>
+										<span class="min-w-0">
+											<span class="block truncate text-sm font-bold text-white">{g.name}</span>
+											{#if g.city}<span class="text-[11px] text-gray-400">📍 {g.city}</span>{/if}
+										</span>
+										<span class="flex-shrink-0 text-xs font-bold text-blue-300">זה שלי ←</span>
+									</a>
+								</li>
+							{/each}
+						</ul>
+					</section>
+				{/if}
+
+				<!-- פאנל הניהול חי כאן, ולא ככפתור נפרד בהדר. id="admin" נשאר כעוגן
+				     לקישור ישיר (/profile#admin). -->
+				{#if role}
+					<section
+						id="admin"
+						class="scroll-mt-28 rounded-3xl border border-emerald-500/30 bg-[#16264d] p-4 shadow-2xl sm:p-5"
+					>
+						<div class="flex flex-wrap items-center justify-between gap-2">
+							<div>
+								<h2 class="flex items-center gap-2 text-lg font-black text-white">
+									<span aria-hidden="true">🛠️</span> ניהול האתר
+								</h2>
+								<p class="mt-0.5 text-xs text-gray-400">כל מסכי הניהול — פרוסים כאן, בלחיצה אחת</p>
+							</div>
+							<a
+								href="/admin"
+								class="rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg transition hover:opacity-90"
+							>
+								לפאנל המלא ←
+							</a>
+						</div>
+
+						<!-- התראת אישור פרסומות — הדבר הראשון שאדמין רואה בפאנל, ונשארת
+						     כאן אצל כולם עד שמישהו מאשר/דוחה. הפריטים והכפתור זה לצד זה
+						     כדי לא להוסיף קומה שדורשת גלילה. -->
+						{#if pending.length > 0}
+							<div class="mt-3 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-3.5">
+								<div class="flex flex-wrap items-center justify-between gap-3">
+									<p class="flex items-center gap-2 font-black text-rose-100">
+										<span class="relative flex h-2.5 w-2.5" aria-hidden="true">
+											<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
+											<span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+										</span>
+										{pending.length === 1
+											? 'פרסומת אחת ממתינה לאישור'
+											: `${pending.length} פרסומות ממתינות לאישור`}
+									</p>
+									<a
+										href="/admin/ads"
+										class="rounded-full bg-gradient-to-r from-rose-600 to-pink-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg transition hover:opacity-90"
+									>
+										לאישור עכשיו ←
+									</a>
+								</div>
+								<!-- הפרסומת עצמה מוצגת כאן — תמונה, כותרת ותוכן — כדי שכל אדמין
+								     יראה מיד על מה מדובר. לחיצה מובילה לכרטיס המלא במסך האישור. -->
+								<ul class="mt-3 flex flex-col gap-2">
+									{#each pending as ad (ad.id)}
+										<li>
+											<a
+												href="/admin/ads#ad-{ad.id}"
+												class="flex items-stretch overflow-hidden rounded-2xl border border-rose-500/30 bg-[#1c2f5a] transition hover:border-rose-400/70 hover:bg-[#2a4379]"
+											>
+												<span class="relative block w-28 flex-shrink-0 self-stretch overflow-hidden bg-black/30 sm:w-32">
+													{#if ad.mainImage}
+														<img
+															src={ad.mainImage}
+															alt={ad.title}
+															class="absolute inset-0 h-full w-full object-cover"
+														/>
+													{:else}
+														<span
+															class="absolute inset-0"
+															style="background: {ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}"
+														></span>
+													{/if}
+												</span>
+												<span class="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2.5">
+													<span class="truncate font-black text-white">{ad.title}</span>
+													{#if ad.subtitle}
+														<span class="truncate text-xs text-gray-300">{ad.subtitle}</span>
+													{/if}
+													{#if ad.hoverText}
+														<span class="truncate text-xs text-amber-200">{ad.hoverText}</span>
+													{/if}
+													<span class="flex flex-wrap items-center gap-2">
+														{#if ad.cta}
+															<span
+																class="rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white"
+																style="background: {ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}"
+															>{ad.cta}</span>
+														{/if}
+														<span class="truncate text-[11px] text-gray-400">
+															{ad.submittedBy.email || ad.submittedBy.name || 'מפרסם ללא זיהוי'} · {timeAgo(ad.submittedAt)}
+														</span>
+													</span>
+												</span>
+												<span class="flex items-center pe-3 text-sm font-black text-rose-300" aria-hidden="true">←</span>
+											</a>
+										</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+
+						<!-- סטטיסטיקת הכניסות — פרוסה כאן מול העיניים, בלי מעבר ל-/admin/stats -->
+						<div class="mt-3">
+							<VisitorStatsCard months={data.gaMonths} updatedAt={data.gaUpdatedAt} nested />
+						</div>
+
+						<div class="mt-3 grid gap-2 sm:grid-cols-2">
+							{#each tiles as tile (tile.href)}
+								<a
+									href={tile.href}
+									class="flex items-center gap-3 rounded-xl border border-[#3b5794] bg-[#1c2f5a] px-3 py-2.5 transition hover:bg-[#2a4379]"
+								>
+									<span class="text-xl" aria-hidden="true">{tile.icon}</span>
+									<span class="min-w-0">
+										<span class="block truncate text-sm font-bold text-white">{tile.title}</span>
+										<span class="block truncate text-[11px] text-gray-400">{tile.desc}</span>
+									</span>
+								</a>
+							{/each}
+						</div>
+					</section>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </div>

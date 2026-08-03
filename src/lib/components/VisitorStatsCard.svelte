@@ -55,10 +55,10 @@
     }
 </script>
 
-<div class="space-y-4 rounded-2xl border border-[#3b5794] {nested ? 'bg-[#1c2f5a]' : 'bg-[#16264d]'} p-4 sm:p-5">
+<div class="space-y-3 rounded-2xl border border-[#3b5794] {nested ? 'bg-[#1c2f5a]' : 'bg-[#16264d]'} p-4">
     <div>
-        <h2 class="text-xl font-black text-white">📈 סטטיסטיקת כניסות</h2>
-        <p class="mt-1 text-sm text-gray-400">
+        <h2 class="text-base font-black text-white">📈 סטטיסטיקת כניסות</h2>
+        <p class="mt-0.5 text-xs text-gray-400">
             כמה צפיות היו לאתר בכל חודש (מתוך Google Analytics). הנתונים מתעדכנים אחת לשעה.
             {#if updatedAt}<span class="text-gray-500">עודכן {updatedAgo(updatedAt)}.</span>{/if}
         </p>
@@ -71,41 +71,44 @@
     {:else if chartMonths.length === 0}
         <p class="text-sm text-gray-400">אין עדיין נתונים — הם יופיעו אחרי שהאתר יצבור תנועה.</p>
     {:else}
-        <!-- גרף עמודות — צפיות לפי חודש, כרונולוגי -->
-        <div class="flex items-stretch gap-1.5">
-            {#each chartMonths as m (m.yearMonth)}
-                <div class="flex min-w-0 flex-1 flex-col items-center" title="{monthLabel(m.yearMonth)}: {fmt.format(m.pageViews)} צפיות">
-                    <div class="mb-1 text-[10px] font-bold tabular-nums text-gray-300">{fmt.format(m.pageViews)}</div>
-                    <div class="flex h-32 w-full items-end">
-                        <div
-                            class="w-full rounded-t-md bg-gradient-to-t from-emerald-600 to-teal-400 transition-all {m.yearMonth === currentYm ? 'shadow-[0_0_12px_rgba(16,185,129,0.5)]' : ''}"
-                            style="height: {Math.max(4, Math.round((m.pageViews / maxViews) * 100))}%"
-                        ></div>
+        <!-- גרף עמודות — צפיות לפי חודש, כרונולוגי. מוצג רק כשיש לפחות
+             שני חודשים להשוואה; חודש בודד הוא סתם מלבן ענק שכבר מיוצג בפירוט. -->
+        {#if chartMonths.length > 1}
+            <div class="flex items-stretch justify-center gap-1.5">
+                {#each chartMonths as m (m.yearMonth)}
+                    <div class="flex min-w-0 max-w-16 flex-1 flex-col items-center" title="{monthLabel(m.yearMonth)}: {fmt.format(m.pageViews)} צפיות">
+                        <div class="mb-1 text-[10px] font-bold tabular-nums text-gray-300">{fmt.format(m.pageViews)}</div>
+                        <div class="flex h-24 w-full items-end">
+                            <div
+                                class="w-full rounded-t-md bg-gradient-to-t from-emerald-600 to-teal-400 transition-all {m.yearMonth === currentYm ? 'shadow-[0_0_12px_rgba(16,185,129,0.5)]' : ''}"
+                                style="height: {Math.max(4, Math.round((m.pageViews / maxViews) * 100))}%"
+                            ></div>
+                        </div>
+                        <div class="mt-1 whitespace-nowrap text-[10px] {m.yearMonth === currentYm ? 'font-bold text-emerald-300' : 'text-gray-400'}">
+                            {monthShort(m.yearMonth)}
+                        </div>
                     </div>
-                    <div class="mt-1 whitespace-nowrap text-[10px] {m.yearMonth === currentYm ? 'font-bold text-emerald-300' : 'text-gray-400'}">
-                        {monthShort(m.yearMonth)}
-                    </div>
-                </div>
-            {/each}
-        </div>
+                {/each}
+            </div>
+        {/if}
 
         <!-- פירוט חודשי — חדש→ישן -->
-        <div class="space-y-3 border-t border-white/10 pt-4">
+        <div class="space-y-2 {chartMonths.length > 1 ? 'border-t border-white/10 pt-3' : ''}">
             {#each listMonths as m (m.yearMonth)}
                 <div class="flex items-center gap-3">
-                    <div class="w-28 flex-shrink-0 text-sm font-bold text-white">
+                    <div class="w-24 flex-shrink-0 text-xs font-bold text-white">
                         {monthLabel(m.yearMonth)}
                         {#if m.yearMonth === currentYm}
                             <span class="mt-0.5 block text-[10px] font-semibold text-emerald-300">● מתעדכן</span>
                         {/if}
                     </div>
-                    <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-[#16264d]">
+                    <div class="h-2 flex-1 overflow-hidden rounded-full bg-[#16264d]">
                         <div
                             class="h-full rounded-full bg-gradient-to-l from-emerald-500 to-teal-400"
                             style="width:{Math.max(3, Math.round((m.pageViews / maxViews) * 100))}%"
                         ></div>
                     </div>
-                    <div class="w-24 flex-shrink-0 text-left text-sm font-black text-emerald-300">
+                    <div class="w-20 flex-shrink-0 text-left text-xs font-black text-emerald-300">
                         {fmt.format(m.pageViews)} צפיות
                     </div>
                 </div>
