@@ -5,6 +5,7 @@ import { getMergedGemachim } from '$lib/server/gemachSource';
 import { getPinnedGemachim } from '$lib/server/pinned';
 import { hasValidCoords } from '$lib/server/geocode';
 import { getMonthlyVisits } from '$lib/server/visitStats';
+import { getMonthlyVisitorStats } from '$lib/server/visitorStats';
 import { listAllForAdmin } from '$lib/server/adsStore';
 import { countDraftGemachim } from '$lib/server/discoveryStore';
 import { rightAds } from '$lib/rightAdsData';
@@ -43,7 +44,7 @@ async function buildAdsSummary(): Promise<AdsSummary | null> {
 export const load: PageServerLoad = async ({ locals }) => {
 	await getAdminContext(locals);
 
-	const [all, categories, admins, visits, adsSummary, discoveryDrafts] = await Promise.all([
+	const [all, categories, admins, visits, adsSummary, discoveryDrafts, gaMonthly] = await Promise.all([
 		getMergedGemachim(),
 		getCategories(),
 		getAdmins(),
@@ -51,7 +52,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		// תמצית הפרסומות — לשני התפקידים; מסך /admin/ads פתוח לכל אדמין
 		buildAdsSummary(),
 		// טיוטות שאוטומציית הגילוי ייבאה וממתינות לאישור (לשני התפקידים)
-		countDraftGemachim().catch(() => 0)
+		countDraftGemachim().catch(() => 0),
+		// סטטיסטיקת הכניסות מ-GA — מוצגת פרוסה גם כאן, לא רק ב-/admin/stats
+		getMonthlyVisitorStats().catch(() => null)
 	]);
 
 	const managed = all.filter(g => g.managed);
@@ -60,6 +63,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		visits,
+		gaMonths: gaMonthly?.rows ?? null,
+		gaUpdatedAt: gaMonthly?.updatedAt ?? null,
 		adsSummary,
 		discoveryDrafts,
 		stats: {

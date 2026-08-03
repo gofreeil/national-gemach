@@ -1,4 +1,5 @@
 <script lang="ts">
+    import VisitorStatsCard from '$lib/components/VisitorStatsCard.svelte';
     let { data } = $props();
     const s = $derived(data.stats);
     const role = $derived(data.admin.role as 'super_admin' | 'admin');
@@ -41,6 +42,9 @@
             <div class="text-xs text-gray-400 mt-1">אדמינים ב-DB</div>
         </div>
     </div>
+
+    <!-- סטטיסטיקת הכניסות מ-GA — פרוסה כאן, אותו רכיב כמו /admin/stats והאזור האישי -->
+    <VisitorStatsCard months={data.gaMonths} updatedAt={data.gaUpdatedAt} />
 
     <!-- גרף כניסות חודשיות -->
     <div class="card p-5">

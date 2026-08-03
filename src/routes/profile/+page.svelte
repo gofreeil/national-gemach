@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { signOut } from '@auth/sveltekit/client';
 	import { adminTiles, type AdminNavRole } from '$lib/adminNav';
+	import VisitorStatsCard from '$lib/components/VisitorStatsCard.svelte';
 	import { statusView, needsRenewal, type AdStatusKind } from '$lib/adOwner';
 
 	let { data } = $props();
@@ -190,6 +191,11 @@
 							</ul>
 						</div>
 					{/if}
+
+					<!-- סטטיסטיקת הכניסות — פרוסה כאן מול העיניים, בלי מעבר ל-/admin/stats -->
+					<div class="mt-4">
+						<VisitorStatsCard months={data.gaMonths} updatedAt={data.gaUpdatedAt} nested />
+					</div>
 
 					<div class="mt-4 grid gap-3 sm:grid-cols-2">
 						{#each tiles as tile (tile.href)}

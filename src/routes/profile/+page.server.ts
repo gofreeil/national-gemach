@@ -4,6 +4,7 @@ import { isOwner } from '$lib/server/admin';
 import { getOwnerAssets } from '$lib/server/ownerAssets';
 import { listPendingAdsPreview } from '$lib/server/adsStore';
 import { findClaimableByPhone, countPendingClaims } from '$lib/server/claimsStore';
+import { getMonthlyVisitorStats } from '$lib/server/visitorStats';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
 	const session = await locals.auth();
@@ -25,9 +26,11 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	// זיהוי אוטומטי: גמ"חים שהטלפון שלהם תואם לטלפון של המשתמש — "האם זה שלך?".
 	// ריק כשאין למשתמש טלפון בסשן (נפוץ). pendingClaims — מונה בקשות הבעלות
 	// שממתינות לאישור, להתראה לאדמינים (בדומה ל-pendingAds).
-	const [claimable, pendingClaims] = await Promise.all([
+	// סטטיסטיקת הכניסות (GA) נטענת רק לאדמינים — מוצגת פרוסה בפאנל הניהול שבדף
+	const [claimable, pendingClaims, gaMonthly] = await Promise.all([
 		findClaimableByPhone(session.user),
-		adminRole ? countPendingClaims() : Promise.resolve(0)
+		adminRole ? countPendingClaims() : Promise.resolve(0),
+		adminRole ? getMonthlyVisitorStats().catch(() => null) : Promise.resolve(null)
 	]);
 
 	return {
@@ -38,6 +41,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		gemachim: assets.gemachim,
 		pendingAds,
 		claimable,
-		pendingClaims
+		pendingClaims,
+		gaMonths: gaMonthly?.rows ?? null,
+		gaUpdatedAt: gaMonthly?.updatedAt ?? null
 	};
 };
