@@ -20,6 +20,8 @@ export interface AdminNavItem {
     desc: string;
     /** האם הקישור פעיל רק בהתאמה מדויקת (ולא גם למסלולי-בן) */
     exact: boolean;
+    /** מוצג רק בסרגל הניווט של מסכי /admin — לא כאריח בפאנל שבאזור האישי */
+    navOnly?: boolean;
 }
 
 /** המסכים שהמשתמש רשאי לראות, לפי תפקיד. owner = הבעלים עצמו, לא כל סופר-אדמין. */
@@ -34,7 +36,8 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
             desc: 'עריכה, סידור, הצמדה ומחיקה'
         },
         {
-            href: '/admin/gemachim/new', icon: '➕', label: 'הוספת גמ"ח', exact: true,
+            // באזור האישי מיותר — ההוספה נגישה ממסך "ניהול גמ"חים"
+            href: '/admin/gemachim/new', icon: '➕', label: 'הוספת גמ"ח', exact: true, navOnly: true,
             title: 'הוספת גמ"ח חדש',
             desc: 'שם, קטגוריה, עיר, טלפון, תגים ועוד'
         },
@@ -64,7 +67,8 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
             desc: 'אישור בעלים שמבקשים לנהל גמ"ח שהעליתם'
         },
         {
-            href: '/admin/stats', icon: '📈', label: 'סטטיסטיקה', exact: false,
+            // באזור האישי הנתונים כבר פרוסים בכרטיס ה-GA הפתוח — אריח מיותר
+            href: '/admin/stats', icon: '📈', label: 'סטטיסטיקה', exact: false, navOnly: true,
             title: 'סטטיסטיקת כניסות',
             desc: 'כמה כניסות היו לאתר בכל חודש'
         },
@@ -85,7 +89,7 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
     ];
 }
 
-/** האריחים לפאנל הפרוס באזור האישי — אותה רשימה; שם נפרד לקריאוּת אצל הצרכן */
+/** האריחים לפאנל הפרוס באזור האישי — בלי מה שמסומן לניווט בלבד */
 export function adminTiles(role: AdminNavRole | null, owner = false): AdminNavItem[] {
-    return adminNav(role, owner);
+    return adminNav(role, owner).filter((item) => !item.navOnly);
 }
