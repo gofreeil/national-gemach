@@ -15,6 +15,7 @@
 
 import { strapiGet, strapiPost, strapiPut, strapiDelete } from './strapiClient.js';
 import { DEFAULT_PLAN_DAYS, normalizePlanDays } from '../adPlans.js';
+import { parseAdImageFit, type AdImageFit } from '../adImageFit.js';
 
 const AD_CATEGORY = '__ng_ad';
 export const DEFAULT_DURATION_DAYS = DEFAULT_PLAN_DAYS;
@@ -48,6 +49,8 @@ export interface SubmittedAd {
     gradient: string;           // מחרוזת CSS מלאה (linear-gradient(...))
     logo: string;               // data URI
     mainImage: string;          // data URI
+    /** מיקום+זום של התמונה הראשית במשבצת (מהבילדר) */
+    mainImageFit: AdImageFit;
     landing: Partial<AdLanding>;
     submittedBy: { id: string; email: string; name: string };
     submittedAt: string;
@@ -73,6 +76,7 @@ export interface ApprovedAdPublic {
     hover: string;
     gradient: string;
     mainImage: string;
+    mainImageFit: AdImageFit;
 }
 
 interface StrapiItem {
@@ -107,6 +111,7 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         gradient: x.gradient ?? '',
         logo: x.logo ?? '',
         mainImage: x.main_image ?? '',
+        mainImageFit: parseAdImageFit(x.main_image_fit),
         landing: x.landing ?? {},
         submittedBy: {
             id: x.submitted_by?.id ?? '',
@@ -230,6 +235,7 @@ export async function submitAd(payload: {
     gradient?: string;
     logo?: string;
     mainImage?: string;
+    mainImageFit?: unknown;
     landing?: Partial<AdLanding>;
     submittedBy?: { id: string; email: string; name: string };
     payment?: string;
@@ -247,6 +253,7 @@ export async function submitAd(payload: {
                 gradient:     payload.gradient ?? '',
                 logo:         payload.logo ?? '',
                 main_image:   payload.mainImage ?? '',
+                main_image_fit: parseAdImageFit(payload.mainImageFit),
                 landing:      payload.landing ?? {},
                 submitted_by: payload.submittedBy ?? { id: '', email: '', name: '' },
                 submitted_at: new Date().toISOString(),
@@ -290,6 +297,7 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
                 hover: a.hoverText,
                 gradient: a.gradient,
                 mainImage: a.mainImage,
+                mainImageFit: a.mainImageFit,
             }));
         approvedCache = { at: Date.now(), list };
         return list;
@@ -370,6 +378,7 @@ export async function updateAdContent(
         gradient?: string;
         logo?: string;
         mainImage?: string;
+        mainImageFit?: unknown;
         landing?: Partial<AdLanding>;
     },
 ): Promise<void> {
@@ -387,6 +396,9 @@ export async function updateAdContent(
                 gradient: patch.gradient ?? existing.gradient ?? '',
                 logo: patch.logo ?? '',
                 main_image: patch.mainImage ?? existing.main_image ?? '',
+                main_image_fit: patch.mainImageFit !== undefined
+                    ? parseAdImageFit(patch.mainImageFit)
+                    : (existing.main_image_fit ?? parseAdImageFit(undefined)),
                 landing: { ...((existing.landing ?? {}) as object), ...(patch.landing ?? {}) },
                 edited_at: new Date().toISOString(),
             },

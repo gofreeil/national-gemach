@@ -47,6 +47,8 @@
     let hoverText = $state("");
     let cta = $state("הקלק לפרטים והזמנות");
     let mainImage = $state("");
+    // מיקום+זום שנבחרו בבילדר — עוברים כמו-שהם אל המודעה בשליחה
+    let mainImageFit = $state({ x: 50, y: 50, z: 1 });
     let logo = $state("");
     let logoShape = $state(/** @type {'square' | 'circle'} */ ("square"));
     let gradient = $state("linear-gradient(135deg, #f59e0b, #ea580c)");
@@ -145,7 +147,9 @@
             alert("נא להעלות קובץ תמונה");
             return;
         }
-        const MAX_BYTES = 5 * 1024 * 1024;
+        // תקרת הבקשה ל-Strapi היא ~1MB לכל המודעה יחד — תמונת נחיתה/מוצר
+        // חייבת להישאר קטנה בהרבה (היה 5MB, והשליחה נפלה על 413)
+        const MAX_BYTES = 300 * 1024;
         const { dataUrl, wasCompressed, originalMB, finalMB } = await compressImageToFit(file, MAX_BYTES);
         if (wasCompressed) showCompressNotice(originalMB, finalMB);
         if (target === "landing") {
@@ -318,6 +322,11 @@
                     hoverText = d.hoverText ?? "";
                     cta = d.cta ?? cta;
                     mainImage = d.mainImage ?? "";
+                    mainImageFit = {
+                        x: typeof d.mainImageObjectX === "number" ? d.mainImageObjectX : 50,
+                        y: typeof d.mainImageObjectY === "number" ? d.mainImageObjectY : 50,
+                        z: typeof d.mainImageZoom === "number" ? d.mainImageZoom : 1,
+                    };
                     logo = d.logo ?? "";
                     logoShape = d.logoShape ?? "square";
                     gradient = d.gradient ?? gradient;
@@ -387,6 +396,69 @@
         return "השליחה נכשלה - נסו שוב בעוד רגע";
     }
 
+    // ===== שמירה על תקרת הבקשה של Strapi (~1MB koa-body) =====
+    // כל המודעה — תמונות data-URI + טקסטים — נשלחת בבקשת JSON אחת. חבילה
+    // גדולה מהתקרה מוחזרת 413 והמפרסם רואה רק "השליחה נכשלה". לכן לפני
+    // השליחה מודדים את הגוף בפועל, ואם צריך מכווצים את התמונה הגדולה
+    // ביותר שוב ושוב עד שהכול נכנס.
+    const BODY_LIMIT = 900_000;      // תווים ≈ בייטים (data-URI הוא ASCII)
+    const MIN_IMG_CHARS = 160_000;   // מתחת לזה כבר לא מכווצים תמונה בודדת
+
+    /** @param {unknown} obj */
+    function bodyBytes(obj) {
+        return new Blob([JSON.stringify(obj)]).size;
+    }
+
+    /** דחיסה מחדש של data-URI קיים אל מתחת ליעד (אורך מחרוזת בתווים)
+     * @param {string} dataUrl
+     * @param {number} maxChars */
+    async function recompressDataUrl(dataUrl, maxChars) {
+        try {
+            const img = new Image();
+            img.src = dataUrl;
+            await new Promise((resolve, reject) => { img.onload = () => resolve(undefined); img.onerror = () => reject(new Error("image load failed")); });
+            let w = img.naturalWidth, h = img.naturalHeight;
+            let quality = 0.75;
+            let out = dataUrl;
+            for (let attempt = 0; attempt < 12; attempt++) {
+                const canvas = document.createElement("canvas");
+                canvas.width = w; canvas.height = h;
+                const c = canvas.getContext("2d");
+                if (!c) return dataUrl;
+                c.drawImage(img, 0, 0, w, h);
+                out = canvas.toDataURL("image/jpeg", quality);
+                if (out.length <= maxChars) return out;
+                if (quality > 0.45) quality -= 0.1;
+                else { w = Math.round(w * 0.8); h = Math.round(h * 0.8); quality = 0.6; }
+            }
+            return out;
+        } catch {
+            return dataUrl;
+        }
+    }
+
+    /** מכווץ את התמונות בחבילה (הגדולה קודם) עד שהגוף נכנס מתחת לתקרה.
+     * הלוגו לא נגעים בו — הוא קטן ממילא ודחיסת JPEG הייתה מוחקת שקיפות.
+     * @param {any} payload */
+    async function shrinkPayloadImages(payload) {
+        for (let round = 0; round < 15 && bodyBytes(payload) > BODY_LIMIT; round++) {
+            /** @type {Array<{ cur: string, apply: (v: string) => void }>} */
+            const imgs = [];
+            /** @param {string} cur @param {(v: string) => void} apply */
+            const push = (cur, apply) => {
+                if (typeof cur === "string" && cur.startsWith("data:image/")) imgs.push({ cur, apply });
+            };
+            push(payload.mainImage, (v) => { payload.mainImage = v; });
+            push(payload.landing?.image, (v) => { payload.landing.image = v; });
+            for (const p of payload.landing?.products ?? []) push(p.image, (v) => { p.image = v; });
+            imgs.sort((a, b) => b.cur.length - a.cur.length);
+            const big = imgs[0];
+            if (!big || big.cur.length <= MIN_IMG_CHARS) return bodyBytes(payload) <= BODY_LIMIT;
+            big.apply(await recompressDataUrl(big.cur, Math.max(MIN_IMG_CHARS, Math.floor(big.cur.length * 0.6))));
+        }
+        return bodyBytes(payload) <= BODY_LIMIT;
+    }
+
     async function submitAd() {
         if (!canSubmit || submitting) return;
         submitting = true;
@@ -394,19 +466,24 @@
         try {
             const payload = {
                 title, subtitle, hoverText, cta, gradient,
-                logo, mainImage,
+                logo, mainImage, mainImageFit,
                 landing: {
                     headline: landingHeadline,
                     pitch: landingPitch,
                     extended: landingExtended,
                     image: landingImage,
                     advantages: landingAdvantages,
-                    uniqueness, phone, whatsapp, website, email, address, hours, products,
+                    uniqueness, phone, whatsapp, website, email, address, hours,
+                    // עותק עמוק — כיווץ תמונות מוצר לא ישנה את המצב שעל המסך
+                    products: products.map((p) => ({ ...p })),
                 },
                 // הקוד עצמו נשלח לשרת והוא מאמת אותו שוב — הדגל לא נקבע בדפדפן
                 ownerCode: payCodeOk ? payCode : "",
                 requestedDurationDays: payDuration,
             };
+            if (!(await shrinkPayloadImages(payload))) {
+                throw new Error("התמונות כבדות מדי לשליחה אחת - הקטינו את התמונה הראשית או תמונות המוצרים ונסו שוב");
+            }
             // עריכת מודעה קיימת מחליפה את התוכן שלה; השאר (סטטוס, תוקף,
             // מסלול) נקבע בזמנו ע"י האדמין ולא נשלח מכאן.
             const res = editId

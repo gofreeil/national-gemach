@@ -20,6 +20,8 @@ export interface ApprovedAd {
     hover: string;
     gradient: string;   // מחרוזת CSS מלאה (linear-gradient(...))
     mainImage: string;  // data URI
+    /** מיקום+זום מהבילדר; אופציונלי — קאש ישן בדפדפן עוד בלעדיו */
+    mainImageFit?: { x: number; y: number; z: number };
 }
 
 export type AdSlot =

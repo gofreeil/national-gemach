@@ -40,10 +40,15 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
             gradient: payload.gradient,
             logo: payload.logo ?? '',
             mainImage: payload.mainImage,
+            mainImageFit: payload.mainImageFit,
             landing: normalizeLanding(payload.landing),
         });
     } catch (err) {
         console.error('ads PUT failed:', err);
+        // תקרת koa-body של Strapi (~1MB) — שגיאה שהמפרסם יכול לתקן בעצמו
+        if (err instanceof Error && err.message.includes('→ 413')) {
+            throw error(413, 'התמונות כבדות מדי — הקטינו תמונה ונסו שוב');
+        }
         throw error(502, 'העדכון נכשל — נסו שוב בעוד רגע');
     }
 

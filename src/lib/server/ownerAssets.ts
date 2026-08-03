@@ -31,6 +31,7 @@ export interface OwnerAdView {
     status: string;
     gradient: string;
     mainImage: string;
+    mainImageFit: { x: number; y: number; z: number };
     submittedAt: string;
     editedAt: string | null;
     expiresAt: string | null;
@@ -88,6 +89,7 @@ export async function getOwnerAssets(user: OwnerSessionLike): Promise<OwnerAsset
             status: a.status,
             gradient: a.gradient,
             mainImage: a.mainImage,
+            mainImageFit: a.mainImageFit,
             submittedAt: a.submittedAt,
             editedAt: a.editedAt,
             expiresAt: a.expiresAt,

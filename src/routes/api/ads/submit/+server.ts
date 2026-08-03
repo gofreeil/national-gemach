@@ -45,6 +45,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             gradient: payload.gradient,
             logo: payload.logo ?? '',
             mainImage: payload.mainImage,
+            mainImageFit: payload.mainImageFit,
             landing: normalizeLanding(payload.landing),
         });
         // התראה לבעלים על שימוש בקוד — לא חוסמת ולא מפילה את ההגשה
@@ -58,6 +59,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         return json({ ok: true, id: ad.id, status: ad.status });
     } catch (err) {
         console.error('ads/submit failed:', err);
+        // תקרת koa-body של Strapi (~1MB) — שגיאה שהמפרסם יכול לתקן בעצמו
+        if (err instanceof Error && err.message.includes('→ 413')) {
+            throw error(413, 'התמונות כבדות מדי — הקטינו תמונה ונסו שוב');
+        }
         throw error(502, 'השליחה נכשלה — נסו שוב בעוד רגע');
     }
 };

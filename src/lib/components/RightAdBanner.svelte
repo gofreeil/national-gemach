@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { adSlots, loadApprovedAds } from "$lib/adSlots";
     import { markAdSeen, trackAdClick } from "$lib/adTrack";
+    import { adImgFit, parseAdImageFit } from "$lib/adImageFit";
 
     const PER_VIEW = 4;      // כמה משבצות נראות בטור בו-זמנית
     const VIEW_MS = 14000;   // כמה זמן כל קבוצה נשארת על המסך (החלפה איטית)
@@ -73,12 +74,14 @@
                     <div class="flex-1 relative overflow-hidden bg-black/30">
                         {#if item.ad.mainImage}
                             <!-- בריחוף העכבר התמונה נמוגה ומפנה מקום לתוכן שהמפרסם כתב -->
+                            <!-- המיקום/זום שנבחרו בבילדר מוחלים גם כאן — הדמו הוא מה שרואים -->
                             <img
                                 src={item.ad.mainImage}
                                 alt={item.ad.title}
                                 loading="lazy"
                                 decoding="async"
                                 class="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 group-hover:opacity-0"
+                                use:adImgFit={parseAdImageFit(item.ad.mainImageFit)}
                             />
                         {/if}
                         <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2 pt-8 text-center transition-opacity duration-700 group-hover:opacity-0">

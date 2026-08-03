@@ -10,6 +10,7 @@
         statusView, fmtDate, ctr, daysLeft, needsRenewal, isExpired,
         RENEW_WARNING_DAYS, type AdStatusKind,
     } from '$lib/adOwner';
+    import { adImgFit, parseAdImageFit } from '$lib/adImageFit';
 
     let { data } = $props();
     const ad = $derived(data.ad);
@@ -57,8 +58,9 @@
             logoPosition: 'right',
             logoPositionExplicit: false,
             mainImage: ad.mainImage ?? '',
-            mainImageObjectX: 50,
-            mainImageObjectY: 50,
+            mainImageObjectX: ad.mainImageFit?.x ?? 50,
+            mainImageObjectY: ad.mainImageFit?.y ?? 50,
+            mainImageZoom: ad.mainImageFit?.z ?? 1,
             title: ad.title ?? '',
             titleColor: '#ffffff',
             titleOffsetY: 0,
@@ -155,10 +157,10 @@
 
             <!-- תצוגה מקדימה של הבאנר כפי שהוא מוצג באתר -->
             <div class="w-full flex-shrink-0 md:w-56">
-                <div class="overflow-hidden rounded-xl border border-[#3b5794]"
+                <div class="relative h-40 overflow-hidden rounded-xl border border-[#3b5794] md:h-48"
                      style="background: {ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}">
                     {#if ad.mainImage}
-                        <img src={ad.mainImage} alt="" class="h-40 w-full object-cover md:h-48" />
+                        <img src={ad.mainImage} alt="" class="h-full w-full object-cover" use:adImgFit={parseAdImageFit(ad.mainImageFit)} />
                     {:else}
                         <div class="flex h-40 items-center justify-center text-5xl md:h-48" aria-hidden="true">📢</div>
                     {/if}
