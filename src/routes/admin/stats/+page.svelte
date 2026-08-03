@@ -23,12 +23,12 @@
     }
 </script>
 
-<svelte:head><title>סטטיסטיקת גולשים – פאנל ניהול</title></svelte:head>
+<svelte:head><title>סטטיסטיקת כניסות – פאנל ניהול</title></svelte:head>
 
 <div class="space-y-5">
-    <h2 class="text-xl font-black text-white">📈 סטטיסטיקת גולשים</h2>
+    <h2 class="text-xl font-black text-white">📈 סטטיסטיקת כניסות</h2>
     <p class="text-sm text-gray-400">
-        כמה גולשים נכנסו לאתר בכל חודש (מתוך Google Analytics). הנתונים מתעדכנים אחת לשעה.
+        כמה כניסות היו לאתר בכל חודש (מתוך Google Analytics). הנתונים מתעדכנים אחת לשעה.
         {#if data.updatedAt}<span class="text-gray-500">עודכן {updatedAgo(data.updatedAt)}.</span>{/if}
     </p>
 
@@ -53,7 +53,7 @@
                             style="width:{Math.max(3, Math.round((m.visitors / maxVisitors) * 100))}%"></div>
                     </div>
                     <div class="w-24 flex-shrink-0 text-left">
-                        <div class="text-sm font-black leading-tight text-emerald-300">{fmt.format(m.visitors)} גולשים</div>
+                        <div class="text-sm font-black leading-tight text-emerald-300">{fmt.format(m.visitors)} כניסות</div>
                         <div class="text-[11px] leading-tight text-gray-400">{fmt.format(m.pageViews)} צפיות</div>
                     </div>
                 </div>

@@ -72,8 +72,8 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
         },
         {
             href: '/admin/stats', icon: '📈', label: 'סטטיסטיקה', exact: false,
-            title: 'סטטיסטיקת גולשים',
-            desc: 'כמה גולשים נכנסו לאתר בכל חודש'
+            title: 'סטטיסטיקת כניסות',
+            desc: 'כמה כניסות היו לאתר בכל חודש'
         },
         ...(isSuper ? [
             {

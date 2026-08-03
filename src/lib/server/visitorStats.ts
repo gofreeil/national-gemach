@@ -45,7 +45,7 @@ function loadCredentials(): { clientEmail: string; privateKey: string } | null {
 
 const REFRESH_MS = 15 * 60 * 1000;           // 15 דקות בין רענוני GA (96 פעמים ביום, מתוזמן ב-Cron)
 const STALE_MS   = 30 * 24 * 60 * 60 * 1000; // מעבר לכך — נחשב ישן מדי, נחזיר fallback
-const LABEL = 'גולשים החודש';
+const LABEL = 'כניסות החודש';
 
 interface VisitorStat {
     count: number;
