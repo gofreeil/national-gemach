@@ -18,7 +18,7 @@
     const EDIT_KEY = "ng_ad_edit_id";
     let editId = $state("");
 
-    const ADMIN_WA_NUMBER = "972508750632";
+    const ADMIN_WA_NUMBER = "972587448061";
 
     // ===== שערת גישה =====
     let accessGranted = $state(false);

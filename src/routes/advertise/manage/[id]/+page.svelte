@@ -94,7 +94,7 @@
         void goto('/advertise/builder');
     }
 
-    const WA_NUMBER = '972508750632';
+    const WA_NUMBER = '972587448061';
     const renewWa = $derived(
         `https://wa.me/${WA_NUMBER}?text=` +
         encodeURIComponent(`שלום! אני רוצה לחדש את הפרסום של "${ad.title}" בגמ"ח הארצי 🙂`)

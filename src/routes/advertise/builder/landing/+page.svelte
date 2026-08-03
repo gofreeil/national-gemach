@@ -885,7 +885,7 @@
                             לתיאום התשלום:
                         </p>
                         <a
-                            href={"https://wa.me/972508750632?text=" + encodeURIComponent(`שלום, אני מעלה פרסומת באתר הגמ"ח הארצי ורוצה לתאם תשלום עבור ${payPlan.title} (${payPlan.price} ₪)`)}
+                            href={"https://wa.me/972587448061?text=" + encodeURIComponent(`שלום, אני מעלה פרסומת באתר הגמ"ח הארצי ורוצה לתאם תשלום עבור ${payPlan.title} (${payPlan.price} ₪)`)}
                             target="_blank"
                             rel="noopener noreferrer"
                             class="pay-wa"
