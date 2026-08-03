@@ -42,8 +42,8 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
             desc: 'שם, קטגוריה, עיר, טלפון, תגים ועוד'
         },
         {
-            href: '/admin/gemachim/complete', icon: '🗺️', label: 'השלמת מפה', exact: true,
-            title: 'השלמת פרטים למפה',
+            href: '/admin/gemachim/complete', icon: '🗺️', label: 'לא מלאים', exact: true,
+            title: 'גמ"חים לא מלאים',
             desc: 'כתובת/עיר + גזירת קואורדינטות אוטומטית'
         },
         {

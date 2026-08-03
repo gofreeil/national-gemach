@@ -2,9 +2,30 @@
     import { enhance } from '$app/forms';
     import { invalidateAll } from '$app/navigation';
     import { page as pageStore } from '$app/stores';
-    import { tick } from 'svelte';
+    import { tick, onMount } from 'svelte';
 
     let { data, form } = $props();
+
+    // ---- "העבר לסוף הרשימה" — דחיית גמ"חים שאין מה לעשות איתם כרגע ----
+    // נשמר ב-localStorage (ולא בשרת) כדי שהסדר ישרוד רענון ושמירות; הדחייה
+    // אישית לדפדפן. הטעינה ב-onMount ולא באתחול — שלא תישבר ההידרציה.
+    const DEFER_KEY = 'ng_complete_deferred';
+    let deferred = $state<string[]>([]);
+    onMount(() => {
+        try {
+            const v = JSON.parse(localStorage.getItem(DEFER_KEY) ?? '[]');
+            if (Array.isArray(v)) deferred = v.filter((x) => typeof x === 'string');
+        } catch { /* ערך פגום — מתעלמים */ }
+    });
+    function toggleDefer(id: string) {
+        deferred = deferred.includes(id) ? deferred.filter((x) => x !== id) : [...deferred, id];
+        localStorage.setItem(DEFER_KEY, JSON.stringify(deferred));
+    }
+    // הדחויים שוקעים לסוף העמוד הנוכחי; היתר שומרים על סדר השרת
+    const orderedItems = $derived([
+        ...data.items.filter((g) => !deferred.includes(g.id)),
+        ...data.items.filter((g) => deferred.includes(g.id)),
+    ]);
 
     // תוצאת פעולה בקריאה רופפת — נמנע מהצרה של איחוד סוגי ה-ActionData בתבנית.
     const f = $derived(form as { success?: boolean; id?: string; geocoded?: boolean; error?: string } | null | undefined);
@@ -57,11 +78,11 @@
     }
 </script>
 
-<svelte:head><title>השלמת פרטי מיקום – פאנל ניהול</title></svelte:head>
+<svelte:head><title>גמ"חים לא מלאים – פאנל ניהול</title></svelte:head>
 
 <div class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-xl font-black text-white">🗺️ השלמת פרטים למפה</h2>
+        <h2 class="text-xl font-black text-white">🗺️ גמ"חים לא מלאים</h2>
         <a href="/admin/gemachim" class="text-sm text-gray-400 hover:text-white transition-colors">→ לניהול הגמ"חים</a>
     </div>
 
@@ -168,7 +189,7 @@
         <p class="text-xs text-gray-400">מציג {data.items.length} מתוך {data.total} · עמוד {data.page}/{data.pages}</p>
 
         <div class="space-y-2">
-            {#each data.items as g (g.id)}
+            {#each orderedItems as g (g.id)}
                 {@const saved = f?.success && f?.id === g.id}
                 <form method="POST" action="?/save" use:enhance
                     class="card p-3 md:p-4 {g._ready ? '' : 'border-amber-500/25'}">
@@ -211,9 +232,16 @@
                                 <span class="text-[11px] text-gray-400" dir="ltr">
                                     {#if g._ready}📍 {Number(g.lat).toFixed(5)}, {Number(g.lng).toFixed(5)}{:else}— ללא קואורדינטות —{/if}
                                 </span>
-                                <button class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-opacity">
-                                    💾 שמור וגזור מיקום
-                                </button>
+                                <span class="flex flex-wrap items-center gap-2">
+                                    <!-- type="button" — הכפתור יושב בתוך form השמירה ואסור שישלח אותו -->
+                                    <button type="button" onclick={() => toggleDefer(g.id)}
+                                        class="rounded-lg border border-[#3b5794] bg-[#16264d] px-3 py-1.5 text-xs font-bold text-gray-300 hover:bg-[#243a6e] hover:text-white transition-colors">
+                                        {deferred.includes(g.id) ? '⬆️ החזר מהסוף' : '⬇️ העבר לסוף הרשימה'}
+                                    </button>
+                                    <button class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-opacity">
+                                        💾 שמור וגזור מיקום
+                                    </button>
+                                </span>
                             </div>
                         </div>
                     </div>
