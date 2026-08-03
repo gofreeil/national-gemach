@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { browser } from "$app/environment";
     import { goto } from "$app/navigation";
+    import { adImgFit, AD_ZOOM_MIN, AD_ZOOM_MAX } from "$lib/adImageFit";
 
     // בונה הפרסומות - פורט מקבוצות רכישה (במקור מ"קהילה בשכונה") והותאם לגמ"ח הארצי:
     // עברית בלבד, CSS רגיל (בלי Tailwind), גרדיאנטים כמחרוזות CSS.
@@ -144,6 +145,9 @@
     let mainImage = $state("");
     let mainImageObjectX = $state(50);
     let mainImageObjectY = $state(50);
+    let mainImageZoom = $state(1);
+    // ה-fit המאוחד שמוזרם לכל התצוגות (וגם נשלח עם המודעה בשליחה)
+    let mainImageFit = $derived({ x: mainImageObjectX, y: mainImageObjectY, z: mainImageZoom });
     let title = $state("");
     let titleColor = $state("#ffffff");
     let titleOffsetY = $state(0);
@@ -386,13 +390,17 @@
             alert("נא להעלות קובץ תמונה");
             return;
         }
-        const MAX_BYTES = 5 * 1024 * 1024;
+        // המודעה כולה (כל התמונות כ-data-URI) נשלחת ל-Strapi בבקשה אחת
+        // שמוגבלת ל-~1MB (koa-body) — לכן כל תמונה מכווצת כבר כאן להרבה
+        // פחות מזה, ולא ל-5MB כפי שהיה (מה שהפיל את השליחה ב-413).
+        const MAX_BYTES = 450 * 1024;
         const { dataUrl: url, wasCompressed, originalMB, finalMB } = await compressImageToFit(file, MAX_BYTES);
         if (wasCompressed) showCompressNotice(originalMB, finalMB);
         if (target === "main") {
             mainImage = String(url);
             mainImageObjectX = 50;
             mainImageObjectY = 50;
+            mainImageZoom = 1;
         } else {
             logoOriginal = String(url);
             logo = String(url);
@@ -412,7 +420,7 @@
 
     /** @param {'main' | 'logo'} target */
     function clearImage(target) {
-        if (target === "main") { mainImage = ""; mainImageObjectX = 50; mainImageObjectY = 50; }
+        if (target === "main") { mainImage = ""; mainImageObjectX = 50; mainImageObjectY = 50; mainImageZoom = 1; }
         else { logo = ""; logoOriginal = ""; hasCircleCrop = false; }
     }
     /** @param {'up' | 'down' | 'left' | 'right'} dir */
@@ -422,6 +430,13 @@
         if (dir === "down") mainImageObjectY = Math.min(100, mainImageObjectY + STEP);
         if (dir === "left") mainImageObjectX = Math.max(0, mainImageObjectX - STEP);
         if (dir === "right") mainImageObjectX = Math.min(100, mainImageObjectX + STEP);
+    }
+    /** זום פנימה/החוצה בצעדים יחסיים; 1 = מילוי המשבצת (cover) */
+    /** @param {'in' | 'out'} dir */
+    function zoomMainImage(dir) {
+        const FACTOR = 1.15;
+        const next = dir === "in" ? mainImageZoom * FACTOR : mainImageZoom / FACTOR;
+        mainImageZoom = Math.round(Math.min(AD_ZOOM_MAX, Math.max(AD_ZOOM_MIN, next)) * 100) / 100;
     }
 
     /**
@@ -565,6 +580,7 @@
                     mainImage = d.mainImage ?? "";
                     mainImageObjectX = typeof d.mainImageObjectX === "number" ? d.mainImageObjectX : 50;
                     mainImageObjectY = typeof d.mainImageObjectY === "number" ? d.mainImageObjectY : 50;
+                    mainImageZoom = typeof d.mainImageZoom === "number" ? d.mainImageZoom : 1;
                     title = d.title ?? "";
                     titleColor = d.titleColor ?? "#ffffff";
                     titleOffsetY = typeof d.titleOffsetY === "number" ? d.titleOffsetY : 0;
@@ -620,7 +636,7 @@
         if (!browser) return;
         const snapshot = {
             logo, logoOriginal, hasCircleCrop, logoShape, logoPosition, logoPositionExplicit,
-            mainImage, mainImageObjectX, mainImageObjectY, title, titleColor, titleOffsetY,
+            mainImage, mainImageObjectX, mainImageObjectY, mainImageZoom, title, titleColor, titleOffsetY,
             subtitle, hoverText, cta, gradient, diagHeight,
             landingHeadline, landingPitch, landingExtended, landingImage, landingAdvantages,
             uniqueness, phone, whatsapp, website, email, address, hours, products,
@@ -827,13 +843,15 @@
                             ondrop={(e) => handleDrop(e, "main", (v) => (isDraggingMain = v))}
                         >
                             {#if mainImage}
-                                <img src={mainImage} alt="התמונה הראשית" style:object-fit="cover" style:object-position="{mainImageObjectX}% {mainImageObjectY}%" />
+                                <img src={mainImage} alt="התמונה הראשית" style:object-fit="cover" style:object-position="{mainImageObjectX}% {mainImageObjectY}%" use:adImgFit={mainImageFit} />
                                 <button type="button" class="remove-x" onclick={(e) => { e.preventDefault(); clearImage("main"); }} aria-label="הסר תמונה">✕</button>
                                 <button type="button" class="crop-arrow up" onclick={(e) => { e.preventDefault(); nudgeMainImage("up"); }} aria-label="הזז למעלה">▲</button>
                                 <button type="button" class="crop-arrow down" onclick={(e) => { e.preventDefault(); nudgeMainImage("down"); }} aria-label="הזז למטה">▼</button>
                                 <button type="button" class="crop-arrow left" onclick={(e) => { e.preventDefault(); nudgeMainImage("left"); }} aria-label="הזז שמאלה">◀</button>
                                 <button type="button" class="crop-arrow right" onclick={(e) => { e.preventDefault(); nudgeMainImage("right"); }} aria-label="הזז ימינה">▶</button>
-                                <button type="button" class="crop-reset" onclick={(e) => { e.preventDefault(); mainImageObjectX = 50; mainImageObjectY = 50; }} aria-label="איפוס מיקום">⊙</button>
+                                <button type="button" class="crop-reset" onclick={(e) => { e.preventDefault(); mainImageObjectX = 50; mainImageObjectY = 50; mainImageZoom = 1; }} aria-label="איפוס מיקום וזום">⊙</button>
+                                <button type="button" class="crop-zoom zoom-in" onclick={(e) => { e.preventDefault(); zoomMainImage("in"); }} aria-label="זום פנימה">＋</button>
+                                <button type="button" class="crop-zoom zoom-out" onclick={(e) => { e.preventDefault(); zoomMainImage("out"); }} aria-label="זום החוצה">－</button>
                             {:else}
                                 <div class="upload-empty">
                                     <div class="upload-emoji">📸</div>
@@ -845,7 +863,7 @@
                         </label>
                     </div>
                     {#if mainImage}
-                        <p class="crop-hint">אפשר למרכז את התמונה עם החיצים - התוצאה מוצגת בדמו החי</p>
+                        <p class="crop-hint">אפשר למרכז עם החיצים ולהתקרב/להתרחק עם ＋/－ - התוצאה מוצגת בדמו החי</p>
                         <div class="step-nav-row">
                             <button type="button" class="step-nav-btn" onclick={() => advance("logo")}>סיימתי למרכז - לשלב הבא ←</button>
                         </div>
@@ -1152,7 +1170,7 @@
                                         </div>
                                         <div class="popup-img pro-img-wrap">
                                             {#if mainImage}
-                                                <img src={mainImage} alt={title} style:object-position="{mainImageObjectX}% {mainImageObjectY}%" />
+                                                <img src={mainImage} alt={title} style:object-position="{mainImageObjectX}% {mainImageObjectY}%" use:adImgFit={mainImageFit} />
                                             {:else}
                                                 <div class="img-placeholder">התמונה הראשית</div>
                                             {/if}
@@ -1183,7 +1201,7 @@
                             >
                                 <div class="pro-img-wrap clean-card-img">
                                     {#if mainImage}
-                                        <img src={mainImage} alt={title} class="ad-img" style:opacity={showHover ? 0 : 1} style:object-position="{mainImageObjectX}% {mainImageObjectY}%" />
+                                        <img src={mainImage} alt={title} class="ad-img" style:opacity={showHover ? 0 : 1} style:object-position="{mainImageObjectX}% {mainImageObjectY}%" use:adImgFit={mainImageFit} />
                                     {:else}
                                         <div class="img-placeholder">התמונה שלך</div>
                                     {/if}
@@ -1251,6 +1269,7 @@
                                     class="ad-img"
                                     style:object-position="{mainImageObjectX}% {mainImageObjectY}%"
                                     style:opacity={activeStep === "hover" ? 0 : 1}
+                                    use:adImgFit={mainImageFit}
                                 />
                             {:else}
                                 <div class="placeholder-dashed placeholder-img" style:opacity={activeStep === "hover" ? 0 : 1}>
@@ -1832,7 +1851,9 @@
         border-color: rgba(245, 158, 11, 0.7);
         background: rgba(245, 158, 11, 0.08);
     }
-    .upload-zone.has-image { border-style: solid; padding: 0; }
+    /* גובה קבוע כשיש תמונה: התמונה ממוקמת אבסולוטית (adImgFit) ולא
+       קובעת יותר את גובה האזור בעצמה */
+    .upload-zone.has-image { border-style: solid; padding: 0; height: 280px; }
     .upload-zone img {
         width: 100%;
         height: 100%;
@@ -2011,6 +2032,27 @@
         transition: all 150ms;
     }
     .crop-reset:hover { background: rgba(245, 158, 11, 0.85); color: black; }
+    .crop-zoom {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.15s;
+        z-index: 2;
+    }
+    .crop-zoom:hover { background: rgba(245, 158, 11, 0.85); color: black; }
+    .crop-zoom.zoom-in { bottom: 8px; right: 8px; }
+    .crop-zoom.zoom-out { bottom: 8px; left: 8px; }
     .crop-hint {
         font-size: 0.75rem;
         color: #9ca3af;
@@ -2214,8 +2256,15 @@
         width: max-content;
         margin-inline: auto;
     }
+    /* בנייד הרוחב נגזר מהמסך ולא ממספר עמודות קבוע — פלטה רחבה מדי
+       גלשה אל מחוץ לכרטיס במסכים צרים */
     @media (max-width: 640px) {
-        .color-rail { grid-template-columns: repeat(8, 28px); }
+        .color-rail {
+            grid-template-columns: repeat(auto-fit, 28px);
+            width: 100%;
+            max-width: 100%;
+            justify-content: center;
+        }
     }
     .color-dot {
         width: 28px;
