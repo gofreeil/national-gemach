@@ -143,6 +143,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         ownerId:       includeOwner ? (item.user_id ?? undefined) : undefined,
         status:        fromItemStatus(item.status1),
         verified:      extra.verified === true || extra.verified === 'true',
+        createdAt:     item.createdAt,
     };
 }
 

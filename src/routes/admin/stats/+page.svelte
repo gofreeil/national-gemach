@@ -8,6 +8,23 @@
     const yearViews = $derived((data.months ?? []).reduce((s, m) => s + m.pageViews, 0));
     const yearVisitors = $derived((data.months ?? []).reduce((s, m) => s + m.visitors, 0));
 
+    // גידול המאגר — 12 החודשים האחרונים, האחרון הוא החודש הנוכחי
+    const addedThisMonth = $derived(data.growth.at(-1)?.added ?? 0);
+    const yearAdded = $derived(data.growth.reduce((s, m) => s + m.added, 0));
+    const maxAdded = $derived(Math.max(1, ...data.growth.map((m) => m.added)));
+    const currentYm = $derived(data.growth.at(-1)?.yearMonth ?? '');
+
+    /** "202608" → "אוגוסט 2026" */
+    function monthLabel(ym: string): string {
+        const d = new Date(Number(ym.slice(0, 4)), Number(ym.slice(4, 6)) - 1, 1);
+        return new Intl.DateTimeFormat('he-IL', { month: 'long', year: 'numeric' }).format(d);
+    }
+
+    /** "202608" → "8/26" (לציר החודשים של הגרף) */
+    function monthShort(ym: string): string {
+        return `${Number(ym.slice(4, 6))}/${ym.slice(2, 4)}`;
+    }
+
     // GA מחזיר שמות ערים/ערוצים באנגלית — מתרגמים את הנפוצים, השאר כמו שהם
     const CITY_HE: Record<string, string> = {
         'Jerusalem': 'ירושלים', 'Tel Aviv-Yafo': 'תל אביב-יפו', 'Tel Aviv': 'תל אביב',
@@ -101,6 +118,45 @@
 
     <!-- הגרף החודשי -->
     <VisitorStatsCard months={data.months} updatedAt={data.updatedAt} />
+
+    <!-- גידול המאגר — גמ"חים חדשים לפי חודש -->
+    <div class="card space-y-3 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+            <div class="min-w-0">
+                <h3 class="font-bold text-white">🆕 גמ"חים חדשים</h3>
+                <p class="mt-0.5 text-xs text-gray-400">
+                    כמה גמ"חים נוספו לאתר בכל חודש — כך רואים את הצמיחה.
+                    {fmt.format(yearAdded)} נוספו בשנה האחרונה, וסה"כ {fmt.format(data.totalGemachim)} גמ"חים באתר.
+                </p>
+            </div>
+            <div class="text-left">
+                <div class="text-2xl font-black text-sky-400">+{fmt.format(addedThisMonth)}</div>
+                <div class="text-[11px] text-gray-400">נוספו החודש</div>
+            </div>
+        </div>
+
+        <div class="flex items-stretch justify-center gap-1.5">
+            {#each data.growth as m (m.yearMonth)}
+                <div
+                    class="flex min-w-0 max-w-16 flex-1 flex-col items-center"
+                    title="{monthLabel(m.yearMonth)}: {fmt.format(m.added)} גמ״חים חדשים"
+                >
+                    <div class="mb-1 text-[10px] font-bold tabular-nums text-gray-300">{fmt.format(m.added)}</div>
+                    <div class="flex h-24 w-full items-end">
+                        <div
+                            class="w-full rounded-t-md transition-all {m.added > 0
+                                ? 'bg-gradient-to-t from-blue-600 to-sky-400'
+                                : 'bg-white/10'} {m.yearMonth === currentYm ? 'shadow-[0_0_12px_rgba(56,189,248,0.5)]' : ''}"
+                            style="height: {m.added > 0 ? Math.max(6, Math.round((m.added / maxAdded) * 100)) : 4}%"
+                        ></div>
+                    </div>
+                    <div class="mt-1 whitespace-nowrap text-[10px] {m.yearMonth === currentYm ? 'font-bold text-sky-300' : 'text-gray-400'}">
+                        {monthShort(m.yearMonth)}
+                    </div>
+                </div>
+            {/each}
+        </div>
+    </div>
 
     <!-- פירוט: גמ"חים, ערים, מכשירים ומקורות -->
     {#if data.insightsAvailable}
