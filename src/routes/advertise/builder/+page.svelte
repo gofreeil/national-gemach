@@ -4,6 +4,11 @@
     import { goto } from "$app/navigation";
     import { adImgFit, AD_ZOOM_MIN, AD_ZOOM_MAX } from "$lib/adImageFit";
     import { normalizePlanDays } from "$lib/adPlans";
+    import {
+        AD_EFFECTIVE_LIMIT, MAIN_IMAGE_MAX_BYTES,
+        bodyBytes, fmtWeight, approxDataUrlBytes, compressImageToFit, compressLogoFile,
+        shrinkAdPayload, heaviestImageLabel,
+    } from "$lib/adPayloadBudget";
 
     // בונה הפרסומות - פורט מקבוצות רכישה (במקור מ"קהילה בשכונה") והותאם לגמ"ח הארצי:
     // עברית בלבד, CSS רגיל (בלי Tailwind), גרדיאנטים כמחרוזות CSS.
@@ -112,7 +117,11 @@
         ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
         ctx.restore();
 
-        logo = canvas.toDataURL("image/png");
+        // גם הלוגו החתוך נכנס לתקציב המשקל של המודעה — מכווץ אם צריך
+        const candidate = buildPayloadSnapshot();
+        candidate.logo = canvas.toDataURL("image/png");
+        await shrinkAdPayload(candidate, AD_EFFECTIVE_LIMIT);
+        applyPayloadImages(candidate);
         hasCircleCrop = true;
         cropOpen = false;
     }
@@ -307,76 +316,22 @@
     let isDraggingMain = $state(false);
     let isDraggingLogo = $state(false);
 
-    // ===== העלאת תמונות + דחיסה אוטומטית מתחת ל-5MB =====
-    /** @param {File} file */
-    async function fileToDataUrl(file) {
-        return new Promise((res, rej) => {
-            const fr = new FileReader();
-            fr.onload = () => res(String(fr.result));
-            fr.onerror = rej;
-            fr.readAsDataURL(file);
-        });
-    }
-    /** @param {string} dataUrl */
-    function approxDataUrlBytes(dataUrl) {
-        const i = dataUrl.indexOf(",");
-        const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
-        return Math.ceil((b64.length * 3) / 4);
-    }
-    /**
-     * @param {File} file
-     * @param {number} maxBytes
-     */
-    async function compressImageToFit(file, maxBytes) {
-        const originalMB = file.size / (1024 * 1024);
-        if (file.size <= maxBytes) {
-            const dataUrl = await fileToDataUrl(file);
-            return { dataUrl, wasCompressed: false, originalMB, finalMB: originalMB };
-        }
-        const srcUrl = await fileToDataUrl(file);
-        const img = new Image();
-        img.src = String(srcUrl);
-        await new Promise((resolve, reject) => { img.onload = () => resolve(undefined); img.onerror = () => reject(new Error("image load failed")); });
+    // ===== העלאת תמונות + שמירה על תקציב המשקל =====
+    // המודעה כולה (תמונות + טקסטים) נשלחת ל-Strapi בבקשה אחת שמוגבלת
+    // ל-~1MB. הכלל: אף העלאה לא משאירה את הטיוטה מעל התקציב — אם צריך
+    // מפנים מקום בכיווץ תמונות קיימות, ואם גם זה לא מספיק ההעלאה נדחית
+    // כאן, בשלב עצמו, עם הסבר — ולא בכישלון בשליחה הסופית.
 
-        let w = img.naturalWidth, h = img.naturalHeight;
-        const MAX_EDGE = 2400;
-        const longest = Math.max(w, h);
-        if (longest > MAX_EDGE) {
-            const scale = MAX_EDGE / longest;
-            w = Math.round(w * scale);
-            h = Math.round(h * scale);
-        }
-        let quality = 0.85;
-        let dataUrl = "";
-        for (let attempt = 0; attempt < 10; attempt++) {
-            const canvas = document.createElement("canvas");
-            canvas.width = w; canvas.height = h;
-            const c = canvas.getContext("2d");
-            if (!c) break;
-            c.drawImage(img, 0, 0, w, h);
-            dataUrl = canvas.toDataURL("image/jpeg", quality);
-            if (approxDataUrlBytes(dataUrl) <= maxBytes) break;
-            if (quality > 0.5) {
-                quality -= 0.1;
-            } else {
-                w = Math.round(w * 0.85);
-                h = Math.round(h * 0.85);
-                quality = 0.7;
-            }
-        }
-        return { dataUrl, wasCompressed: true, originalMB, finalMB: approxDataUrlBytes(dataUrl) / (1024 * 1024) };
-    }
-
-    let compressNotice = $state({ visible: false, originalMB: 0, finalMB: 0 });
+    let compressNotice = $state({ visible: false, originalBytes: 0, finalBytes: 0 });
     /** @type {number | null} */
     let compressNoticeTimer = null;
     /**
-     * @param {number} originalMB
-     * @param {number} finalMB
+     * @param {number} originalBytes
+     * @param {number} finalBytes
      */
-    function showCompressNotice(originalMB, finalMB) {
+    function showCompressNotice(originalBytes, finalBytes) {
         if (compressNoticeTimer) { clearTimeout(compressNoticeTimer); compressNoticeTimer = null; }
-        compressNotice = { visible: true, originalMB, finalMB };
+        compressNotice = { visible: true, originalBytes, finalBytes };
         compressNoticeTimer = window.setTimeout(() => {
             compressNotice = { ...compressNotice, visible: false };
             compressNoticeTimer = null;
@@ -385,6 +340,43 @@
     function dismissCompressNotice() {
         if (compressNoticeTimer) { clearTimeout(compressNoticeTimer); compressNoticeTimer = null; }
         compressNotice = { ...compressNotice, visible: false };
+    }
+
+    // הודעת דחייה ליד אזור ההעלאה שבו אין מקום לתמונה
+    let uploadIssue = $state({ zone: /** @type {'' | 'main' | 'logo'} */ (""), msg: "" });
+
+    /** המודעה כפי שתישלח בשליחה הסופית — הבסיס לכל מדידת משקל */
+    function buildPayloadSnapshot() {
+        return {
+            title, subtitle, hoverText, cta, gradient,
+            logo, mainImage,
+            mainImageFit: { x: mainImageObjectX, y: mainImageObjectY, z: mainImageZoom },
+            landing: {
+                headline: landingHeadline,
+                pitch: landingPitch,
+                extended: landingExtended,
+                image: landingImage,
+                advantages: [...landingAdvantages],
+                uniqueness, phone, whatsapp, website, email, address, hours,
+                products: products.map((p) => ({ ...p })),
+            },
+            ownerCode: "",
+            requestedDurationDays: 365,
+        };
+    }
+
+    /** החלת תמונות שכווצו בחזרה על המצב (אחרי shrinkAdPayload) @param {any} p */
+    function applyPayloadImages(p) {
+        if (p.mainImage !== mainImage) mainImage = p.mainImage;
+        if (p.logo !== logo) logo = p.logo;
+        if (p.landing.image !== landingImage) landingImage = p.landing.image;
+        let productsChanged = false;
+        const nextProducts = products.map((cur, i) => {
+            const img = p.landing.products[i]?.image ?? cur.image;
+            if (img !== cur.image) { productsChanged = true; return { ...cur, image: img }; }
+            return cur;
+        });
+        if (productsChanged) products = nextProducts;
     }
 
     /**
@@ -397,20 +389,37 @@
             alert("נא להעלות קובץ תמונה");
             return;
         }
-        // המודעה כולה (כל התמונות כ-data-URI) נשלחת ל-Strapi בבקשה אחת
-        // שמוגבלת ל-~1MB (koa-body) — לכן כל תמונה מכווצת כבר כאן להרבה
-        // פחות מזה, ולא ל-5MB כפי שהיה (מה שהפיל את השליחה ב-413).
-        const MAX_BYTES = 450 * 1024;
-        const { dataUrl: url, wasCompressed, originalMB, finalMB } = await compressImageToFit(file, MAX_BYTES);
-        if (wasCompressed) showCompressNotice(originalMB, finalMB);
+        uploadIssue = { zone: "", msg: "" };
+        const res = target === "logo"
+            ? await compressLogoFile(file)
+            : await compressImageToFit(file, MAIN_IMAGE_MAX_BYTES);
+        const url = String(res.dataUrl);
+
+        // בדיקת התקציב הכולל: התמונה נכנסת רק אם כל המודעה נשארת מתחת לתקרה
+        const candidate = buildPayloadSnapshot();
+        if (target === "main") candidate.mainImage = url;
+        else candidate.logo = url;
+        const fit = await shrinkAdPayload(candidate, AD_EFFECTIVE_LIMIT);
+        if (!fit.ok) {
+            uploadIssue = {
+                zone: target,
+                msg: `אין מקום לתמונה הזו — המודעה כולה מוגבלת במשקל, וגם אחרי דחיסה היא חורגת. `
+                    + `הסירו או החליפו תמונה אחרת (הכבדה ביותר: ${heaviestImageLabel(candidate) || "—"}) ונסו שוב.`,
+            };
+            return; // המצב הקיים לא נגעו בו — אפשר להמשיך לעבוד
+        }
+
+        applyPayloadImages(candidate);
+        if (res.wasCompressed || fit.changed) {
+            const finalUrl = target === "main" ? candidate.mainImage : candidate.logo;
+            showCompressNotice(res.originalBytes, approxDataUrlBytes(finalUrl));
+        }
         if (target === "main") {
-            mainImage = String(url);
             mainImageObjectX = 50;
             mainImageObjectY = 50;
             mainImageZoom = 1;
         } else {
-            logoOriginal = String(url);
-            logo = String(url);
+            logoOriginal = candidate.logo;
             hasCircleCrop = false;
             if (logoShape === "circle") openCropper();
         }
@@ -622,6 +631,8 @@
                     nextProductId = (products.reduce((m, p) => Math.max(m, p.id), 0) || 0) + 1;
                 }
             } catch {}
+            // טיוטה ישנה שחורגת מהתקציב מכווצת מיד — לא מחכים לכישלון בסוף
+            void repairDraftWeight();
         }
 
         return () => {
@@ -666,12 +677,39 @@
         location.reload();
     }
 
-    // ===== מעבר לעריכת דף הנחיתה =====
+    // ===== שער המעבר לעריכת דף הנחיתה =====
+    // לא נותנים לעבור שלב עם בעיה שתתגלה רק בסוף: כל מה שחובה בכרטיס
+    // נבדק כאן, וגם משקל המודעה — במקום שדף הנחיתה יחזיר את המשתמש אחורה.
+    let adWeightBytes = $derived.by(() => bodyBytes(buildPayloadSnapshot()));
+    let overweight = $derived(adWeightBytes > AD_EFFECTIVE_LIMIT);
+    let heaviestLabel = $derived.by(() => heaviestImageLabel(buildPayloadSnapshot()));
+    let cardMissing = $derived.by(() => {
+        /** @type {string[]} */
+        const out = [];
+        if (!mainImage) out.push("התמונה הראשית (שלב 1)");
+        if (!title.trim()) out.push("הכותרת (שלב 3)");
+        if (!subtitle.trim()) out.push("הסלוגן (שלב 5)");
+        if (!hoverText.trim()) out.push("הטקסט בריחוף (שלב 6)");
+        return out;
+    });
+    let canLeaveToLanding = $derived(cardMissing.length === 0 && !overweight);
+
     let movingToLanding = $state(false);
     async function goToLandingEditor() {
-        if (movingToLanding) return;
+        if (movingToLanding || !canLeaveToLanding) return;
         movingToLanding = true;
         await goto("/advertise/builder/landing");
+    }
+
+    // טיוטה שנשמרה לפני מנגנון התקציב (למשל לוגו כבד שעבר כמו שהוא)
+    // מתוקנת מיד בטעינה — שלא תיתקע בשליחה הסופית.
+    async function repairDraftWeight() {
+        const p = buildPayloadSnapshot();
+        const before = bodyBytes(p);
+        if (before <= AD_EFFECTIVE_LIMIT) return;
+        const res = await shrinkAdPayload(p, AD_EFFECTIVE_LIMIT);
+        applyPayloadImages(p);
+        if (res.changed) showCompressNotice(before, bodyBytes(p));
     }
 
     // ===== מודל עזרה בעיצוב - וואטסאפ לאדמין =====
@@ -746,10 +784,10 @@
                     <div>
                         <p class="ct-title">התמונה כווצה אוטומטית</p>
                         <p class="ct-text">
-                            הגודל המקסימלי הוא <strong>5MB</strong>.
-                            התמונה שלך ({compressNotice.originalMB.toFixed(1)}MB) כווצה
-                            ל-<strong>{compressNotice.finalMB.toFixed(1)}MB</strong>.
-                            <br />אם האיכות לא מספיקה - נסו תמונה קלה יותר.
+                            כדי שהמודעה כולה תעמוד במשקל שהשרת מקבל, התמונה
+                            ({fmtWeight(compressNotice.originalBytes)}) כווצה
+                            ל-<strong>{fmtWeight(compressNotice.finalBytes)}</strong>.
+                            <br />אם האיכות לא מספיקה - נסו תמונה קלה או פשוטה יותר.
                         </p>
                     </div>
                 </div>
@@ -867,12 +905,15 @@
                                 <div class="upload-empty">
                                     <div class="upload-emoji">📸</div>
                                     <p class="upload-main">{isDraggingMain ? "שחררו כאן! ✨" : "לחצו או גררו תמונה לכאן"}</p>
-                                    <p class="upload-note">עד 5MB - תמונות גדולות יכווצו אוטומטית</p>
+                                    <p class="upload-note">תמונות גדולות יכווצו אוטומטית</p>
                                 </div>
                             {/if}
                             <input type="file" accept="image/*" onchange={(e) => handleImage(e, "main")} class="hidden-input" />
                         </label>
                     </div>
+                    {#if uploadIssue.zone === "main"}
+                        <p class="upload-issue" role="alert">⛔ {uploadIssue.msg}</p>
+                    {/if}
                     {#if mainImage}
                         <p class="crop-hint">אפשר למרכז עם החיצים ולהתקרב/להתרחק עם ＋/－ - התוצאה מוצגת בדמו החי</p>
                         <div class="step-nav-row">
@@ -938,6 +979,10 @@
                             </div>
                         {/if}
                     </div>
+
+                    {#if uploadIssue.zone === "logo"}
+                        <p class="upload-issue" role="alert">⛔ {uploadIssue.msg}</p>
+                    {/if}
 
                     <div class="step-nav-row">
                         <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("logo"))}>→ שלב אחורה</button>
@@ -1255,7 +1300,7 @@
                                 <span aria-hidden="true">🆘</span>
                             </button>
                         </div>
-                        <button type="button" class="step-nav-btn" onclick={goToLandingEditor} disabled={movingToLanding}>
+                        <button type="button" class="step-nav-btn" onclick={goToLandingEditor} disabled={movingToLanding || !canLeaveToLanding}>
                             {#if movingToLanding}
                                 ⏳ עוברים לדף הנחיתה...
                             {:else}
@@ -1263,6 +1308,23 @@
                             {/if}
                         </button>
                     </div>
+
+                    <!-- החסימה מוסברת כאן, בשלב עצמו — לא מגלים בדף הבא שחסר משהו -->
+                    {#if !canLeaveToLanding}
+                        <div class="step-block-note" role="alert">
+                            {#if cardMissing.length > 0}
+                                <p>⛔ אי אפשר להמשיך עדיין — חסר: <strong>{cardMissing.join(", ")}</strong>.</p>
+                            {/if}
+                            {#if overweight}
+                                <p>
+                                    ⚖️ המודעה כבדה מדי ({fmtWeight(adWeightBytes)} מתוך {fmtWeight(AD_EFFECTIVE_LIMIT)} מותרים) —
+                                    הקטינו או הסירו תמונה{#if heaviestLabel}&nbsp;(הכבדה ביותר: <strong>{heaviestLabel}</strong>){/if}.
+                                </p>
+                            {/if}
+                        </div>
+                    {:else if adWeightBytes > AD_EFFECTIVE_LIMIT * 0.7}
+                        <p class="weight-pill">⚖️ משקל המודעה: {fmtWeight(adWeightBytes)} מתוך {fmtWeight(AD_EFFECTIVE_LIMIT)} מותרים</p>
+                    {/if}
                 </section>
 
             </div><!-- /.builder-steps -->
@@ -1720,7 +1782,45 @@
         box-shadow: 0 6px 18px -4px rgba(245, 158, 11, 0.6);
     }
     .step-nav-btn:active { transform: scale(0.97); }
-    .step-nav-btn:disabled { opacity: 0.6; cursor: wait; }
+    .step-nav-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* חסימת שלב: הסבר במקום, על רקע כהה קריא */
+    .step-block-note {
+        margin-top: 0.9rem;
+        padding: 0.8rem 1rem;
+        border-radius: 0.85rem;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(248, 113, 113, 0.45);
+        color: #fecaca;
+        font-size: 0.92rem;
+        font-weight: 600;
+        line-height: 1.55;
+    }
+    .step-block-note p { margin: 0; }
+    .step-block-note p + p { margin-top: 0.35rem; }
+    .step-block-note strong { color: #fff; }
+    .upload-issue {
+        margin-top: 0.7rem;
+        padding: 0.7rem 0.9rem;
+        border-radius: 0.75rem;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(248, 113, 113, 0.45);
+        color: #fecaca;
+        font-size: 0.9rem;
+        font-weight: 600;
+        line-height: 1.55;
+    }
+    .weight-pill {
+        margin-top: 0.8rem;
+        display: inline-block;
+        padding: 0.35rem 0.85rem;
+        border-radius: 999px;
+        background: rgba(251, 191, 36, 0.12);
+        border: 1px solid rgba(251, 191, 36, 0.35);
+        color: #fde68a;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
 
     /* אנימציות שלבים */
     @keyframes gentleHover {

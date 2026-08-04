@@ -3,6 +3,11 @@
     import { browser } from "$app/environment";
     import { goto } from "$app/navigation";
     import { adPlans, planFor, normalizePlanDays, DEFAULT_PLAN_DAYS } from "$lib/adPlans";
+    import {
+        AD_BODY_LIMIT, AD_EFFECTIVE_LIMIT, SIDE_IMAGE_MAX_BYTES,
+        bodyBytes, fmtWeight, approxDataUrlBytes, compressImageToFit,
+        shrinkAdPayload, heaviestImageLabel,
+    } from "$lib/adPayloadBudget";
 
     // עורך דף הנחיתה + שליחה סופית - פורט מקבוצות רכישה (במקור מ"קהילה בשכונה").
     // חולק את אותה טיוטת localStorage עם ה-builder הראשי.
@@ -58,75 +63,21 @@
     /** @type {number | null} */
     let draggingProductId = $state(null);
 
-    // ===== עזרי תמונה (זהים ל-builder) =====
-    /** @param {File} file */
-    async function fileToDataUrl(file) {
-        return new Promise((res, rej) => {
-            const fr = new FileReader();
-            fr.onload = () => res(String(fr.result));
-            fr.onerror = rej;
-            fr.readAsDataURL(file);
-        });
-    }
-    /** @param {string} dataUrl */
-    function approxDataUrlBytes(dataUrl) {
-        const i = dataUrl.indexOf(",");
-        const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
-        return Math.ceil((b64.length * 3) / 4);
-    }
-    /**
-     * @param {File} file
-     * @param {number} maxBytes
-     */
-    async function compressImageToFit(file, maxBytes) {
-        const originalMB = file.size / (1024 * 1024);
-        if (file.size <= maxBytes) {
-            const dataUrl = await fileToDataUrl(file);
-            return { dataUrl, wasCompressed: false, originalMB, finalMB: originalMB };
-        }
-        const srcUrl = await fileToDataUrl(file);
-        const img = new Image();
-        img.src = String(srcUrl);
-        await new Promise((resolve, reject) => { img.onload = () => resolve(undefined); img.onerror = () => reject(new Error("image load failed")); });
-        let w = img.naturalWidth, h = img.naturalHeight;
-        const MAX_EDGE = 2400;
-        const longest = Math.max(w, h);
-        if (longest > MAX_EDGE) {
-            const scale = MAX_EDGE / longest;
-            w = Math.round(w * scale);
-            h = Math.round(h * scale);
-        }
-        let quality = 0.85;
-        let dataUrl = "";
-        for (let attempt = 0; attempt < 10; attempt++) {
-            const canvas = document.createElement("canvas");
-            canvas.width = w; canvas.height = h;
-            const c = canvas.getContext("2d");
-            if (!c) break;
-            c.drawImage(img, 0, 0, w, h);
-            dataUrl = canvas.toDataURL("image/jpeg", quality);
-            if (approxDataUrlBytes(dataUrl) <= maxBytes) break;
-            if (quality > 0.5) {
-                quality -= 0.1;
-            } else {
-                w = Math.round(w * 0.85);
-                h = Math.round(h * 0.85);
-                quality = 0.7;
-            }
-        }
-        return { dataUrl, wasCompressed: true, originalMB, finalMB: approxDataUrlBytes(dataUrl) / (1024 * 1024) };
-    }
+    // ===== העלאת תמונות + שמירה על תקציב המשקל (משותף עם ה-builder) =====
+    // הכלל: אף העלאה לא משאירה את הטיוטה מעל התקציב — אם צריך מפנים
+    // מקום בכיווץ תמונות קיימות, ואם גם זה לא מספיק ההעלאה נדחית כאן,
+    // בשלב עצמו, עם הסבר — ולא בכישלון בשליחה הסופית.
 
-    let compressNotice = $state({ visible: false, originalMB: 0, finalMB: 0 });
+    let compressNotice = $state({ visible: false, originalBytes: 0, finalBytes: 0 });
     /** @type {number | null} */
     let compressNoticeTimer = null;
     /**
-     * @param {number} originalMB
-     * @param {number} finalMB
+     * @param {number} originalBytes
+     * @param {number} finalBytes
      */
-    function showCompressNotice(originalMB, finalMB) {
+    function showCompressNotice(originalBytes, finalBytes) {
         if (compressNoticeTimer) { clearTimeout(compressNoticeTimer); compressNoticeTimer = null; }
-        compressNotice = { visible: true, originalMB, finalMB };
+        compressNotice = { visible: true, originalBytes, finalBytes };
         compressNoticeTimer = window.setTimeout(() => {
             compressNotice = { ...compressNotice, visible: false };
             compressNoticeTimer = null;
@@ -135,6 +86,49 @@
     function dismissCompressNotice() {
         if (compressNoticeTimer) { clearTimeout(compressNoticeTimer); compressNoticeTimer = null; }
         compressNotice = { ...compressNotice, visible: false };
+    }
+
+    // הודעת דחייה ליד אזור ההעלאה שבו אין מקום לתמונה
+    let uploadIssue = $state({ zone: /** @type {'' | 'landing' | 'product'} */ (""), msg: "" });
+
+    /** המודעה כפי שתישלח — הבסיס לכל מדידת משקל (זהה ל-payload של submitAd) */
+    function buildPayloadSnapshot() {
+        return {
+            title, subtitle, hoverText, cta, gradient,
+            logo, mainImage, mainImageFit,
+            landing: {
+                headline: landingHeadline,
+                pitch: landingPitch,
+                extended: landingExtended,
+                image: landingImage,
+                advantages: [...landingAdvantages],
+                uniqueness, phone, whatsapp, website, email, address, hours,
+                products: products.map((p) => ({ ...p })),
+            },
+            ownerCode: payCodeOk ? payCode : "",
+            requestedDurationDays: payDuration,
+        };
+    }
+
+    /** החלת תמונות שכווצו בחזרה על המצב (אחרי shrinkAdPayload) @param {any} p */
+    function applyPayloadImages(p) {
+        if (p.mainImage !== mainImage) mainImage = p.mainImage;
+        if (p.logo !== logo) logo = p.logo;
+        if (p.landing.image !== landingImage) landingImage = p.landing.image;
+        let productsChanged = false;
+        const nextProducts = products.map((cur, i) => {
+            const img = p.landing.products[i]?.image ?? cur.image;
+            if (img !== cur.image) { productsChanged = true; return { ...cur, image: img }; }
+            return cur;
+        });
+        if (productsChanged) products = nextProducts;
+        // תמונות הכרטיס לא נשמרות בטיוטה מהדף הזה בשגרה — אחרי כיווץ
+        // כן מעדכנים אותן, שהתיקון יחזיק גם בחזרה לבילדר
+        try {
+            const raw = localStorage.getItem(LS_KEY);
+            const cur = raw ? JSON.parse(raw) : {};
+            localStorage.setItem(LS_KEY, JSON.stringify({ ...cur, logo: p.logo, mainImage: p.mainImage }));
+        } catch {}
     }
 
     /**
@@ -147,19 +141,35 @@
             alert("נא להעלות קובץ תמונה");
             return;
         }
-        // תקרת הבקשה ל-Strapi היא ~1MB לכל המודעה יחד — תמונת נחיתה/מוצר
-        // חייבת להישאר קטנה בהרבה (היה 5MB, והשליחה נפלה על 413)
-        const MAX_BYTES = 300 * 1024;
-        const { dataUrl, wasCompressed, originalMB, finalMB } = await compressImageToFit(file, MAX_BYTES);
-        if (wasCompressed) showCompressNotice(originalMB, finalMB);
+        uploadIssue = { zone: "", msg: "" };
+        const res = await compressImageToFit(file, SIDE_IMAGE_MAX_BYTES);
+        const url = String(res.dataUrl);
+
+        // בדיקת התקציב הכולל: התמונה נכנסת רק אם כל המודעה נשארת מתחת לתקרה
+        const candidate = buildPayloadSnapshot();
         if (target === "landing") {
-            landingImage = String(dataUrl);
+            candidate.landing.image = url;
         } else {
             const idx = products.findIndex((p) => p.id === target.id);
-            if (idx >= 0) {
-                products[idx] = { ...products[idx], image: String(dataUrl) };
-                products = [...products];
-            }
+            if (idx < 0) return;
+            candidate.landing.products[idx] = { ...candidate.landing.products[idx], image: url };
+        }
+        const fit = await shrinkAdPayload(candidate, AD_EFFECTIVE_LIMIT);
+        if (!fit.ok) {
+            uploadIssue = {
+                zone: target === "landing" ? "landing" : "product",
+                msg: `אין מקום לתמונה הזו — המודעה כולה מוגבלת במשקל, וגם אחרי דחיסה היא חורגת. `
+                    + `הסירו או החליפו תמונה אחרת (הכבדה ביותר: ${heaviestImageLabel(candidate) || "—"}) ונסו שוב.`,
+            };
+            return; // המצב הקיים לא נגעו בו
+        }
+
+        applyPayloadImages(candidate);
+        if (res.wasCompressed || fit.changed) {
+            const finalUrl = target === "landing"
+                ? candidate.landing.image
+                : candidate.landing.products[products.findIndex((p) => p.id === target.id)]?.image ?? url;
+            showCompressNotice(res.originalBytes, approxDataUrlBytes(finalUrl));
         }
     }
     /** @param {Event} e */
@@ -343,6 +353,8 @@
                     gradient = d.gradient ?? gradient;
                 }
             } catch {}
+            // טיוטה ישנה שחורגת מהתקציב מכווצת מיד — לא מחכים לכישלון בסוף
+            void repairDraftWeight();
         }
 
         return () => {
@@ -388,7 +400,11 @@
         if (!landingHeadline && !landingPitch) out.push({ label: "כותרת דף הנחיתה או משפט פתיחה", where: "landing" });
         return out;
     });
-    let canSubmit = $derived(missingFields.length === 0);
+    // משקל המודעה בזמן אמת — חוסם שליחה עוד לפני הניסיון, עם הסבר
+    let adWeightBytes = $derived.by(() => bodyBytes(buildPayloadSnapshot()));
+    let overweight = $derived(adWeightBytes > AD_EFFECTIVE_LIMIT);
+    let heaviestLabel = $derived.by(() => heaviestImageLabel(buildPayloadSnapshot()));
+    let canSubmit = $derived(missingFields.length === 0 && !overweight);
     let submitting = $state(false);
     let submitted = $state(false);
     let submitError = $state("");
@@ -407,67 +423,16 @@
         return "השליחה נכשלה - נסו שוב בעוד רגע";
     }
 
-    // ===== שמירה על תקרת הבקשה של Strapi (~1MB koa-body) =====
-    // כל המודעה — תמונות data-URI + טקסטים — נשלחת בבקשת JSON אחת. חבילה
-    // גדולה מהתקרה מוחזרת 413 והמפרסם רואה רק "השליחה נכשלה". לכן לפני
-    // השליחה מודדים את הגוף בפועל, ואם צריך מכווצים את התמונה הגדולה
-    // ביותר שוב ושוב עד שהכול נכנס.
-    const BODY_LIMIT = 900_000;      // תווים ≈ בייטים (data-URI הוא ASCII)
-    const MIN_IMG_CHARS = 160_000;   // מתחת לזה כבר לא מכווצים תמונה בודדת
-
-    /** @param {unknown} obj */
-    function bodyBytes(obj) {
-        return new Blob([JSON.stringify(obj)]).size;
-    }
-
-    /** דחיסה מחדש של data-URI קיים אל מתחת ליעד (אורך מחרוזת בתווים)
-     * @param {string} dataUrl
-     * @param {number} maxChars */
-    async function recompressDataUrl(dataUrl, maxChars) {
-        try {
-            const img = new Image();
-            img.src = dataUrl;
-            await new Promise((resolve, reject) => { img.onload = () => resolve(undefined); img.onerror = () => reject(new Error("image load failed")); });
-            let w = img.naturalWidth, h = img.naturalHeight;
-            let quality = 0.75;
-            let out = dataUrl;
-            for (let attempt = 0; attempt < 12; attempt++) {
-                const canvas = document.createElement("canvas");
-                canvas.width = w; canvas.height = h;
-                const c = canvas.getContext("2d");
-                if (!c) return dataUrl;
-                c.drawImage(img, 0, 0, w, h);
-                out = canvas.toDataURL("image/jpeg", quality);
-                if (out.length <= maxChars) return out;
-                if (quality > 0.45) quality -= 0.1;
-                else { w = Math.round(w * 0.8); h = Math.round(h * 0.8); quality = 0.6; }
-            }
-            return out;
-        } catch {
-            return dataUrl;
-        }
-    }
-
-    /** מכווץ את התמונות בחבילה (הגדולה קודם) עד שהגוף נכנס מתחת לתקרה.
-     * הלוגו לא נגעים בו — הוא קטן ממילא ודחיסת JPEG הייתה מוחקת שקיפות.
-     * @param {any} payload */
-    async function shrinkPayloadImages(payload) {
-        for (let round = 0; round < 15 && bodyBytes(payload) > BODY_LIMIT; round++) {
-            /** @type {Array<{ cur: string, apply: (v: string) => void }>} */
-            const imgs = [];
-            /** @param {string} cur @param {(v: string) => void} apply */
-            const push = (cur, apply) => {
-                if (typeof cur === "string" && cur.startsWith("data:image/")) imgs.push({ cur, apply });
-            };
-            push(payload.mainImage, (v) => { payload.mainImage = v; });
-            push(payload.landing?.image, (v) => { payload.landing.image = v; });
-            for (const p of payload.landing?.products ?? []) push(p.image, (v) => { p.image = v; });
-            imgs.sort((a, b) => b.cur.length - a.cur.length);
-            const big = imgs[0];
-            if (!big || big.cur.length <= MIN_IMG_CHARS) return bodyBytes(payload) <= BODY_LIMIT;
-            big.apply(await recompressDataUrl(big.cur, Math.max(MIN_IMG_CHARS, Math.floor(big.cur.length * 0.6))));
-        }
-        return bodyBytes(payload) <= BODY_LIMIT;
+    // רשת ביטחון אחרונה: העלאות כבר נשמרות בתקציב, אבל טיוטות ישנות
+    // מתוקנות בטעינה (repairDraftWeight) וממש לפני השליחה מכווצים שוב
+    // אם צריך — כך 413 מהשרת לא אמור לקרות בכלל.
+    async function repairDraftWeight() {
+        const p = buildPayloadSnapshot();
+        const before = bodyBytes(p);
+        if (before <= AD_EFFECTIVE_LIMIT) return;
+        const res = await shrinkAdPayload(p, AD_EFFECTIVE_LIMIT);
+        applyPayloadImages(p);
+        if (res.changed) showCompressNotice(before, bodyBytes(p));
     }
 
     async function submitAd() {
@@ -475,24 +440,9 @@
         submitting = true;
         submitError = "";
         try {
-            const payload = {
-                title, subtitle, hoverText, cta, gradient,
-                logo, mainImage, mainImageFit,
-                landing: {
-                    headline: landingHeadline,
-                    pitch: landingPitch,
-                    extended: landingExtended,
-                    image: landingImage,
-                    advantages: landingAdvantages,
-                    uniqueness, phone, whatsapp, website, email, address, hours,
-                    // עותק עמוק — כיווץ תמונות מוצר לא ישנה את המצב שעל המסך
-                    products: products.map((p) => ({ ...p })),
-                },
-                // הקוד עצמו נשלח לשרת והוא מאמת אותו שוב — הדגל לא נקבע בדפדפן
-                ownerCode: payCodeOk ? payCode : "",
-                requestedDurationDays: payDuration,
-            };
-            if (!(await shrinkPayloadImages(payload))) {
+            // הקוד עצמו נשלח לשרת והוא מאמת אותו שוב — הדגל לא נקבע בדפדפן
+            const payload = buildPayloadSnapshot();
+            if (!(await shrinkAdPayload(payload, AD_BODY_LIMIT)).ok) {
                 throw new Error("התמונות כבדות מדי לשליחה אחת - הקטינו את התמונה הראשית או תמונות המוצרים ונסו שוב");
             }
             // עריכת מודעה קיימת מחליפה את התוכן שלה; השאר (סטטוס, תוקף,
@@ -546,7 +496,7 @@
         {#if compressNotice.visible}
             <div class="compress-toast" role="status" aria-live="polite">
                 <button type="button" class="compress-toast-close" onclick={dismissCompressNotice} aria-label="סגור">✕</button>
-                <p>🪄 התמונה כווצה מ-{compressNotice.originalMB.toFixed(1)}MB ל-{compressNotice.finalMB.toFixed(1)}MB</p>
+                <p>🪄 התמונות כווצו אוטומטית מ-{fmtWeight(compressNotice.originalBytes)} ל-{fmtWeight(compressNotice.finalBytes)} כדי שהמודעה תעמוד במשקל המותר</p>
             </div>
         {/if}
 
@@ -625,6 +575,9 @@
                             {/if}
                             <input type="file" accept="image/*" onchange={handleLandingImage} class="hidden-input" />
                         </label>
+                        {#if uploadIssue.zone === "landing"}
+                            <p class="upload-issue" role="alert">⛔ {uploadIssue.msg}</p>
+                        {/if}
                     </div>
 
                     <div class="span-2">
@@ -676,6 +629,10 @@
                         </div>
                     {/each}
                 </div>
+
+                {#if uploadIssue.zone === "product"}
+                    <p class="upload-issue" role="alert">⛔ {uploadIssue.msg}</p>
+                {/if}
 
                 {#if products.length < 3}
                     <button type="button" onclick={addProduct} class="add-product-btn">+ הוספת מוצר</button>
@@ -920,12 +877,18 @@
 
                 {#if !canSubmit}
                     <p class="submit-note">
-                        ⚠️ אי אפשר לשלוח עדיין — חסר: {missingFields.map((f) => f.label).join(", ")}.
-                        {#if missingFields.some((f) => f.where === "landing")}
-                            ממלאים את זה כאן למעלה, בדף הזה.
+                        {#if missingFields.length > 0}
+                            ⚠️ אי אפשר לשלוח עדיין — חסר: {missingFields.map((f) => f.label).join(", ")}.
+                            {#if missingFields.some((f) => f.where === "landing")}
+                                ממלאים את זה כאן למעלה, בדף הזה.
+                            {/if}
+                            {#if missingFields.some((f) => f.where === "card")}
+                                את פרטי הכרטיס משלימים <button type="button" class="inline-link" onclick={goBack}>בעמוד עריכת הכרטיס</button>.
+                            {/if}
                         {/if}
-                        {#if missingFields.some((f) => f.where === "card")}
-                            את פרטי הכרטיס משלימים <button type="button" class="inline-link" onclick={goBack}>בעמוד עריכת הכרטיס</button>.
+                        {#if overweight}
+                            ⚖️ המודעה כבדה מדי ({fmtWeight(adWeightBytes)} מתוך {fmtWeight(AD_EFFECTIVE_LIMIT)} מותרים) —
+                            הקטינו או הסירו תמונה{#if heaviestLabel}&nbsp;(הכבדה ביותר: {heaviestLabel}){/if}.
                         {/if}
                     </p>
                 {/if}
@@ -1756,6 +1719,18 @@
         font-size: 0.85rem;
         margin: 0.75rem 0 0;
         font-weight: 700;
+    }
+    /* דחיית העלאה בשלב עצמו — כשאין מקום לתמונה בתקציב המודעה */
+    .upload-issue {
+        margin-top: 0.7rem;
+        padding: 0.7rem 0.9rem;
+        border-radius: 0.75rem;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(248, 113, 113, 0.45);
+        color: #fecaca;
+        font-size: 0.9rem;
+        font-weight: 600;
+        line-height: 1.55;
     }
     .submit-btn {
         margin-top: 1.25rem;
