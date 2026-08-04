@@ -5,8 +5,14 @@ import { isOwnerCode, notifyOwnerCodeUse } from '$lib/server/adsCode';
 import { normalizePlanDays } from '$lib/adPlans';
 
 // קליטת פרסומת חדשה מהבילדר — נשמרת ב-Strapi במצב "ממתינה לאישור".
-// אין דרישת התחברות (כמו במקור) — הסינון האמיתי הוא האישור הידני ב-/admin/ads.
+// חובה להיות מחובר: מודעה בלי submitted_by היא מודעה בלי בעלים — המפרסם
+// לא יכול לראות את הביצועים שלה, לערוך אותה או לחדש אותה לעולם.
 export const POST: RequestHandler = async ({ request, locals }) => {
+    const session = await locals.auth();
+    if (!session?.user) {
+        throw error(401, 'צריך להתחבר לפני השליחה — כך הפרסומת נשמרת על החשבון שלכם ותוכלו לעקוב אחריה ולערוך אותה');
+    }
+
     let payload: any;
     try {
         payload = await request.json();
@@ -23,19 +29,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         throw error(400, 'חסר אובייקט landing');
     }
 
-    const session = await locals.auth();
     // הקוד מאומת כאן, בשרת — לא סומכים על דגל payment מהדפדפן
     const usedOwnerCode = isOwnerCode(payload.ownerCode);
     const requestedDurationDays = normalizePlanDays(payload.requestedDurationDays);
     try {
         const ad = await submitAd({
-            submittedBy: session?.user
-                ? {
-                    id: String(session.user.id ?? ''),
-                    email: session.user.email ?? '',
-                    name: session.user.name ?? '',
-                }
-                : undefined,
+            submittedBy: {
+                id: String(session.user.id ?? ''),
+                email: session.user.email ?? '',
+                name: session.user.name ?? '',
+            },
             title: payload.title,
             subtitle: payload.subtitle,
             payment: usedOwnerCode ? 'code' : 'pending',
@@ -53,7 +56,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             await notifyOwnerCodeUse({
                 adTitle: payload.title,
                 durationDays: requestedDurationDays,
-                submitter: session?.user ? { name: session.user.name, email: session.user.email } : null,
+                submitter: { name: session.user.name, email: session.user.email },
             });
         }
         return json({ ok: true, id: ad.id, status: ad.status });

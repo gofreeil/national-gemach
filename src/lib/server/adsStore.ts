@@ -348,7 +348,15 @@ export function normalizeLanding(raw: unknown): Partial<AdLanding> {
 export function isAdOwner(keys: Set<string>, ad: SubmittedAd): boolean {
     const id = (ad.submittedBy.id ?? '').trim();
     const email = (ad.submittedBy.email ?? '').trim().toLowerCase();
-    return Boolean((id && keys.has(id)) || (email && keys.has(email)));
+    if (id && keys.has(id)) return true;
+    if (email && keys.has(email)) return true;
+    // מודעות שנשלחו לפני שההתחברות הפכה לחובה נשמרו בלי בעלים כלל. שם
+    // האימייל שהמפרסם הזין בפרטי הקשר של דף הנחיתה הוא הזיהוי היחיד שקיים,
+    // ומי שמתחבר עם אותה כתובת הוא הבעלים. חל רק כשאין submitted_by —
+    // מודעה עם בעלים רשום לא נלקחת מידיו.
+    if (id || email) return false;
+    const contact = (ad.landing?.email ?? '').trim().toLowerCase();
+    return Boolean(contact && keys.has(contact));
 }
 
 /** המודעות של המפרסם עצמו — לדשבורד הנכס (/advertise/manage). */
