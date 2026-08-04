@@ -92,6 +92,11 @@
 			<p class="mt-1 text-sm text-gray-400">כדי להוסיף גמ"ח או לנהל את הפרטים שלכם</p>
 		</div>
 
+		<!-- הודעה ברורה למשתמש חדש: בפעם הראשונה יש להירשם תחילה -->
+		<p class="mb-5 text-center text-amber-200 text-[13px] sm:text-sm font-bold leading-relaxed">
+			👋 פעם ראשונה כאן? יש להירשם תחילה — ואז ניתן להישאר מחובר במכשיר זה.
+		</p>
+
 		{#if err || data.error}
 			<div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
 				{err ?? errorText(data.error ?? '')}
