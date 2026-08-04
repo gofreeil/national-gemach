@@ -35,12 +35,8 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
             title: 'ניהול גמ"חים',
             desc: 'עריכה, סידור, הצמדה ומחיקה'
         },
-        {
-            // באזור האישי מיותר — ההוספה נגישה ממסך "ניהול גמ"חים"
-            href: '/admin/gemachim/new', icon: '➕', label: 'הוספת גמ"ח', exact: true, navOnly: true,
-            title: 'הוספת גמ"ח חדש',
-            desc: 'שם, קטגוריה, עיר, טלפון, תגים ועוד'
-        },
+        // הוספת גמ"ח אינה מסך ניהול בפני עצמו — הכפתור "➕ הוספת גמ"ח"
+        // יושב בראש מסך "ניהול גמ"חים", ומשם מגיעים ל-/admin/gemachim/new.
         {
             href: '/admin/gemachim/complete', icon: '🗺️', label: 'לא מלאים', exact: true,
             title: 'גמ"חים לא מלאים',

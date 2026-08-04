@@ -316,6 +316,12 @@ interface InsightsCache {
 
 const INSIGHTS_REFRESH_MS = 60 * 60 * 1000;
 
+// מקורות שהם שיתוף בוואטסאפ: l.whatsapp.com / whatsapp.com / com.whatsapp (אפליקציית
+// אנדרואיד) / wa.me, וגם קישורים שסומנו ידנית ב-utm_source=whatsapp.
+const WHATSAPP_SOURCE = /whatsapp|wa\.me/i;
+/** ערוץ סינתטי (לא קיים ב-GA) — מתורגם לעברית בדף /admin/stats */
+const WHATSAPP_CHANNEL = 'WhatsApp';
+
 /** תובנות שנה אחורה. null = GA לא מוגדר/נכשל ואין מטמון. */
 export async function getYearlyInsights(): Promise<InsightsCache | null> {
     const cached = await getConfigValue<InsightsCache>('visitors_insights').catch(() => null);
@@ -335,8 +341,8 @@ async function fetchInsightsFromGA(): Promise<YearlyInsights | null> {
     const token = await getAccessToken();
     if (!token) return null;
 
-    // דוח אחד: מימד + מטריקה, ממוין יורד, עם סינון hostName (הנכס משותף לכמה אתרים)
-    const mkRequest = (dimension: string, metric: string, limit: number, extraFilter?: object) => {
+    // דוח אחד: מימד (או כמה) + מטריקה, ממוין יורד, עם סינון hostName (הנכס משותף לכמה אתרים)
+    const mkRequest = (dimension: string | string[], metric: string, limit: number, extraFilter?: object) => {
         const expressions = [
             ...(HOSTNAME
                 ? [{ filter: { fieldName: 'hostName', stringFilter: { matchType: 'EXACT', value: HOSTNAME } } }]
@@ -345,7 +351,7 @@ async function fetchInsightsFromGA(): Promise<YearlyInsights | null> {
         ];
         return {
             dateRanges: [{ startDate: '365daysAgo', endDate: 'today' }],
-            dimensions: [{ name: dimension }],
+            dimensions: (Array.isArray(dimension) ? dimension : [dimension]).map((name) => ({ name })),
             metrics: [{ name: metric }],
             orderBys: [{ metric: { metricName: metric }, desc: true }],
             limit: String(limit),
@@ -371,7 +377,9 @@ async function fetchInsightsFromGA(): Promise<YearlyInsights | null> {
                         }),
                         mkRequest('city', 'activeUsers', 15),
                         mkRequest('deviceCategory', 'activeUsers', 10),
-                        mkRequest('sessionDefaultChannelGroup', 'sessions', 10)
+                        // מקורות תנועה + המקור המדויק, כדי לשלוף מתוכם את שיתופי הוואטסאפ
+                        // (GA משייך אותם ל-Organic Social/Referral ולכן לא נראו בנפרד)
+                        mkRequest(['sessionDefaultChannelGroup', 'sessionSource'], 'sessions', 200)
                     ]
                 })
             }
@@ -390,11 +398,27 @@ async function fetchInsightsFromGA(): Promise<YearlyInsights | null> {
                     count: Number(r.metricValues?.[0]?.value) || 0
                 }))
                 .filter((r) => r.key && r.count > 0);
+        // מקורות תנועה: כל שורה היא (ערוץ, מקור). מקור וואטסאפ מקבל ערוץ משלו
+        // ומנוכה מהערוץ המקורי, כך שאין ספירה כפולה והסכום נשאר נכון.
+        const byChannel = new Map<string, number>();
+        for (const r of j.reports?.[3]?.rows ?? []) {
+            const channel = r.dimensionValues?.[0]?.value ?? '';
+            const source = r.dimensionValues?.[1]?.value ?? '';
+            const count = Number(r.metricValues?.[0]?.value) || 0;
+            if (!channel || count <= 0) continue;
+            const key = WHATSAPP_SOURCE.test(source) ? WHATSAPP_CHANNEL : channel;
+            byChannel.set(key, (byChannel.get(key) ?? 0) + count);
+        }
+        const channels = [...byChannel]
+            .map(([key, count]) => ({ key, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
         return {
             gemachPages: toRows(0),
             cities: toRows(1),
             devices: toRows(2),
-            channels: toRows(3)
+            channels
         };
     } catch (e) {
         console.error('[visitorStats] batchRunReports error:', e);

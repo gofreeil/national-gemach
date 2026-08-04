@@ -5,6 +5,7 @@
     import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
     import AdminGemachMenu from '$lib/components/AdminGemachMenu.svelte';
     import VerifiedStamp from '$lib/components/VerifiedStamp.svelte';
+    import ShareGemach from '$lib/components/ShareGemach.svelte';
     import { runInterstitial, gatedNav } from '$lib/adGate';
     import { formatOpeningHoursLines, isOpenNow, toSchemaOpeningHours } from '$lib/openingHours';
     import Seo from '$lib/components/Seo.svelte';
@@ -343,6 +344,7 @@
                             🔗 לאתר הגמ"ח
                         </a>
                     {/if}
+                    <ShareGemach {gemach} {categoryLabel} place={placeName} />
                 </div>
 
                 <!-- פרטים — שורות קומפקטיות במקום כרטיס נפרד -->

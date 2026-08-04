@@ -42,6 +42,8 @@
         mobile: '📱 נייד', desktop: '💻 מחשב', tablet: 'טאבלט', 'smart tv': 'טלוויזיה חכמה'
     };
     const CHANNEL_HE: Record<string, string> = {
+        // ערוץ סינתטי שנשלף מתוך המקורות בשרת — לא שם של GA
+        'WhatsApp': '💬 שיתופים בוואטסאפ',
         'Organic Search': 'חיפוש אורגני (גוגל)', 'Direct': 'כניסה ישירה', 'Referral': 'הפניות מאתרים',
         'Organic Social': 'רשתות חברתיות', 'Paid Search': 'חיפוש ממומן', 'Email': 'מייל',
         'Display': 'באנרים', 'Cross-network': 'רשתות מעורבות', 'Organic Video': 'וידאו',
@@ -164,7 +166,7 @@
             {@render rankCard('🏆 הגמ"חים הנצפים ביותר', 'צפיות בדפי הגמ"חים בשנה האחרונה — לחיצה פותחת את הגמ"ח', gemachRows)}
             {@render rankCard('🌍 הערים של הגולשים', 'מאיפה נכנסים לאתר (לפי מיקום הגולש)', cityRows)}
             {@render rankCard('📱 מכשירים', 'ממה גולשים לאתר', deviceRows)}
-            {@render rankCard('🧭 מקורות תנועה', 'איך מגיעים לאתר', channelRows)}
+            {@render rankCard('🧭 מקורות תנועה', 'איך מגיעים לאתר · שיתוף בוואטסאפ שלא מוסר מקור נספר ככניסה ישירה', channelRows)}
         </div>
     {:else}
         <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
