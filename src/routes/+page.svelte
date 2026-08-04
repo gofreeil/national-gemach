@@ -601,10 +601,7 @@
             {#if data.visitors}
                 <div class="mx-auto my-2 h-px w-3/5 bg-[#3b5794]" aria-hidden="true"></div>
                 <div class="text-center">
-                    <div class="flex items-center justify-center gap-1.5">
-                        <span class="text-green-400 text-[10px] leading-none" aria-hidden="true">●</span>
-                        <span class="text-xl md:text-2xl font-black text-green-300 leading-tight">{new Intl.NumberFormat('he-IL').format(data.visitors.count)}</span>
-                    </div>
+                    <div class="text-xl md:text-2xl font-black text-green-300 leading-tight">{new Intl.NumberFormat('he-IL').format(data.visitors.count)}</div>
                     <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">{data.visitors.label}</div>
                 </div>
             {/if}
