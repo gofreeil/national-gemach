@@ -109,9 +109,6 @@
 		<!-- שלב ראשון: מי שאין לו חשבון — קודם כול נרשם -->
 		<div class="mb-6 rounded-2xl border border-purple-400/40 bg-purple-500/10 p-4 text-center">
 			<p class="text-sm font-black text-white">עדיין אין לכם חשבון?</p>
-			<p class="mt-1 text-xs leading-relaxed text-gray-300">
-				קודם כול צריך להירשם — פעם אחת, ואז תוכלו להתחבר מכל מכשיר.
-			</p>
 			<a
 				href="/register?redirect={encodeURIComponent(data.redirectTo || '/')}"
 				class="mt-3 block w-full rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3.5 font-bold text-white transition hover:from-blue-500 hover:to-purple-500"
