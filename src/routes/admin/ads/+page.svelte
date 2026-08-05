@@ -267,6 +267,10 @@
                         </span>
                         {#if ad.payment === 'code'}
                             <span class="status-pill approved">💳 קוד תנועה — כמו שולם</span>
+                        {:else if ad.codeRequested}
+                            <!-- הקוד הוא בקשה בלבד. חייב לומר במפורש שלא שולם,
+                                 אחרת מאשרים פרסומת בהנחה שנכנס כסף. -->
+                            <span class="status-pill pending">🎟️ ביקש חינם עם קוד — לא שולם</span>
                         {:else}
                             <span class="status-pill pending">⌛ תשלום לתיאום</span>
                         {/if}

@@ -61,8 +61,10 @@ export interface SubmittedAd {
     editedAt: string;
     expiresAt: string;
     durationDays: number;
-    /** "code" = הוזן קוד התנועה בשליחה (כמו שולם); "pending" = תשלום לתיאום */
+    /** "code" = סומן כשולם; "pending" = תשלום לתיאום. הגשה תמיד נכנסת כ-pending. */
     payment: string;
+    /** המפרסם הקליד את קוד הבעלים — בקשה לפרסום חינם שממתינה לאישור ידני */
+    codeRequested: boolean;
     /** התקופה שהמפרסם ביקש בשליחה (אחד ממסלולי adPlans) — ברירת המחדל באישור */
     requestedDurationDays: number;
 }
@@ -126,6 +128,8 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         expiresAt: x.expires_at ?? '',
         durationDays: Number(x.duration_days) || DEFAULT_DURATION_DAYS,
         payment: x.payment ?? 'pending',
+        // המפרסם הקליד את קוד הבעלים — בקשה לפרסום חינם, לא אישור שלה
+        codeRequested: x.code_requested === true,
         requestedDurationDays: normalizePlanDays(x.requested_duration_days),
     };
 }
@@ -257,7 +261,10 @@ export async function submitAd(payload: {
                 landing:      payload.landing ?? {},
                 submitted_by: payload.submittedBy ?? { id: '', email: '', name: '' },
                 submitted_at: new Date().toISOString(),
-                payment: payload.payment === 'code' ? 'code' : 'pending',
+                // הגשה לעולם לא נכנסת כ"שולם". קוד הבעלים הוא *בקשה* לפרסום
+                // חינם, והזכות עצמה ניתנת רק באישור הידני של האדמין.
+                payment: 'pending',
+                code_requested: payload.payment === 'code',
                 requested_duration_days: normalizePlanDays(payload.requestedDurationDays),
             },
             publishedAt: new Date().toISOString(),
