@@ -52,6 +52,39 @@ async function resolveOwnerUserId(): Promise<number | null> {
     }
 }
 
+/** הודעה לבעלים על *כל* בקשת פרסום חדשה — לא רק על שימוש בקוד.
+ *  בלי זה פרסומת נשמרה כ"ממתינה לאישור" בשקט מוחלט, ואיש לא ידע עליה
+ *  עד שמישהו נכנס במקרה ל-/admin/ads. כשל כאן לא מפיל את ההגשה. */
+export async function notifyOwnerNewAd(info: {
+    adTitle: string;
+    durationDays: number;
+    usedOwnerCode: boolean;
+    submitter?: { name?: string | null; email?: string | null } | null;
+}): Promise<void> {
+    try {
+        const receiver = await resolveOwnerUserId();
+        if (!receiver) {
+            console.warn('adsCode: no notify recipient resolved — skipping new-ad notification');
+            return;
+        }
+        const who = info.submitter?.email
+            ? `${info.submitter.name || 'ללא שם'} (${info.submitter.email})`
+            : 'משתמש לא מחובר';
+        const content =
+            `📢 בקשת פרסום חדשה — ${SITE_NAME}\n` +
+            `פרסומת: "${info.adTitle}"\n` +
+            `מי שלח: ${who}\n` +
+            `תקופה מבוקשת: ${planLabelWithPrice(info.durationDays)}\n` +
+            `תשלום: ${info.usedOwnerCode ? 'קוד בעלים' : 'ממתין לתשלום'}\n` +
+            `המודעה ממתינה לאישור ב-gemach.gofreeil.com/admin/ads`;
+        await strapiPost('/api/messages', {
+            data: { receiver, content, read: false },
+        });
+    } catch (err) {
+        console.warn('adsCode: new-ad notification failed', err instanceof Error ? err.message : err);
+    }
+}
+
 /** הודעה לבעלים על שימוש בקוד — לתיבת ההודעות בקהילה בשכונה.
  *  כשל כאן לא מפיל את ההגשה (fire-and-forget מבחינת הקורא). */
 export async function notifyOwnerCodeUse(info: {
