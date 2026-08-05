@@ -67,6 +67,8 @@ export interface SubmittedAd {
     codeRequested: boolean;
     /** התקופה שהמפרסם ביקש בשליחה (אחד ממסלולי adPlans) — ברירת המחדל באישור */
     requestedDurationDays: number;
+    /** מיקום ידני בטור הפרסומות (0 = המשבצת הראשונה). ריק = לפי סדר האישור */
+    slotOrder?: number;
 }
 
 /** הצורה הרזה שמוזרמת לתצוגה הציבורית (טור ימני + פרסומת-ביניים) */
@@ -131,7 +133,13 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         // המפרסם הקליד את קוד הבעלים — בקשה לפרסום חינם, לא אישור שלה
         codeRequested: x.code_requested === true,
         requestedDurationDays: normalizePlanDays(x.requested_duration_days),
+        slotOrder: typeof x.slot_order === 'number' ? x.slot_order : undefined,
     };
+}
+
+/** סדר המשבצות בטור: קודם מי שקיבל מיקום ידני, אחריו לפי סדר הכניסה (ותיק→חדש) */
+function bySlotOrder(a: { slotOrder?: number }, b: { slotOrder?: number }): number {
+    return (a.slotOrder ?? Number.MAX_SAFE_INTEGER) - (b.slotOrder ?? Number.MAX_SAFE_INTEGER);
 }
 
 // ---------- קאש קצר לרשימת המאושרות ----------
@@ -296,6 +304,8 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
             .filter((a): a is SubmittedAd => Boolean(a))
             // מודעה שפג תוקפה יורדת מהאתר אוטומטית (הרשומה נשארת לארכיון)
             .filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > now)
+            // מיקום ידני שנקבע במסך הניהול גובר על סדר הכניסה
+            .sort(bySlotOrder)
             .map((a) => ({
                 id: a.id,
                 title: a.title,
@@ -475,8 +485,65 @@ export async function rejectAd(
     invalidateAdsCache();
 }
 
+/** הורדת מודעה מאושרת מהאתר — חוזרת ל"ממתינה", בלי למחוק אותה.
+ *  התוקף מתאפס כדי שהמשבצת תתפנה מיד ולא תיתפס ע"י מודעה שכבר לא באוויר. */
+export async function unapproveAd(id: string, decidedBy = ''): Promise<void> {
+    await mergeExtra(id, {
+        decided_at: '',
+        decided_by: decidedBy,
+        expires_at: '',
+        rejection_reason: '',
+    }, 'pending');
+    invalidateAdsCache();
+}
+
 /** מחיקה לצמיתות (ניקוי מודעות ישנות במסך האדמין). */
 export async function removeAd(id: string): Promise<void> {
     await strapiDelete(`/api/items/${encodeURIComponent(id)}`);
     invalidateAdsCache();
+}
+
+// ---------- החלפת מקום בטור הפרסומות ----------
+
+export type MoveDirection = 'up' | 'down';
+
+/** המודעות שבאוויר, בסדר התצוגה בטור (המשבצות). */
+async function listActiveInSlotOrder(): Promise<SubmittedAd[]> {
+    const now = Date.now();
+    const all = await listAllForAdmin();
+    return all
+        .filter((a) => a.status === 'approved')
+        .filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > now)
+        // listAllForAdmin מחזיר חדש→ותיק; סדר המשבצות הוא ותיק→חדש
+        .reverse()
+        .sort(bySlotOrder);
+}
+
+/**
+ * מזיזה מודעה משבצת אחת למעלה/למטה בטור. המיקום נשמר ב-slot_order בתוך
+ * extra_fields — אין עמודה ייעודית ב-items, ואותה עמודת json כבר נושאת
+ * את כל שאר שדות המודעה.
+ * מחזירה null אם המודעה לא באוויר או שהיא כבר בקצה הטור.
+ */
+export async function moveApprovedAd(
+    id: string,
+    direction: MoveDirection,
+): Promise<{ title: string; position: number; total: number } | null> {
+    const list = await listActiveInSlotOrder();
+    const from = list.findIndex((a) => a.id === id);
+    if (from === -1) return null;
+    const to = direction === 'up' ? from - 1 : from + 1;
+    if (to < 0 || to >= list.length) return null;
+
+    const reordered = [...list];
+    [reordered[from], reordered[to]] = [reordered[to], reordered[from]];
+
+    // כותבים רק את מי שהמשבצת שלו באמת השתנתה: בפעם הראשונה זה כל הטור
+    // (לאף מודעה אין עדיין slot_order), ומכאן והלאה שתי המודעות שהוחלפו.
+    for (const [i, ad] of reordered.entries()) {
+        if (ad.slotOrder === i) continue;
+        await mergeExtra(ad.id, { slot_order: i });
+    }
+    invalidateAdsCache();
+    return { title: reordered[to].title, position: to + 1, total: reordered.length };
 }

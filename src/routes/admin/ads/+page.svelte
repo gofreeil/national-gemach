@@ -305,9 +305,39 @@
                         <p class="ad-reject-reason">סיבת דחייה: {ad.rejectionReason}</p>
                     {/if}
 
+                    {#if ad.isActive && ad.slotIndex >= 0}
+                        <!-- משבצת הפרסומת בטור + החלפת מקום. הסדר כאן הוא בדיוק
+                             הסדר שהגולש רואה בטור הימני. -->
+                        <div class="slot-row">
+                            <span class="slot-badge">{ad.slotIndex + 1}</span>
+                            <span class="slot-label">משבצת {ad.slotIndex + 1} מתוך {ad.slotTotal} בטור</span>
+                            <form method="POST" action="?/move" use:enhance>
+                                <input type="hidden" name="id" value={ad.id} />
+                                <input type="hidden" name="dir" value="up" />
+                                <button type="submit" class="a-btn ghost" disabled={ad.slotIndex === 0} title="העלה משבצת אחת">▲ למעלה</button>
+                            </form>
+                            <form method="POST" action="?/move" use:enhance>
+                                <input type="hidden" name="id" value={ad.id} />
+                                <input type="hidden" name="dir" value="down" />
+                                <button type="submit" class="a-btn ghost" disabled={ad.slotIndex === ad.slotTotal - 1} title="הורד משבצת אחת">▼ למטה</button>
+                            </form>
+                        </div>
+                    {/if}
+
                     <div class="ad-actions">
                         {#if ad.status === 'approved'}
                             <a href="/ads/{ad.id}" target="_blank" class="a-btn ghost">פתח את דף הנחיתה ↗</a>
+                        {/if}
+                        {#if ad.isActive}
+                            <!-- הורדה מהאתר בלי מחיקה: הפרסומת חוזרת לממתינות ואפשר
+                                 להחזיר אותה לאוויר באישור מחדש -->
+                            <form method="POST" action="?/unapprove" use:enhance>
+                                <input type="hidden" name="id" value={ad.id} />
+                                <button type="submit" class="a-btn ghost"
+                                        onclick={(e) => { if (!confirm('להוריד את הפרסומת מהאתר ולהחזיר אותה לממתינות?')) e.preventDefault(); }}>
+                                    ⏸ הורד מהאתר
+                                </button>
+                            </form>
                         {/if}
                         {#if ad.status !== 'approved' || ad.isExpired}
                             <form method="POST" action="?/approve" use:enhance class="approve-form">
@@ -701,6 +731,39 @@
         align-items: center;
         gap: 0.5rem;
         margin-top: 0.75rem;
+    }
+    /* שורת המשבצת בטור + חצי החלפת מקום */
+    .slot-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+        padding-top: 0.6rem;
+        border-top: 1px solid #3b5794;
+    }
+    .slot-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.6rem;
+        height: 1.6rem;
+        border-radius: 0.5rem;
+        background: #1e3a8a;
+        border: 1px solid #60a5fa;
+        color: #dbeafe;
+        font-weight: 900;
+        font-size: 0.8rem;
+    }
+    .slot-label {
+        color: #b6c6ea;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-inline-end: auto;
+    }
+    .a-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
     }
     .a-btn {
         padding: 0.45rem 1rem;
