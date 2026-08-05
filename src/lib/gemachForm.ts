@@ -3,6 +3,8 @@
 // בלי משתני סביבה, ובלי import מ-$lib/server — מה שמאפשר לשני הצדדים לפענח
 // את אותם שדות בדיוק, כך ששדה חדש בטופס נשמר בטיוטה בלי עבודה נוספת.
 
+import { parseImageFitMap, type ImageFit } from '$lib/imageFit';
+
 export interface CreateGemachInput {
     name: string;
     category: string;       // sub-category key (clothing, baby, ...) — הנושא הראשי
@@ -23,6 +25,8 @@ export interface CreateGemachInput {
     notes?: string;
     logoBase64?: string;
     images?: string[];
+    /** מיקום-ותקריב פר-תמונה (extra_fields.image_fit): 'logo' | אינדקס גלריה */
+    imageFit?: Record<string, ImageFit>;
     tags?: string[];
     order?: number;
     featured?: boolean;
@@ -72,6 +76,13 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		.map(s => s.trim())
 		.filter(s => s !== '' && isSafeImageSrc(s));
 
+	// מיקומי התמונות: JSON שנבנה בעורך המיקוד של הטופס. ערך לא-תקין נשמט
+	// בשקט — מיקום הוא קישוט, ואסור שיפיל שמירה של טופס שלם.
+	let imageFit: Record<string, ImageFit> | undefined;
+	try {
+		imageFit = parseImageFitMap(JSON.parse((form.get('image_fit') as string) || '{}'));
+	} catch { /* JSON שבור → בלי מיקומים */ }
+
 	// נושאים: הטופס שולח `categories` פעם אחת לכל נושא מסומן, הראשון הוא הראשי.
 	// `category` נשאר כנפילה-לאחור לטפסים/סקריפטים שמכירים רק שדה בודד.
 	const picked = form.getAll('categories')
@@ -97,6 +108,7 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		icon:         str('icon'),
 		image:        str('image'),
 		images,
+		imageFit,
 		description:  ((form.get('description') as string) ?? '').trim(),
 		tags,
 		order:        orderNum !== undefined && !isNaN(orderNum) ? orderNum : undefined,

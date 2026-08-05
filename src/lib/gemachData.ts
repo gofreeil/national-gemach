@@ -1,3 +1,5 @@
+import type { ImageFit } from '$lib/imageFit';
+
 export interface Gemach {
     id: string;
     name: string;
@@ -31,6 +33,9 @@ export interface Gemach {
     image?: string;
     /** גלריית תמונות לדף הגמ"ח. משותפת עם "קהילה בשכונה" (extra_fields.images) */
     gallery?: string[];
+    /** מיקום-ותקריב פר-תמונה במשבצות התצוגה (extra_fields.image_fit).
+     *  מפתחות: 'logo' או אינדקס גלריה כמחרוזת. ראו $lib/imageFit. */
+    imageFit?: Record<string, ImageFit>;
     /** ידני: מיקום בסידור. קטן יותר = מופיע קודם. undefined = בסוף */
     order?: number;
     /** מוצמד לראש הרשימה */

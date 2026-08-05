@@ -7,6 +7,7 @@ import { strapiGet, strapiGetAll, strapiPost, strapiPut, strapiDelete, StrapiCon
 import type { Gemach } from '$lib/gemachData';
 import type { CreateGemachInput } from '$lib/gemachForm';
 import { categories } from '$lib/gemachData';
+import { parseImageFitMap } from '$lib/imageFit';
 import { resolveGemachCoords, hasValidCoords } from './geocode';
 
 export interface StrapiItem {
@@ -136,6 +137,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         icon:          item.icon ?? undefined,
         image:         pickImage(extra),
         gallery:       pickGallery(extra),
+        imageFit:      parseImageFitMap(extra.image_fit),
         order,
         featured:      extra.featured === true || extra.featured === 'true',
         sourceId:      toStr(extra.source_id),
@@ -375,6 +377,7 @@ function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     const logo = input.image || input.logoBase64;
     if (logo)             extra.logo    = logo;
     if (input.images && input.images.length > 0) extra.images = input.images;
+    if (input.imageFit && Object.keys(input.imageFit).length > 0) extra.image_fit = input.imageFit;
     if (input.tags  && input.tags.length  > 0)   extra.tags   = input.tags;
     if (typeof input.order === 'number' && !isNaN(input.order)) extra.order = input.order;
     if (input.featured) extra.featured = true;
@@ -541,6 +544,8 @@ export async function updateGemach(
     if (input.order === undefined) delete mergedExtra.order;
     if (input.tags   && input.tags.length   === 0) delete mergedExtra.tags;
     if (input.images && input.images.length === 0) delete mergedExtra.images;
+    // מיקומי-תמונה שאופסו לברירת המחדל נמחקים — הטופס שולח תמיד את המפה המלאה
+    if (!input.imageFit || Object.keys(input.imageFit).length === 0) delete mergedExtra.image_fit;
 
     const data: Record<string, unknown> = {
         label:        input.name,

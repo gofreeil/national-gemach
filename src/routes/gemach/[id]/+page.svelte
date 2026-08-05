@@ -11,7 +11,7 @@
     import Seo from '$lib/components/Seo.svelte';
     import { SITE_NAME, SITE_URL, SITE_LOGO, DEFAULT_OG_IMAGE, breadcrumbSchema } from '$lib/seo';
     import { categoryKeys } from '$lib/gemachData';
-    import { isExtremeAspect } from '$lib/imageFit';
+    import { isExtremeAspect, displayedImageFit, fitStyle } from '$lib/imageFit';
     import { enhance } from '$app/forms';
     import type { PageData, ActionData } from './$types';
 
@@ -57,15 +57,21 @@
     /** התמונה שנפתחה במסך מלא (null = סגור) */
     let lightbox = $state<string | null>(null);
 
-    /** תמונת שער רחבה/גבוהה במיוחד מוצגת בשלמותה (contain) במקום להיחתך
-     *  לרצועה צרה ע"י object-cover. נמדד אחרי הטעינה; נמדד שוב בניווט
-     *  לקוח בין גמ"חים (allImages מתחלף באותו קומפוננט). */
+    /** מיקום-ותקריב ידני מהטופס לתמונת השער (אם הוגדר) */
+    const coverFit = $derived(displayedImageFit(gemach, allImages[0]));
+
+    /** תמונת שער רחבה/גבוהה במיוחד ובלי מיקום ידני מוצגת בשלמותה (contain)
+     *  במקום להיחתך לרצועה צרה ע"י object-cover. נמדד אחרי הטעינה; נמדד
+     *  שוב בניווט לקוח בין גמ"חים (allImages מתחלף באותו קומפוננט).
+     *  בחירה ידנית של המעלה גוברת על הניחוש האוטומטי — לשני הכיוונים. */
     let coverEl = $state<HTMLImageElement | null>(null);
-    let coverContain = $state(false);
+    let autoCoverContain = $state(false);
     const measureCover = () => {
-        if (allImages[0] && coverEl?.complete) coverContain = isExtremeAspect(coverEl);
+        if (allImages[0] && coverEl?.complete) autoCoverContain = isExtremeAspect(coverEl);
     };
     $effect(measureCover);
+
+    const coverContain = $derived(coverFit ? coverFit.contain === true : autoCoverContain);
 
     const fullAddress = $derived(
         [gemach.address, gemach.neighborhood, gemach.city].filter(Boolean).join(', ')
@@ -256,6 +262,7 @@
                         class="block w-full aspect-video md:aspect-[4/3] overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d] transition-transform hover:scale-[1.01]">
                         <img bind:this={coverEl} src={allImages[0]} alt="תמונת השער של {gemach.name}" decoding="async"
                             onload={measureCover}
+                            style={coverFit ? fitStyle(coverFit) : undefined}
                             class="h-full w-full {coverContain ? 'object-contain' : 'object-cover'}" />
                     </button>
                     {#if allImages.length > 1}
