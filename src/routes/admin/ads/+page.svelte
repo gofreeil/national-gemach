@@ -205,7 +205,7 @@
                     <!-- המודעות של המפרסם -->
                     <div class="adv-ads">
                         {#each g.ads as a (a.id)}
-                            <div class="adv-ad">
+                            <div class="promo-adv">
                                 <span class="adv-ad-title">{a.title}</span>
                                 <span class="status-pill {a.isExpired ? 'rejected' : a.status}">
                                     {a.isExpired ? 'פג תוקף' : a.status === 'pending' ? 'ממתינה' : a.status === 'approved' ? 'באוויר' : 'נדחתה'}
@@ -250,10 +250,10 @@
         <p class="empty">אין פרסומות בקטגוריה הזו.</p>
     {/if}
 
-    <div class="ads-list">
+    <div class="promo-list">
         {#each shown as ad (ad.id)}
             <!-- id כעוגן — ההתראה בפרופיל מקשרת ישירות לכרטיס: /admin/ads#ad-{id} -->
-            <div class="ad-card" id="ad-{ad.id}">
+            <div class="promo-card" id="ad-{ad.id}">
                 <div class="ad-card-img">
                     {#if ad.mainImage}
                         <!-- אותו מיקום/זום שהמפרסם קבע — המנהל מאשר את מה שבאמת יוצג -->
@@ -602,7 +602,7 @@
     .adv-stat.leads .n { color: #86efac; }
 
     .adv-ads { margin-top: 0.7rem; display: flex; flex-direction: column; gap: 0.4rem; }
-    .adv-ad {
+    .promo-adv {
         display: flex;
         align-items: center;
         gap: 0.6rem;
@@ -651,12 +651,12 @@
         padding: 2rem 0;
     }
 
-    .ads-list {
+    .promo-list {
         display: flex;
         flex-direction: column;
         gap: 1rem;
     }
-    .ad-card {
+    .promo-card {
         display: flex;
         gap: 1rem;
         background: rgba(255, 255, 255, 0.03);
@@ -666,12 +666,12 @@
         scroll-margin-top: 6rem;
     }
     /* נחיתה מהעוגן שבהתראת הפרופיל — הכרטיס המבוקש מודגש */
-    .ad-card:target {
+    .promo-card:target {
         border-color: rgba(244, 63, 94, 0.6);
         box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.25);
     }
     @media (max-width: 640px) {
-        .ad-card { flex-direction: column; }
+        .promo-card { flex-direction: column; }
     }
     .ad-card-img {
         width: 120px;
