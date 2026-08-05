@@ -1,7 +1,17 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getAdminContext } from '$lib/server/admin';
-import { listAllForAdmin, approveAd, rejectAd, unapproveAd, moveApprovedAd } from '$lib/server/adsStore';
+import {
+    listAllForAdmin,
+    approveAd,
+    rejectAd,
+    unapproveAd,
+    moveApprovedAd,
+    setAdDuration,
+    normalizeDurationDays,
+    pauseAd,
+    resumeAd,
+} from '$lib/server/adsStore';
 import { getAdStats, type AdStats, type AdCounters } from '$lib/server/adStats';
 import { normalizePlanDays, planLabel } from '$lib/adPlans';
 import { rightAds } from '$lib/rightAdsData';
@@ -49,6 +59,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     const slotOrder = raw
         .filter((a) => a.status === 'approved')
         .filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > now)
+        .filter((a) => !a.paused)
         .slice()
         .reverse()
         .sort((x, y) => (x.slotOrder ?? Number.MAX_SAFE_INTEGER) - (y.slotOrder ?? Number.MAX_SAFE_INTEGER))
@@ -60,7 +71,9 @@ export const load: PageServerLoad = async ({ locals }) => {
         const daysLeft = Number.isNaN(expiresTs) ? null : Math.ceil((expiresTs - now) / DAY_MS);
         // אושרה ופג תוקפה — כבר לא תופסת משבצת (הרשומה נשארת לארכיון)
         const isExpired = a.status === 'approved' && daysLeft !== null && daysLeft <= 0;
-        const isActive = a.status === 'approved' && !isExpired;
+        // מושהית: אושרה, לא פגה, אבל ירדה מהאתר עד להפעלה מחדש
+        const isPaused = a.status === 'approved' && !isExpired && !!a.paused;
+        const isActive = a.status === 'approved' && !isExpired && !isPaused;
         const totalDays = a.durationDays || null;
         // כמה מהתקופה נוצל — לפס ההתקדמות בלוח התפוסה
         const usedPct = isExpired
@@ -77,6 +90,7 @@ export const load: PageServerLoad = async ({ locals }) => {
             usedPct,
             isActive,
             isExpired,
+            isPaused,
             slotIndex: slotOrder.indexOf(a.id),
             slotTotal: slotOrder.length,
         };
@@ -139,6 +153,53 @@ export const actions: Actions = {
         } catch (err) {
             console.error('unapprove failed:', err);
             return fail(502, { error: 'ההורדה נכשלה — נסו שוב' });
+        }
+    },
+    // קציבת תקופת פרסום — נספרת מיום האישור
+    setDuration: async ({ request, locals }) => {
+        await getAdminContext(locals);
+        const form = await request.formData();
+        const id = String(form.get('id') ?? '');
+        if (!id) return fail(400, { error: 'חסר מזהה פרסומת' });
+        const days = normalizeDurationDays(form.get('days'));
+        try {
+            const r = await setAdDuration(id, days);
+            if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
+            const suffix = r.daysLeft < 0 ? ' — התקופה כבר חלפה, הפרסומת ירדה מהאתר' : '';
+            return { success: true, message: `${r.title}: ${days} ימים${suffix}` };
+        } catch (err) {
+            console.error('setDuration failed:', err);
+            return fail(502, { error: 'קציבת התקופה נכשלה — נסו שוב' });
+        }
+    },
+    // השהיה — יורדת מהאתר ושומרת את הימים שנותרו
+    pause: async ({ request, locals }) => {
+        await getAdminContext(locals);
+        const form = await request.formData();
+        const id = String(form.get('id') ?? '');
+        if (!id) return fail(400, { error: 'חסר מזהה פרסומת' });
+        try {
+            const r = await pauseAd(id);
+            if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
+            return { success: true, message: `${r.title} הושהתה — ${r.daysLeft} ימים שמורים לה` };
+        } catch (err) {
+            console.error('pause failed:', err);
+            return fail(502, { error: 'ההשהיה נכשלה — נסו שוב' });
+        }
+    },
+    // המשך אחרי השהיה — הימים השמורים נספרים מהיום
+    resume: async ({ request, locals }) => {
+        await getAdminContext(locals);
+        const form = await request.formData();
+        const id = String(form.get('id') ?? '');
+        if (!id) return fail(400, { error: 'חסר מזהה פרסומת' });
+        try {
+            const r = await resumeAd(id);
+            if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
+            return { success: true, message: `${r.title} חזרה לאוויר — ${r.daysLeft} ימים` };
+        } catch (err) {
+            console.error('resume failed:', err);
+            return fail(502, { error: 'ההפעלה מחדש נכשלה — נסו שוב' });
         }
     },
     // החלפת מקום בטור הפרסומות

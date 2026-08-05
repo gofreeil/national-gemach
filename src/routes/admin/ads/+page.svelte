@@ -13,6 +13,9 @@
 
     let tab = $state<'pending' | 'approved' | 'rejected'>('pending');
 
+    // תקופות שאפשר לקצוב למודעה שכבר באוויר (נספרות מיום האישור)
+    const DURATION_OPTIONS = [7, 14, 30, 60, 90, 180, 365];
+
     let pending  = $derived(data.ads.filter((a: any) => a.status === 'pending'));
     let approved = $derived(data.ads.filter((a: any) => a.status === 'approved'));
     let rejected = $derived(data.ads.filter((a: any) => a.status === 'rejected'));
@@ -265,6 +268,9 @@
                         <span class="status-pill {ad.isExpired ? 'rejected' : ad.status}">
                             {ad.isExpired ? 'פג תוקף' : ad.status === 'pending' ? 'ממתינה' : ad.status === 'approved' ? 'מאושרת' : 'נדחתה'}
                         </span>
+                        {#if ad.isPaused}
+                            <span class="status-pill pending">⏸ מושהית — {ad.pausedDaysLeft ?? 0} ימים שמורים</span>
+                        {/if}
                         {#if ad.payment === 'code'}
                             <span class="status-pill approved">💳 קוד תנועה — כמו שולם</span>
                         {:else if ad.codeRequested}
@@ -327,6 +333,37 @@
                     <div class="ad-actions">
                         {#if ad.status === 'approved'}
                             <a href="/ads/{ad.id}" target="_blank" class="a-btn ghost">פתח את דף הנחיתה ↗</a>
+                        {/if}
+                        {#if ad.isActive || ad.isPaused}
+                            <!-- קציבת תקופה: נספרת מיום האישור, ולכן קציבה קצרה
+                                 מהזמן שכבר רץ מורידה את הפרסומת מיד -->
+                            <form method="POST" action="?/setDuration" use:enhance class="approve-form">
+                                <input type="hidden" name="id" value={ad.id} />
+                                <label class="duration-label">
+                                    תקופה:
+                                    <select name="days" class="duration-select">
+                                        {#each DURATION_OPTIONS as d (d)}
+                                            <option value={d} selected={d === ad.totalDays}>{d} ימים</option>
+                                        {/each}
+                                    </select>
+                                </label>
+                                <button type="submit" class="a-btn ghost" title="התקופה נספרת מיום האישור">⏱ קצוב</button>
+                            </form>
+                        {/if}
+                        {#if ad.isPaused}
+                            <form method="POST" action="?/resume" use:enhance>
+                                <input type="hidden" name="id" value={ad.id} />
+                                <button type="submit" class="a-btn approve" title="הימים השמורים נספרים מהיום">▶ המשך</button>
+                            </form>
+                        {:else if ad.isActive}
+                            <!-- השהיה: יורדת מהאתר, הימים שנותרו נשמרים לה -->
+                            <form method="POST" action="?/pause" use:enhance>
+                                <input type="hidden" name="id" value={ad.id} />
+                                <button type="submit" class="a-btn ghost"
+                                        onclick={(e) => { if (!confirm('להשהות את הפרסומת? היא תרד מהאתר והימים שנותרו יישמרו לה.')) e.preventDefault(); }}>
+                                    ⏸ השהה
+                                </button>
+                            </form>
                         {/if}
                         {#if ad.isActive}
                             <!-- הורדה מהאתר בלי מחיקה: הפרסומת חוזרת לממתינות ואפשר

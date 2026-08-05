@@ -69,6 +69,10 @@ export interface SubmittedAd {
     requestedDurationDays: number;
     /** מיקום ידני בטור הפרסומות (0 = המשבצת הראשונה). ריק = לפי סדר האישור */
     slotOrder?: number;
+    /** מושהית — יורדת מהאתר ושומרת את הימים שנותרו לה */
+    paused?: boolean;
+    /** הימים ששמורים לה מרגע ההשהיה — מהם היא ממשיכה בהפעלה מחדש */
+    pausedDaysLeft?: number;
 }
 
 /** הצורה הרזה שמוזרמת לתצוגה הציבורית (טור ימני + פרסומת-ביניים) */
@@ -134,6 +138,8 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         codeRequested: x.code_requested === true,
         requestedDurationDays: normalizePlanDays(x.requested_duration_days),
         slotOrder: typeof x.slot_order === 'number' ? x.slot_order : undefined,
+        paused: x.paused === true,
+        pausedDaysLeft: typeof x.paused_days_left === 'number' ? x.paused_days_left : undefined,
     };
 }
 
@@ -304,6 +310,8 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
             .filter((a): a is SubmittedAd => Boolean(a))
             // מודעה שפג תוקפה יורדת מהאתר אוטומטית (הרשומה נשארת לארכיון)
             .filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > now)
+            // מודעה מושהית יורדת מהאתר ושומרת את הימים שנותרו לה
+            .filter((a) => !a.paused)
             // מיקום ידני שנקבע במסך הניהול גובר על סדר הכניסה
             .sort(bySlotOrder)
             .map((a) => ({
@@ -503,6 +511,72 @@ export async function removeAd(id: string): Promise<void> {
     invalidateAdsCache();
 }
 
+// ---------- ניהול תקופת הפרסום: קציבה, השהיה, המשך ----------
+
+const MIN_DURATION_DAYS = 1;
+const MAX_DURATION_DAYS = 730;
+
+/** מנרמל קלט ימים מהטופס לטווח שפוי (הקציבה הידנית אינה כבולה למסלולים) */
+export function normalizeDurationDays(raw: unknown): number {
+    const n = Math.round(Number(raw));
+    if (!Number.isFinite(n)) return DEFAULT_DURATION_DAYS;
+    return Math.min(MAX_DURATION_DAYS, Math.max(MIN_DURATION_DAYS, n));
+}
+
+/**
+ * קוצב למודעה תקופה חדשה. התקופה נספרת מיום האישור, ולכן קציבה קצרה
+ * מהזמן שכבר רץ מורידה את המודעה מהאתר מיד — וזו המשמעות של "לקצוב".
+ */
+export async function setAdDuration(
+    id: string,
+    days: number,
+): Promise<{ title: string; expiresAt: string; daysLeft: number } | null> {
+    const ad = await getAd(id);
+    if (!ad) return null;
+    const from = ad.decidedAt || ad.submittedAt || new Date().toISOString();
+    const expires = new Date(new Date(from).getTime() + days * DAY_MS);
+    await mergeExtra(id, { duration_days: days, expires_at: expires.toISOString() });
+    invalidateAdsCache();
+    return {
+        title: ad.title,
+        expiresAt: expires.toISOString(),
+        daysLeft: Math.ceil((expires.getTime() - Date.now()) / DAY_MS),
+    };
+}
+
+/**
+ * השהיה: המודעה יורדת מהאתר אבל שומרת את הימים שנותרו לה. בשונה
+ * מ"הורד מהאתר" — המפרסם לא מפסיד ימים ששילם עליהם.
+ */
+export async function pauseAd(id: string): Promise<{ title: string; daysLeft: number } | null> {
+    const ad = await getAd(id);
+    if (!ad) return null;
+    if (ad.paused) return { title: ad.title, daysLeft: ad.pausedDaysLeft ?? 0 };
+    const daysLeft = ad.expiresAt
+        ? Math.max(0, Math.ceil((Date.parse(ad.expiresAt) - Date.now()) / DAY_MS))
+        : (ad.durationDays || DEFAULT_DURATION_DAYS);
+    await mergeExtra(id, { paused: true, paused_days_left: daysLeft });
+    invalidateAdsCache();
+    return { title: ad.title, daysLeft };
+}
+
+/** המשך אחרי השהיה: הימים שנשמרו נספרים מחדש מהיום. */
+export async function resumeAd(
+    id: string,
+): Promise<{ title: string; expiresAt: string; daysLeft: number } | null> {
+    const ad = await getAd(id);
+    if (!ad) return null;
+    const daysLeft = ad.pausedDaysLeft ?? ad.durationDays ?? DEFAULT_DURATION_DAYS;
+    const expires = new Date(Date.now() + daysLeft * DAY_MS);
+    await mergeExtra(id, {
+        paused: false,
+        paused_days_left: null,
+        expires_at: expires.toISOString(),
+    }, 'approved');
+    invalidateAdsCache();
+    return { title: ad.title, expiresAt: expires.toISOString(), daysLeft };
+}
+
 // ---------- החלפת מקום בטור הפרסומות ----------
 
 export type MoveDirection = 'up' | 'down';
@@ -514,6 +588,8 @@ async function listActiveInSlotOrder(): Promise<SubmittedAd[]> {
     return all
         .filter((a) => a.status === 'approved')
         .filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > now)
+        // מושהית אינה תופסת משבצת בטור
+        .filter((a) => !a.paused)
         // listAllForAdmin מחזיר חדש→ותיק; סדר המשבצות הוא ותיק→חדש
         .reverse()
         .sort(bySlotOrder);
