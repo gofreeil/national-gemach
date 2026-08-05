@@ -52,6 +52,35 @@ async function resolveOwnerUserId(): Promise<number | null> {
     }
 }
 
+/** מזהי כל נמעני ההתראות: הבעלים (ADS_NOTIFY_EMAIL / הסופר-אדמין הראשון)
+ *  וגם כל אדמין שמונה ורשום עם אימייל. התראה על בקשת פרסום צריכה להגיע
+ *  לכל מי שמוסמך לאשר אותה, לא רק לאדם אחד. */
+async function resolveAdminUserIds(): Promise<number[]> {
+    const emails = new Set<string>();
+    const envEmail = (env.ADS_NOTIFY_EMAIL ?? '').trim().toLowerCase();
+    if (envEmail) emails.add(envEmail);
+    try {
+        for (const a of await getAdmins()) {
+            if (a.type === 'email' && a.identifier) emails.add(a.identifier.trim().toLowerCase());
+        }
+    } catch {
+        /* בלי רשימת אדמינים נסתפק במה שכבר נאסף */
+    }
+    if (emails.size === 0) return [];
+    const ids = new Set<number>();
+    await Promise.all([...emails].map(async (email) => {
+        try {
+            const users = await strapiGet<Array<{ id: number }>>('/api/users', {
+                'filters[email][$eq]': email,
+            });
+            if (users?.[0]?.id) ids.add(users[0].id);
+        } catch {
+            /* נמען בודד שלא נפתר לא מבטל את השאר */
+        }
+    }));
+    return [...ids];
+}
+
 /** הודעה לבעלים על *כל* בקשת פרסום חדשה — לא רק על שימוש בקוד.
  *  בלי זה פרסומת נשמרה כ"ממתינה לאישור" בשקט מוחלט, ואיש לא ידע עליה
  *  עד שמישהו נכנס במקרה ל-/admin/ads. כשל כאן לא מפיל את ההגשה. */
@@ -62,8 +91,13 @@ export async function notifyOwnerNewAd(info: {
     submitter?: { name?: string | null; email?: string | null } | null;
 }): Promise<void> {
     try {
-        const receiver = await resolveOwnerUserId();
-        if (!receiver) {
+        let receivers = await resolveAdminUserIds();
+        if (receivers.length === 0) {
+            // נפילה לנמען היחיד הישן, כדי שלעולם לא נישאר בלי התראה בכלל
+            const owner = await resolveOwnerUserId();
+            receivers = owner ? [owner] : [];
+        }
+        if (receivers.length === 0) {
             console.warn('adsCode: no notify recipient resolved — skipping new-ad notification');
             return;
         }
@@ -77,9 +111,9 @@ export async function notifyOwnerNewAd(info: {
             `תקופה מבוקשת: ${planLabelWithPrice(info.durationDays)}\n` +
             `תשלום: ${info.usedOwnerCode ? 'קוד בעלים' : 'ממתין לתשלום'}\n` +
             `המודעה ממתינה לאישור ב-gemach.gofreeil.com/admin/ads`;
-        await strapiPost('/api/messages', {
-            data: { receiver, content, read: false },
-        });
+        await Promise.all(receivers.map(receiver =>
+            strapiPost('/api/messages', { data: { receiver, content, read: false } })
+        ));
     } catch (err) {
         console.warn('adsCode: new-ad notification failed', err instanceof Error ? err.message : err);
     }
