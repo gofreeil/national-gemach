@@ -25,6 +25,10 @@
     );
     let advInHero = $derived(Boolean(heroImage) && advList.length > 0 && pitchLength <= 300);
 
+    // כל דרך קשר מופיעה פעם אחת בלבד: ההדר מציג טלפון + וואטסאפ (או אתר
+    // כשאין וואטסאפ), ולכן האתר נשאר לפרטי הקשר רק כשהוואטסאפ תפס את מקומו.
+    let websiteInContact = $derived(Boolean(lp.website) && Boolean(lp.whatsapp));
+
     // מספר מקומי (050...) הופך לפורמט בינלאומי שוואטסאפ מקבל (972...)
     function waNumber(phone: string): string {
         const digits = String(phone ?? '').replace(/\D/g, '');
@@ -162,20 +166,24 @@
         </section>
     {/if}
 
-    <!-- פרטי קשר — שורת גלולות, לא רשימה מתמשכת -->
-    <section class="al-section al-contact">
-        <div class="al-pills">
-            {#if lp.phone}<a class="al-pill" href="tel:{lp.phone}" onclick={() => trackAdLead(ad.id)}>📞 {lp.phone}</a>{/if}
-            {#if lp.whatsapp}<a class="al-pill" href="https://wa.me/{waNumber(lp.whatsapp)}" onclick={() => trackAdLead(ad.id)} target="_blank" rel="noopener noreferrer">💬 {lp.whatsapp}</a>{/if}
-            {#if lp.email}<a class="al-pill" href="mailto:{lp.email}" onclick={() => trackAdLead(ad.id)}>✉️ {lp.email}</a>{/if}
-            {#if lp.website}<a class="al-pill" href={lp.website} onclick={() => trackAdLead(ad.id)} target="_blank" rel="noopener noreferrer">🌐 {linkLabel(lp.website)}</a>{/if}
-        </div>
-        {#if lp.address || lp.hours}
-            <p class="al-meta">
-                {#if lp.address}📍 {lp.address}{/if}{#if lp.address && lp.hours} · {/if}{#if lp.hours}🕒 {lp.hours}{/if}
-            </p>
-        {/if}
-    </section>
+    <!-- פרטי קשר — רק מה שלא כבר מופיע ככפתור בהדר, כדי לא לחזור פעמיים.
+         הטלפון והוואטסאפ תמיד למעלה; האתר יורד לכאן רק כשהוואטסאפ תפס
+         את מקומו בהדר. -->
+    {#if lp.email || websiteInContact || lp.address || lp.hours}
+        <section class="al-section al-contact">
+            {#if lp.email || websiteInContact}
+                <div class="al-pills">
+                    {#if lp.email}<a class="al-pill" href="mailto:{lp.email}" onclick={() => trackAdLead(ad.id)}>✉️ {lp.email}</a>{/if}
+                    {#if websiteInContact && lp.website}<a class="al-pill" href={lp.website} onclick={() => trackAdLead(ad.id)} target="_blank" rel="noopener noreferrer">🌐 {linkLabel(lp.website)}</a>{/if}
+                </div>
+            {/if}
+            {#if lp.address || lp.hours}
+                <p class="al-meta">
+                    {#if lp.address}📍 {lp.address}{/if}{#if lp.address && lp.hours} · {/if}{#if lp.hours}🕒 {lp.hours}{/if}
+                </p>
+            {/if}
+        </section>
+    {/if}
 </div>
 
 <style>

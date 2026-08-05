@@ -738,9 +738,13 @@
                                     <div class="landing-cta-row">
                                         {#if phone}
                                             <a href="tel:{phone}" class="landing-cta">📞 {phone}</a>
+                                        {/if}
+                                        {#if whatsapp}
+                                            <a href="https://wa.me/{whatsapp.replace(/\D/g, '')}" class="landing-cta wa">וואטסאפ</a>
                                         {:else if website}
                                             <a href={website} class="landing-cta">לאתר שלנו ←</a>
-                                        {:else}
+                                        {/if}
+                                        {#if !phone && !whatsapp && !website}
                                             <span class="landing-cta dim">השלימו פרטי קשר</span>
                                         {/if}
                                     </div>
@@ -807,19 +811,22 @@
                             </section>
                         {/if}
 
-                        <section class="landing-section landing-contact">
-                            <div class="landing-pills">
-                                {#if phone}<a class="landing-pill" href="tel:{phone}">📞 {phone}</a>{/if}
-                                {#if whatsapp}<a class="landing-pill" href="https://wa.me/{whatsapp.replace(/\D/g, '')}">💬 {whatsapp}</a>{/if}
-                                {#if email}<a class="landing-pill" href="mailto:{email}">✉️ {email}</a>{/if}
-                                {#if website}<a class="landing-pill" href={website} target="_blank" rel="noopener">🌐 אתר</a>{/if}
-                            </div>
-                            {#if address || hours}
-                                <p class="landing-meta">
-                                    {#if address}📍 {address}{/if}{#if address && hours} · {/if}{#if hours}🕒 {hours}{/if}
-                                </p>
-                            {/if}
-                        </section>
+                        <!-- רק מה שלא כבר מופיע ככפתור בהדר — כל פרט קשר פעם אחת -->
+                        {#if email || (website && whatsapp) || address || hours}
+                            <section class="landing-section landing-contact">
+                                {#if email || (website && whatsapp)}
+                                    <div class="landing-pills">
+                                        {#if email}<a class="landing-pill" href="mailto:{email}">✉️ {email}</a>{/if}
+                                        {#if website && whatsapp}<a class="landing-pill" href={website} target="_blank" rel="noopener">🌐 אתר</a>{/if}
+                                    </div>
+                                {/if}
+                                {#if address || hours}
+                                    <p class="landing-meta">
+                                        {#if address}📍 {address}{/if}{#if address && hours} · {/if}{#if hours}🕒 {hours}{/if}
+                                    </p>
+                                {/if}
+                            </section>
+                        {/if}
                     </div>
                 </div>
             </section>
@@ -1575,6 +1582,7 @@
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
     }
     .landing-cta.dim { opacity: 0.6; }
+    .landing-cta.wa { background: #16a34a; color: #fff; }
 
     .landing-section {
         padding: 1.1rem 1.5rem;
