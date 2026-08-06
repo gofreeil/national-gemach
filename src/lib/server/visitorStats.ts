@@ -46,10 +46,11 @@ function loadCredentials(): { clientEmail: string; privateKey: string } | null {
 const REFRESH_MS = 15 * 60 * 1000;           // 15 דקות בין רענוני GA (96 פעמים ביום, מתוזמן ב-Cron)
 const STALE_MS   = 30 * 24 * 60 * 60 * 1000; // מעבר לכך — נחשב ישן מדי, נחזיר fallback
 const LABEL = 'כניסות החודש';
-// אותו מדד כמו כרטיס "סטטיסטיקת כניסות" בפאנל (screenPageViews) — כדי שהמונה
-// בדף הבית והפירוט החודשי בפאנל יראו את אותו מספר. בעבר נמדד כאן activeUsers
-// (גולשים ייחודיים), ואז דף הבית הציג פחות מהפאנל ונראה כמו באג.
-const METRIC = 'screenPageViews';
+// כניסות = גולשים ייחודיים (activeUsers), לא צפיות בדפים. screenPageViews סופר
+// כל מעבר דף (וב-GA4 גם ניווטי SPA), ולכן ניפח את המונה פי כמה מול מספר האנשים
+// שבאמת נכנסו. כרטיס הפירוט החודשי בפאנל מציג את אותו מדד — אחרת דף הבית
+// והפאנל מראים מספרים שונים וזה נראה כמו באג.
+const METRIC = 'activeUsers';
 
 interface VisitorStat {
     count: number;

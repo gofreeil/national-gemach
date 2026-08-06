@@ -4,8 +4,9 @@
     // מוצג פרוס בשלושה מקומות: /admin (סקירה), /profile#admin (האזור
     // האישי) ו-/admin/stats (המסך הייעודי) — כדי שהנתונים יהיו מול
     // העיניים בלי לחיצה נוספת.
-    // מציג מספר אחד לכל חודש — צפיות (screenPageViews); מונה ה"כניסות"
-    // (activeUsers) הוסר מהתצוגה לבקשת הבעלים כי הכפילות בלבלה.
+    // מציג מספר אחד לכל חודש — כניסות (activeUsers, גולשים ייחודיים); מונה
+    // הצפיות (screenPageViews) הוסר מהתצוגה לבקשת הבעלים כי הכפילות בלבלה,
+    // וכי צפיות סופרות כל מעבר דף ולכן מנפחות את התמונה.
     // הטיפוס מוגדר כאן מקומית — אסור לייבא מ-$lib/server לקוד לקוח.
     // ============================================================
     interface MonthRow {
@@ -33,7 +34,7 @@
     // GA מחזיר ישן→חדש; הגרף נשאר כרונולוגי, הפירוט מוצג חדש→ישן
     const chartMonths = $derived(months ?? []);
     const listMonths = $derived([...(months ?? [])].reverse());
-    const maxViews = $derived(Math.max(1, ...chartMonths.map((m) => m.pageViews)));
+    const maxVisits = $derived(Math.max(1, ...chartMonths.map((m) => m.visitors)));
 
     const fmt = new Intl.NumberFormat('he-IL');
     const now = new Date();
@@ -69,7 +70,8 @@
             {#if href}<span class="text-xs font-bold text-emerald-300">לפירוט המלא ←</span>{/if}
         </div>
         <p class="mt-0.5 text-xs text-gray-400">
-            כמה צפיות היו לאתר בכל חודש (מתוך Google Analytics). הנתונים מתעדכנים אחת לשעה.
+            כמה כניסות היו לאתר בכל חודש — גולשים ייחודיים, לא צפיות בדפים (מתוך Google
+            Analytics). הנתונים מתעדכנים אחת לשעה.
             {#if updatedAt}<span class="text-gray-500">עודכן {updatedAgo(updatedAt)}.</span>{/if}
         </p>
     </div>
@@ -86,12 +88,12 @@
         {#if chartMonths.length > 1}
             <div class="flex items-stretch justify-center gap-1.5">
                 {#each chartMonths as m (m.yearMonth)}
-                    <div class="flex min-w-0 max-w-16 flex-1 flex-col items-center" title="{monthLabel(m.yearMonth)}: {fmt.format(m.pageViews)} צפיות">
-                        <div class="mb-1 text-[10px] font-bold tabular-nums text-gray-300">{fmt.format(m.pageViews)}</div>
+                    <div class="flex min-w-0 max-w-16 flex-1 flex-col items-center" title="{monthLabel(m.yearMonth)}: {fmt.format(m.visitors)} כניסות">
+                        <div class="mb-1 text-[10px] font-bold tabular-nums text-gray-300">{fmt.format(m.visitors)}</div>
                         <div class="flex h-24 w-full items-end">
                             <div
                                 class="w-full rounded-t-md bg-gradient-to-t from-emerald-600 to-teal-400 transition-all {m.yearMonth === currentYm ? 'shadow-[0_0_12px_rgba(16,185,129,0.5)]' : ''}"
-                                style="height: {Math.max(4, Math.round((m.pageViews / maxViews) * 100))}%"
+                                style="height: {Math.max(4, Math.round((m.visitors / maxVisits) * 100))}%"
                             ></div>
                         </div>
                         <div class="mt-1 whitespace-nowrap text-[10px] {m.yearMonth === currentYm ? 'font-bold text-emerald-300' : 'text-gray-400'}">
@@ -115,11 +117,11 @@
                     <div class="h-2 flex-1 overflow-hidden rounded-full bg-[#16264d]">
                         <div
                             class="h-full rounded-full bg-gradient-to-l from-emerald-500 to-teal-400"
-                            style="width:{Math.max(3, Math.round((m.pageViews / maxViews) * 100))}%"
+                            style="width:{Math.max(3, Math.round((m.visitors / maxVisits) * 100))}%"
                         ></div>
                     </div>
                     <div class="w-20 flex-shrink-0 text-left text-xs font-black text-emerald-300">
-                        {fmt.format(m.pageViews)} צפיות
+                        {fmt.format(m.visitors)} כניסות
                     </div>
                 </div>
             {/each}
