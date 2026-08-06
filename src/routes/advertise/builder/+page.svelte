@@ -70,6 +70,109 @@
     let logoPosition = $state(/** @type {'right' | 'left' | 'cta'} */ ("right"));
     let logoPositionExplicit = $state(false);
 
+    // ===== מיקום חופשי ללוגו =====
+    // מרכז הלוגו באחוזי מסגרת המודעה. null בשני הצירים = הלוגו עדיין יושב
+    // על עוגן ברירת המחדל (logoPosition). ברגע שהמפרסם גורר אותו — או מזיז
+    // אותו בחיצי המקלדת — כאן נשמרת הנקודה המדויקת שבה הוא שחרר.
+    /** @type {number | null} */
+    let logoFreeX = $state(null);
+    /** @type {number | null} */
+    let logoFreeY = $state(null);
+    let logoFree = $derived(logoFreeX !== null && logoFreeY !== null);
+    let logoDragging = $state(false);
+
+    /** מיקום חופשי → style inline. ריק כשהלוגו על העוגן */
+    let logoFreeStyle = $derived(
+        logoFree
+            ? `left:${logoFreeX}%; top:${logoFreeY}%; right:auto; bottom:auto; transform:translate(-50%,-50%);`
+            : "",
+    );
+
+    // מדדי הגרירה, נמדדים בלחיצה מול התצוגה שבה הלוגו יושב (דמו חי / כרטיס
+    // שלב 7) — כך אותו קוד עובד בשתיהן.
+    let dragWrapW = 0, dragWrapH = 0;
+    let dragHalfW = 0, dragHalfH = 0;
+    let dragStartX = 0, dragStartY = 0;
+    let dragBaseCX = 0, dragBaseCY = 0;
+
+    /** מודד את הלוגו ואת מסגרת התצוגה; מחזיר את מרכז הלוגו בפיקסלים בתוך המסגרת.
+     * @param {HTMLElement} el */
+    function measureLogo(el) {
+        const wrap = el.parentElement;
+        if (!wrap) return null;
+        const wr = wrap.getBoundingClientRect();
+        const lr = el.getBoundingClientRect();
+        if (!wr.width || !wr.height || !lr.width || !lr.height) return null;
+        dragWrapW = wr.width; dragWrapH = wr.height;
+        dragHalfW = lr.width / 2; dragHalfH = lr.height / 2;
+        return { cx: lr.left - wr.left + dragHalfW, cy: lr.top - wr.top + dragHalfH };
+    }
+
+    /** שומר מרכז לוגו (פיקסלים בתוך המסגרת), תחום כך שלא יברח מהמודעה.
+     * @param {number} cx @param {number} cy */
+    function commitLogoCenter(cx, cy) {
+        const x = Math.min(Math.max(cx, dragHalfW), dragWrapW - dragHalfW);
+        const y = Math.min(Math.max(cy, dragHalfH), dragWrapH - dragHalfH);
+        logoFreeX = Math.round((x / dragWrapW) * 1000) / 10;
+        logoFreeY = Math.round((y / dragWrapH) * 1000) / 10;
+        logoPositionExplicit = true;   // עוצר את ההחלפה האוטומטית ימין/למטה
+    }
+
+    /** @param {PointerEvent} e */
+    function logoPointerDown(e) {
+        const el = /** @type {HTMLElement} */ (e.currentTarget);
+        const center = measureLogo(el);
+        if (!center) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dragBaseCX = center.cx; dragBaseCY = center.cy;
+        dragStartX = e.clientX; dragStartY = e.clientY;
+        logoDragging = true;
+        try { el.setPointerCapture(e.pointerId); } catch {}
+    }
+    /** @param {PointerEvent} e */
+    function logoPointerMove(e) {
+        if (!logoDragging) return;
+        commitLogoCenter(dragBaseCX + (e.clientX - dragStartX), dragBaseCY + (e.clientY - dragStartY));
+    }
+    /** @param {PointerEvent} e */
+    function logoPointerUp(e) {
+        if (!logoDragging) return;
+        logoDragging = false;
+        try { /** @type {HTMLElement} */ (e.currentTarget).releasePointerCapture(e.pointerId); } catch {}
+    }
+    /** מקבילת מקלדת לגרירה: חיצים מזיזים 1% מהמסגרת, עם Shift — 5%.
+     * @param {KeyboardEvent} e */
+    function logoKeyDown(e) {
+        /** @type {Record<string, [number, number]>} */
+        const keys = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+        const dir = keys[e.key];
+        if (!dir) return;
+        const el = /** @type {HTMLElement} */ (e.currentTarget);
+        const center = measureLogo(el);
+        if (!center) return;
+        e.preventDefault();
+        const stepPct = e.shiftKey ? 5 : 1;
+        commitLogoCenter(
+            center.cx + dir[0] * (dragWrapW * stepPct / 100),
+            center.cy + dir[1] * (dragWrapH * stepPct / 100),
+        );
+    }
+    /** חזרה למיקום ברירת המחדל האוטומטי */
+    function resetLogoPosition() {
+        logoFreeX = null;
+        logoFreeY = null;
+        logoPositionExplicit = false;
+    }
+    /** שלוש הפינות נשארו קיצורי דרך בלחיצה — והן מבטלות מיקום חופשי.
+     * @param {'right' | 'left' | 'cta'} pos */
+    function setLogoAnchor(pos) {
+        logoFreeX = null;
+        logoFreeY = null;
+        logoPosition = pos;
+        logoPositionExplicit = true;
+    }
+
     // ===== חיתוך עגול ללוגו =====
     const CROP_STAGE = 320;
     let cropOpen = $state(false);
@@ -351,6 +454,18 @@
             title, subtitle, hoverText, cta, gradient,
             logo, mainImage,
             mainImageFit: { x: mainImageObjectX, y: mainImageObjectY, z: mainImageZoom },
+            // העיצוב שנקבע כאן נוסע עם המודעה עד לאתר. בלעדיו המודעה
+            // שהתפרסמה נבנתה מחדש מברירות המחדל: הלוגו קפץ מהמקום שאליו
+            // נגרר, הרצועה חזרה לגובה הבסיסי והכותרת איבדה את צבעה.
+            adStyle: {
+                logoShape,
+                logoAnchor: logoPosition,
+                logoX: logoFreeX,
+                logoY: logoFreeY,
+                bandHeight: diagHeight,
+                titleOffsetY,
+                titleColor,
+            },
             landing: {
                 headline: landingHeadline,
                 pitch: landingPitch,
@@ -597,6 +712,8 @@
                     hasCircleCrop = Boolean(d.hasCircleCrop);
                     logoPosition = d.logoPosition ?? "right";
                     logoPositionExplicit = Boolean(d.logoPositionExplicit);
+                    logoFreeX = typeof d.logoFreeX === "number" ? d.logoFreeX : null;
+                    logoFreeY = typeof d.logoFreeY === "number" ? d.logoFreeY : null;
                     mainImage = d.mainImage ?? "";
                     mainImageObjectX = typeof d.mainImageObjectX === "number" ? d.mainImageObjectX : 50;
                     mainImageObjectY = typeof d.mainImageObjectY === "number" ? d.mainImageObjectY : 50;
@@ -658,6 +775,7 @@
         if (!browser) return;
         const snapshot = {
             logo, logoOriginal, hasCircleCrop, logoShape, logoPosition, logoPositionExplicit,
+            logoFreeX, logoFreeY,
             mainImage, mainImageObjectX, mainImageObjectY, mainImageZoom, title, titleColor, titleOffsetY,
             subtitle, hoverText, cta, gradient, diagHeight,
             landingHeadline, landingPitch, landingExtended, landingImage, landingAdvantages,
@@ -971,11 +1089,21 @@
                                 <div>
                                     <p class="control-label">מיקום הלוגו</p>
                                     <div class="seg-group">
-                                        <button type="button" onclick={() => { logoPosition = "right"; logoPositionExplicit = true; }} class="seg-btn" class:active={logoPosition === "right"}>ימין</button>
-                                        <button type="button" onclick={() => { logoPosition = "left"; logoPositionExplicit = true; }} class="seg-btn" class:active={logoPosition === "left"}>שמאל</button>
-                                        <button type="button" onclick={() => { logoPosition = "cta"; logoPositionExplicit = true; }} class="seg-btn" class:active={logoPosition === "cta"}>למטה</button>
+                                        <button type="button" onclick={() => setLogoAnchor("right")} class="seg-btn" class:active={!logoFree && logoPosition === "right"}>ימין</button>
+                                        <button type="button" onclick={() => setLogoAnchor("left")} class="seg-btn" class:active={!logoFree && logoPosition === "left"}>שמאל</button>
+                                        <button type="button" onclick={() => setLogoAnchor("cta")} class="seg-btn" class:active={!logoFree && logoPosition === "cta"}>למטה</button>
                                     </div>
                                 </div>
+                            </div>
+                            <!-- מיקום חופשי: גוררים את הלוגו על התצוגה החיה לכל מקום -->
+                            <div class="logo-drag-row">
+                                <p class="logo-drag-hint">🖐️ אפשר גם לגרור את הלוגו בתצוגה החיה לכל מקום במודעה</p>
+                                {#if logoFree}
+                                    <span class="logo-drag-pos">
+                                        <span class="logo-drag-badge">{logoFreeX}% · {logoFreeY}%</span>
+                                        <button type="button" class="logo-drag-reset" onclick={resetLogoPosition}>למיקום ברירת המחדל</button>
+                                    </span>
+                                {/if}
                             </div>
                         {/if}
                     </div>
@@ -1273,13 +1401,28 @@
                                         <p class="hover-text">{hoverText || "הטקסט שמופיע בריחוף העכבר"}</p>
                                     </div>
                                     {#if logo}
+                                        <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
+                                        <!-- הלוגו עצמו הוא ידית הגרירה. role=button + tabindex נותנים
+                                             לו מקבילת מקלדת מלאה (חיצים מזיזים אותו) ולכן זה תקין נגישותית -->
                                         <img
                                             src={logo}
                                             alt="לוגו"
-                                            class="ad-logo"
+                                            class="ad-logo ad-logo-draggable"
                                             class:circle={logoShape === "circle"}
-                                            class:pos-left={logoPosition === "left"}
-                                            class:pos-cta={logoPosition === "cta"}
+                                            class:pos-left={!logoFree && logoPosition === "left"}
+                                            class:pos-cta={!logoFree && logoPosition === "cta"}
+                                            class:free={logoFree}
+                                            class:dragging={logoDragging}
+                                            style={logoFreeStyle}
+                                            draggable="false"
+                                            role="button"
+                                            tabindex="0"
+                                            aria-label="לוגו — אפשר לגרור אותו למקום אחר במודעה"
+                                            onpointerdown={logoPointerDown}
+                                            onpointermove={logoPointerMove}
+                                            onpointerup={logoPointerUp}
+                                            onpointercancel={logoPointerUp}
+                                            onkeydown={logoKeyDown}
                                         />
                                     {/if}
                                 </div>
@@ -1367,14 +1510,26 @@
                                 {/if}
                             </div>
                             {#if logo}
+                                <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
                                 <img
                                     src={logo}
                                     alt="לוגו"
-                                    class="ad-logo"
+                                    class="ad-logo ad-logo-draggable"
                                     class:circle={logoShape === "circle"}
-                                    class:pos-left={logoPosition === "left"}
-                                    class:pos-cta={logoPosition === "cta"}
-                                    style:opacity={activeStep === "hover" ? 0 : 1}
+                                    class:pos-left={!logoFree && logoPosition === "left"}
+                                    class:pos-cta={!logoFree && logoPosition === "cta"}
+                                    class:free={logoFree}
+                                    class:dragging={logoDragging}
+                                    style="{logoFreeStyle} opacity:{activeStep === 'hover' ? 0 : 1};"
+                                    draggable="false"
+                                    role="button"
+                                    tabindex="0"
+                                    aria-label="לוגו — אפשר לגרור אותו למקום אחר במודעה"
+                                    onpointerdown={logoPointerDown}
+                                    onpointermove={logoPointerMove}
+                                    onpointerup={logoPointerUp}
+                                    onpointercancel={logoPointerUp}
+                                    onkeydown={logoKeyDown}
                                 />
                             {:else}
                                 <div
@@ -2647,6 +2802,70 @@
         right: 6px;
         left: auto;
     }
+    /* מיקום חופשי — הנקודה המדויקת מגיעה ב-left/top inline שהגרירה כותבת */
+    .ad-logo.free { top: auto; bottom: auto; right: auto; left: auto; }
+    /* סימן שאפשר לגרור: סמן יד וטבעת מקווקוות בריחוף/פוקוס.
+       touch-action:none הוא מה שמאפשר גרירה באצבע במקום גלילת הדף. */
+    .ad-logo-draggable {
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-drag: none;
+    }
+    .ad-logo-draggable:hover {
+        outline: 2px dashed rgba(251, 191, 36, 0.9);
+        outline-offset: 2px;
+    }
+    .ad-logo-draggable:focus-visible {
+        outline: 2px solid #fbbf24;
+        outline-offset: 2px;
+    }
+    .ad-logo-draggable.dragging {
+        cursor: grabbing;
+        outline: 2px solid #fbbf24;
+        outline-offset: 2px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+    }
+    /* שורת ההסבר על הגרירה, מתחת לכפתורי המיקום */
+    .logo-drag-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+    }
+    .logo-drag-hint {
+        margin: 0;
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: #fcd34d;
+    }
+    .logo-drag-pos {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #cbd5e1;
+    }
+    .logo-drag-badge {
+        border-radius: 0.4rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.1rem 0.4rem;
+        font-variant-numeric: tabular-nums;
+    }
+    .logo-drag-reset {
+        border-radius: 0.4rem;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: transparent;
+        color: #fcd34d;
+        padding: 0.1rem 0.4rem;
+        cursor: pointer;
+        font: inherit;
+    }
+    .logo-drag-reset:hover { border-color: rgba(251, 191, 36, 0.6); color: #fde68a; }
     .hover-overlay {
         position: absolute;
         inset: 0;

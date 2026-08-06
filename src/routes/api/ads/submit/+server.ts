@@ -49,15 +49,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             logo: payload.logo ?? '',
             mainImage: payload.mainImage,
             mainImageFit: payload.mainImageFit,
+            // העיצוב מהבילדר (לוגו, רצועה, כותרת) — בלעדיו המודעה מתפרסמת
+            // עם ברירות המחדל של האתר ולא עם מה שהמפרסם ראה על המסך
+            adStyle: payload.adStyle,
             landing: normalizeLanding(payload.landing),
         });
         // התראה על *כל* בקשת פרסום — קודם היא נשלחה רק על שימוש בקוד בעלים,
         // כך שמפרסם רגיל הגיש פרסומת ואיש לא ידע עליה. לא חוסמת ולא מפילה.
+        // מפרסם ששב לשפר מודעה קיימת מקבל ניסוח משלו: "עדכון" ולא "חדשה".
         await notifyOwnerNewAd({
             adTitle: payload.title,
             durationDays: requestedDurationDays,
             usedOwnerCode,
             submitter: { name: session.user.name, email: session.user.email },
+            replacesTitle: ad.replacesTitle,
+            replacesLive: ad.replacesStatus === 'approved',
         });
         // התראה נפרדת על שימוש בקוד — נשמרת כדי לא לאבד את ההתראה הייעודית
         if (usedOwnerCode) {

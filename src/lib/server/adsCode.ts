@@ -89,6 +89,10 @@ export async function notifyOwnerNewAd(info: {
     durationDays: number;
     usedOwnerCode: boolean;
     submitter?: { name?: string | null; email?: string | null } | null;
+    /** כותרת המודעה הקודמת של אותו מפרסם — קיימת רק כששליחה היא שדרוג */
+    replacesTitle?: string;
+    /** האם אותה קודמת נמצאת באמת על האתר (ורק אז האישור מחליף אותה) */
+    replacesLive?: boolean;
 }): Promise<void> {
     try {
         let receivers = await resolveAdminUserIds();
@@ -104,12 +108,21 @@ export async function notifyOwnerNewAd(info: {
         const who = info.submitter?.email
             ? `${info.submitter.name || 'ללא שם'} (${info.submitter.email})`
             : 'משתמש לא מחובר';
+        // מפרסם חוזר ששיפר מודעה קיימת: זו לא בקשה חדשה אלא שדרוג של אותה
+        // מודעה, והאישור מחליף את הישנה במקום להוסיף מודעה שנייה לצידה.
+        const isUpdate = Boolean(info.replacesTitle);
         const content =
-            `📢 בקשת פרסום חדשה — ${SITE_NAME}\n` +
+            (isUpdate
+                ? `🔄 עדכון למודעה קיימת — ${SITE_NAME}\n`
+                : `📢 בקשת פרסום חדשה — ${SITE_NAME}\n`) +
             `פרסומת: "${info.adTitle}"\n` +
+            (isUpdate ? `הגרסה הקודמת: "${info.replacesTitle}"${info.replacesLive ? '' : ' (לא על האתר)'}\n` : '') +
             `מי שלח: ${who}\n` +
             `תקופה מבוקשת: ${planLabelWithPrice(info.durationDays)}\n` +
             `תשלום: ${info.usedOwnerCode ? 'קוד בעלים' : 'ממתין לתשלום'}\n` +
+            (isUpdate && info.replacesLive
+                ? `עם האישור הגרסה החדשה נכנסת במקום הישנה — אותה משבצת, אותו תאריך סיום, והישנה יורדת מהאתר.\n`
+                : '') +
             `המודעה ממתינה לאישור ב-gemach.gofreeil.com/admin/ads`;
         await Promise.all(receivers.map(receiver =>
             strapiPost('/api/messages', { data: { receiver, content, read: false } })

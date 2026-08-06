@@ -3,6 +3,19 @@
     import { adSlots, loadApprovedAds } from "$lib/adSlots";
     import { markAdSeen, trackAdClick } from "$lib/adTrack";
     import { adImgFit, parseAdImageFit } from "$lib/adImageFit";
+    import {
+        parseAdStyle, legacyAdStyle, adStyleVars, logoAnchorClass, logoFreeStyle, logoCornerSide,
+        type AdStyle,
+    } from "$lib/adStyle";
+    import type { ApprovedAd } from "$lib/adSlots";
+
+    // העיצוב שהמפרסם קבע בבילדר הוא מה שמוצג כאן — אותו מודול משותף
+    // (adStyle.ts) מנרמל אותו בשני הצדדים. מודעה שנשלחה לפני שהעיצוב
+    // נשמר מקבלת את הכלל הישן (כותרת ארוכה ← לוגו מעל רצועת ה-CTA),
+    // כדי שמודעות שכבר רצות על האתר לא ישנו את מראן.
+    function styleOf(ad: ApprovedAd): AdStyle {
+        return parseAdStyle(ad.adStyle) ?? legacyAdStyle(ad.title);
+    }
 
     const PER_VIEW = 4;      // כמה משבצות נראות בטור בו-זמנית
     const VIEW_MS = 14000;   // כמה זמן כל קבוצה נשארת על המסך (החלפה איטית)
@@ -65,11 +78,14 @@
     <div class="space-y-3 ads-track" class:fading>
         {#each displayedAds as item}
             {#if item.kind === 'real'}
+                {@const st = styleOf(item.ad)}
+                {@const cornerSide = logoCornerSide(st, Boolean(item.ad.logo))}
                 <!-- מודעה אמיתית מהבילדר — קליק מוביל לדף הנחיתה המקומי -->
                 <a
                     href="/ads/{item.ad.id}"
                     onclick={() => trackAdClick(item.ad.id)}
                     class="h-[490px] flex flex-col rounded-2xl overflow-hidden shadow-lg transition-transform hover:scale-105 group relative"
+                    style={adStyleVars(st)}
                 >
                     <div class="flex-1 relative overflow-hidden bg-black/30">
                         {#if item.ad.mainImage}
@@ -84,12 +100,35 @@
                                 use:adImgFit={parseAdImageFit(item.ad.mainImageFit)}
                             />
                         {/if}
-                        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2 pt-8 text-center transition-opacity duration-700 group-hover:opacity-0">
-                            <h3 class="text-white font-black text-sm leading-tight">{item.ad.title}</h3>
-                            {#if item.ad.subtitle}
-                                <p class="text-gray-200 text-[11px] leading-tight mt-0.5">{item.ad.subtitle}</p>
-                            {/if}
+                        <!-- אותן שכבות בדיוק של הדמו החי בבילדר: רצועה אלכסונית
+                             בגובה שהמפרסם כיוון, כותרת למעלה בצבע ובמיקום שבחר,
+                             סלוגן מעל הרצועה, ולוגו בצורה ובמקום שקבע (כולל
+                             גרירה חופשית). קודם כל אלה נבנו כאן מחדש מברירות
+                             המחדל של האתר, והמודעה שהתפרסמה נראתה אחרת. -->
+                        <div class="promo-diag transition-opacity duration-700 group-hover:opacity-0"
+                             style="background: {item.ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}"></div>
+                        <div class="promo-title-top transition-opacity duration-700 group-hover:opacity-0"
+                             class:has-corner-logo-right={cornerSide === 'right'}
+                             class:has-corner-logo-left={cornerSide === 'left'}
+                             style="transform: translateY({st.titleOffsetY}px);">
+                            <h3 class="promo-title" style="color: {st.titleColor};">{item.ad.title}</h3>
                         </div>
+                        {#if item.ad.subtitle}
+                            <div class="promo-sub-wrap transition-opacity duration-700 group-hover:opacity-0">
+                                <p class="promo-sub">{item.ad.subtitle}</p>
+                            </div>
+                        {/if}
+                        {#if item.ad.logo}
+                            <img
+                                src={item.ad.logo}
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                class="promo-logo {logoAnchorClass(st, 'promo')} {st.logoShape === 'circle' ? 'promo-logo-circle' : ''}
+                                       transition-opacity duration-700 group-hover:opacity-0"
+                                style={logoFreeStyle(st)}
+                            />
+                        {/if}
 
                         <!-- שכבת הריחוף: "טקסט הריחוף" מהבילדר — התוכן הנוסף
                              שנועד למכור, בדיוק כמו בכרטיס של קהילה בשכונה -->
@@ -193,4 +232,105 @@
             transition-duration: 1ms;
         }
     }
+
+    /* ============================================================
+       שכבות המודעה — העתק מדויק של הדמו החי בבילדר
+       (advertise/builder: .pro-diag / .pro-title-top / .pro-sub / .ad-logo).
+       המשתנים --diag-top-* מגיעים מהעיצוב ששמור עם המודעה עצמה, ולכן
+       לכל מודעה גובה רצועה משלה - בדיוק כפי שהמפרסם כיוון.
+       ============================================================ */
+    .promo-diag {
+        position: absolute;
+        inset: 0;
+        clip-path: polygon(
+            0 var(--diag-top-left, 88%),
+            100% var(--diag-top-right, 78%),
+            100% 100%,
+            0 100%
+        );
+        opacity: 0.96;
+        pointer-events: none;
+        z-index: 3;
+    }
+    .promo-diag::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(125deg, transparent 30%, rgba(255, 255, 255, 0.18) 45%, transparent 60%);
+        pointer-events: none;
+    }
+    .promo-title-top {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        padding: 0.55rem 0.7rem 0.85rem;
+        z-index: 4;
+        text-align: center;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.45) 55%, rgba(0, 0, 0, 0) 100%);
+        pointer-events: none;
+    }
+    /* לוגו בפינה העליונה יושב באותו גובה של הכותרת. בלי שמירת המקום הזאת
+       הוא מכסה לה את המילה האחרונה - המשבצת צרה. ריפוד פיזי ולא לוגי:
+       הדף כולו RTL, והקצה הלוגי הפוך לצד שבו הלוגו באמת נמצא. */
+    .promo-title-top.has-corner-logo-right { padding-right: 46px; }
+    .promo-title-top.has-corner-logo-left  { padding-left: 46px; }
+    .promo-title {
+        color: white;
+        font-weight: 900;
+        font-size: 0.95rem;
+        line-height: 1.15;
+        margin: 0;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.9);
+    }
+    .promo-sub-wrap {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 0.55rem 0.7rem 1.1rem;
+        z-index: 4;
+        text-align: right;
+        pointer-events: none;
+    }
+    .promo-sub {
+        color: rgba(255, 255, 255, 0.95);
+        font-weight: 600;
+        font-size: 0.7rem;
+        line-height: 1.3;
+        margin: 0;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    }
+    /* השורה הראשונה של הסלוגן מתקצרת בעקבות האלכסון */
+    .promo-sub::before {
+        content: "";
+        float: left;
+        width: 28%;
+        height: 1.35em;
+        shape-outside: polygon(0 0, 100% 0, 0 100%);
+    }
+    .promo-logo {
+        position: absolute;
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        background: white;
+        padding: 3px;
+        object-fit: contain;
+        z-index: 5;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    }
+    .promo-logo-circle { border-radius: 50%; }
+    .promo-logo-right { top: 6px; right: 6px; left: auto; }
+    .promo-logo-left  { top: 6px; left: 6px; right: auto; }
+    /* עוגן "מעל ה-CTA": הלוגו רוכב על הפינה הימנית של הרצועה האלכסונית,
+       מרכזו על --diag-top-right (18px = חצי מגובה הלוגו) */
+    .promo-logo-cta {
+        top: auto;
+        bottom: calc(100% - var(--diag-top-right, 78%) - 18px);
+        right: 6px;
+        left: auto;
+    }
+    /* מיקום חופשי שהמפרסם גרר - הקואורדינטות מגיעות ב-style inline */
+    .promo-logo-free { top: 0; left: 0; }
 </style>

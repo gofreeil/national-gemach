@@ -41,6 +41,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
             logo: payload.logo ?? '',
             mainImage: payload.mainImage,
             mainImageFit: payload.mainImageFit,
+            // העיצוב שנקבע בבילדר נשמר גם בעריכה — בלעדיו עריכת טקסט
+            // הייתה מאפסת את מיקום הלוגו, גובה הרצועה וצבע הכותרת
+            adStyle: payload.adStyle,
             landing: normalizeLanding(payload.landing),
         });
     } catch (err) {

@@ -116,11 +116,20 @@ export const actions: Actions = {
         if (!id) return fail(400, { error: 'חסר מזהה פרסומת' });
         // משך הפרסום נקבע כאן ולא ע"י המפרסם — לפי מה ששולם בפועל.
         const durationDays = normalizePlanDays(form.get('durationDays'));
+        // ברירת המחדל לגרסה מעודכנת היא החלפה. keepPrevious הוא המקרה ההפוך:
+        // מפרסם שבאמת רוצה שתי מודעות במקביל ולא שדרג את הקיימת.
+        const keepPrevious = String(form.get('keepPrevious') ?? '') === '1';
         try {
-            await approveAd(id, { durationDays, decidedBy: user.email ?? user.name ?? '' });
+            const { replacedTitle } = await approveAd(id, {
+                durationDays,
+                decidedBy: user.email ?? user.name ?? '',
+                keepPrevious,
+            });
             return {
                 success: true,
-                message: `הפרסומת אושרה ופורסמה ל-${planLabel(durationDays)} ✅`,
+                message: replacedTitle
+                    ? `הפרסומת אושרה ונכנסה במקום "${replacedTitle}", שירדה מהאתר ✅`
+                    : `הפרסומת אושרה ופורסמה ל-${planLabel(durationDays)} ✅`,
             };
         } catch (err) {
             console.error('approve failed:', err);

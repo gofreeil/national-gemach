@@ -10,6 +10,7 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { rightAds, type RightAd } from './rightAdsData';
+import type { AdStyle } from './adStyle';
 
 /** הצורה הרזה שמחזיר /api/ads/approved (ApprovedAdPublic בשרת) */
 export interface ApprovedAd {
@@ -19,9 +20,13 @@ export interface ApprovedAd {
     cta: string;
     hover: string;
     gradient: string;   // מחרוזת CSS מלאה (linear-gradient(...))
+    /** לוגו המפרסם (data URI); ריק כשלא הועלה לוגו בבילדר */
+    logo?: string;
     mainImage: string;  // data URI
     /** מיקום+זום מהבילדר; אופציונלי — קאש ישן בדפדפן עוד בלעדיו */
     mainImageFit?: { x: number; y: number; z: number };
+    /** העיצוב מהבילדר (לוגו, רצועה, כותרת); חסר במודעות ותיקות */
+    adStyle?: AdStyle | null;
 }
 
 export type AdSlot =
@@ -39,7 +44,9 @@ export const adsHydrated = writable(false);
 // קאש מקומי בדפדפן: הרשימה האחרונה שהתקבלה נשמרת, ומבקר חוזר רואה את
 // המודעות מיידית — עוד לפני שתשובת הרשת חוזרת (רלוונטי במיוחד כשהשרת קר).
 // התמונות הן data-URI ולכן הרשומה גדולה; חריגת מכסה נבלעת בשקט.
-const CACHE_KEY = 'ng_approved_ads_v1';
+// v2: נוספו הלוגו והעיצוב שהמפרסם קבע. מפתח חדש מוודא שמבקר חוזר לא
+// יראה שוב את הגרסה שנשמרה בלעדיהם ותיראה לו כמו מודעה בלי לוגו.
+const CACHE_KEY = 'ng_approved_ads_v2';
 
 function readLocalCache(): ApprovedAd[] | null {
     try {

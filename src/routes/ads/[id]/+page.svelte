@@ -13,6 +13,9 @@
     // נמדד בצד הלקוח כי התגובה של הדף נשמרת ב-cache (s-maxage) בשרת.
     onMount(() => trackAdLanding(ad.id));
 
+    // לוגו שנחתך לעיגול בבילדר נשאר עגול גם כאן — ריבוע היה מחזיר לו
+    // פינות לבנות שהמפרסם דווקא הסיר
+    let logoCircle = $derived(ad.adStyle?.logoShape === 'circle');
     let heroImage = $derived(lp.image || ad.mainImage || '');
     let advList = $derived((lp.advantages ?? []).filter((a: string) => a?.trim()));
 
@@ -76,7 +79,7 @@
         <div class="al-hero-inner" class:has-media={!!heroImage}>
             <div class="al-copy">
                 {#if ad.logo}
-                    <img src={ad.logo} alt="לוגו {ad.title}" class="al-logo" />
+                    <img src={ad.logo} alt="לוגו {ad.title}" class="al-logo" class:is-circle={logoCircle} />
                 {/if}
                 <h1>{lp.headline || ad.title}</h1>
                 {#if lp.pitch}
@@ -222,8 +225,11 @@
         margin-bottom: 0.75rem;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
     }
+    /* חתך עגול שהמפרסם בחר בבילדר — גובר על הפינות המעוגלות */
+    .al-logo.is-circle { border-radius: 50%; }
     @media (min-width: 860px) {
         .al-logo { width: 88px; height: 88px; border-radius: 1.1rem; padding: 7px; }
+        .al-logo.is-circle { border-radius: 50%; }
     }
     .al-hero h1 {
         color: white;

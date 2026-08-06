@@ -284,7 +284,22 @@
                         {#if ad.editedAt}
                             <span class="status-pill pending">✏️ נערכה ע"י המפרסם: {fmtDate(ad.editedAt)}</span>
                         {/if}
+                        <!-- מפרסם חוזר ששיפר את המודעה שלו: לא בקשה חדשה -->
+                        {#if ad.replacesAdId && ad.status === 'pending'}
+                            <span class="status-pill update">🔄 עדכון למודעה קיימת</span>
+                        {:else if ad.supersededBy}
+                            <span class="status-pill rejected">🔄 גרסה ישנה — הוחלפה בגרסה מעודכנת</span>
+                        {/if}
                     </div>
+                    {#if ad.replacesAdId && ad.status === 'pending'}
+                        {@const prevLive = shown.some((o) => o.id === ad.replacesAdId && o.status === 'approved' && !o.isExpired)}
+                        <p class="ad-update-note">
+                            גרסה מעודכנת של{ad.replacesTitle ? ` "${ad.replacesTitle}"` : ' מודעה קודמת של אותו מפרסם'}.
+                            {prevLive
+                                ? 'עם האישור היא נכנסת במקום הישנה — אותה משבצת, אותו תאריך סיום, והישנה יורדת מהאתר.'
+                                : 'למפרסם אין כרגע מודעה פעילה על האתר — האישור פשוט יפרסם את הגרסה הזו.'}
+                        </p>
+                    {/if}
                     <p class="ad-sub">{ad.subtitle}</p>
                     {#if ad.hoverText}<p class="ad-hover">ריחוף: {ad.hoverText}</p>{/if}
                     <p class="ad-meta">
@@ -391,9 +406,24 @@
                                     </select>
                                 </label>
                                 <button type="submit" class="a-btn approve">
-                                    {ad.isExpired ? '🔄 חדש את הפרסום' : '✅ אשר ופרסם'}
+                                    {ad.isExpired
+                                        ? '🔄 חדש את הפרסום'
+                                        : ad.replacesAdId && shown.some((o) => o.id === ad.replacesAdId && o.status === 'approved' && !o.isExpired)
+                                          ? '✅ אשר והחלף את הישנה'
+                                          : '✅ אשר ופרסם'}
                                 </button>
                             </form>
+                            <!-- מפרסם שבאמת רוצה שתי מודעות במקביל, ולא שדרג את הקיימת -->
+                            {#if ad.replacesAdId && shown.some((o) => o.id === ad.replacesAdId && o.status === 'approved' && !o.isExpired)}
+                                <form method="POST" action="?/approve" use:enhance class="approve-form">
+                                    <input type="hidden" name="id" value={ad.id} />
+                                    <input type="hidden" name="keepPrevious" value="1" />
+                                    <input type="hidden" name="durationDays" value={ad.requestedDurationDays} />
+                                    <button type="submit" class="a-btn" title="הישנה תישאר על האתר וזו תתווסף לידה">
+                                        ➕ אשר כמודעה נוספת
+                                    </button>
+                                </form>
+                            {/if}
                         {/if}
                         {#if ad.status !== 'rejected'}
                             <form method="POST" action="?/reject" use:enhance class="reject-form">
@@ -738,6 +768,23 @@
         background: rgba(239, 68, 68, 0.15);
         border: 1px solid rgba(239, 68, 68, 0.4);
         color: #fca5a5;
+    }
+    /* עדכון למודעה קיימת — נבדל מ"ממתינה" רגילה כדי שהמנהל יראה מיד
+       שזו אותה מודעה בגרסה חדשה ולא בקשה שנייה של אותו מפרסם */
+    .status-pill.update {
+        background: rgba(59, 130, 246, 0.15);
+        border: 1px solid rgba(59, 130, 246, 0.45);
+        color: #bfdbfe;
+    }
+    .ad-update-note {
+        margin: 0 0 0.5rem;
+        font-size: 0.78rem;
+        line-height: 1.4;
+        color: #bfdbfe;
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.25);
+        border-radius: 0.6rem;
+        padding: 0.4rem 0.6rem;
     }
     .ad-sub {
         color: #d1d5db;
