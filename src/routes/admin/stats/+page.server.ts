@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import type { Gemach } from '$lib/gemachData';
 import { getAdminContext } from '$lib/server/admin';
 import { getMonthlyVisitorStats, getYearlyInsights } from '$lib/server/visitorStats';
+import { getMonthlyVisits } from '$lib/server/visitStats';
 import { getMergedGemachim } from '$lib/server/gemachSource';
 
 // חודש בפורמט YYYYMM לפי שעון ישראל — כדי שגמ"ח שנוסף בליל ראשון-לחודש
@@ -38,10 +39,12 @@ function gemachGrowth(all: Gemach[]): { yearMonth: string; added: number }[] {
 export const load: PageServerLoad = async ({ locals }) => {
 	await getAdminContext(locals);
 
-	const [monthly, insights, all] = await Promise.all([
+	const [monthly, insights, all, serverHits] = await Promise.all([
 		getMonthlyVisitorStats(),
 		getYearlyInsights(),
-		getMergedGemachim().catch(() => [])
+		getMergedGemachim().catch(() => []),
+		// המונה של השרת — הוא היחיד שרואה את הסורקים (GA רץ בדפדפן ולכן מפספס אותם)
+		getMonthlyVisits().catch(() => [])
 	]);
 
 	// נתיבי /gemach/{id} → גמ"חים: איחוד כפילויות (עם/בלי לוכסן סופי) וסינון
@@ -71,6 +74,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		topGemachim,
 		growth: gemachGrowth(all),
 		totalGemachim: all.length,
+		// פניות שנספרו בשרת, 12 חודשים אחורה (ישן→חדש): סה"כ + פילוח הסורקים
+		serverHits,
 		cities: insights?.data.cities ?? [],
 		devices: insights?.data.devices ?? [],
 		channels: insights?.data.channels ?? []

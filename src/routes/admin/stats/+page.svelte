@@ -8,6 +8,14 @@
     const yearViews = $derived((data.months ?? []).reduce((s, m) => s + m.pageViews, 0));
     const yearVisitors = $derived((data.months ?? []).reduce((s, m) => s + m.visitors, 0));
 
+    // סורקים — מהמונה של השרת (GA רץ בדפדפן ולכן לא רואה בוטים בכלל).
+    // האחרון ברשימה הוא החודש הנוכחי.
+    const thisMonthHits = $derived(data.serverHits.at(-1));
+    const botsThisMonth = $derived((thisMonthHits?.searchBots ?? 0) + (thisMonthHits?.aiBots ?? 0));
+    const yearSearchBots = $derived(data.serverHits.reduce((s, m) => s + m.searchBots, 0));
+    const yearAiBots = $derived(data.serverHits.reduce((s, m) => s + m.aiBots, 0));
+    const hasServerHits = $derived(data.serverHits.some((m) => m.count > 0));
+
     // גידול המאגר — 12 החודשים האחרונים, האחרון הוא החודש הנוכחי
     const addedThisMonth = $derived(data.growth.at(-1)?.added ?? 0);
     const yearAdded = $derived(data.growth.reduce((s, m) => s + m.added, 0));
@@ -120,6 +128,43 @@
 
     <!-- הגרף החודשי -->
     <VisitorStatsCard months={data.months} updatedAt={data.updatedAt} />
+
+    <!-- סורקים — פרמטר נפרד מהכניסות של בני אדם -->
+    <div class="card space-y-3 p-4">
+        <div>
+            <h3 class="font-bold text-white">🤖 סריקות מנועי חיפוש ו-AI</h3>
+            <p class="mt-0.5 text-xs text-gray-400">
+                Google Analytics רץ בדפדפן ולכן סופר רק בני אדם. הסורקים נספרים בשרת עצמו,
+                בנפרד — כך רואים שהאתר נסרק ומוזן לגוגל ולכלי ה-AI.
+            </p>
+        </div>
+
+        {#if !hasServerHits}
+            <p class="text-sm text-gray-400">
+                אין עדיין נתונים — הספירה בשרת מתחילה מרגע העלאת הגרסה הזו לאוויר.
+            </p>
+        {:else}
+            <div class="grid grid-cols-3 gap-3">
+                <div class="rounded-xl border border-[#3b5794] bg-[#1c2f5a] p-3 text-center">
+                    <div class="text-2xl font-black text-sky-300">{fmt.format(thisMonthHits?.searchBots ?? 0)}</div>
+                    <div class="mt-1 text-[11px] text-gray-300">מנועי חיפוש וסורקים</div>
+                </div>
+                <div class="rounded-xl border border-[#3b5794] bg-[#1c2f5a] p-3 text-center">
+                    <div class="text-2xl font-black text-purple-300">{fmt.format(thisMonthHits?.aiBots ?? 0)}</div>
+                    <div class="mt-1 text-[11px] text-gray-300">בוטים של AI</div>
+                </div>
+                <div class="rounded-xl border border-[#3b5794] bg-[#1c2f5a] p-3 text-center">
+                    <div class="text-2xl font-black text-emerald-300">{fmt.format(thisMonthHits?.count ?? 0)}</div>
+                    <div class="mt-1 text-[11px] text-gray-300">סה"כ פניות (כולל סריקות)</div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400">
+                המספרים הם של החודש הנוכחי · מתוכם {fmt.format(botsThisMonth)} סריקות.
+                בשנה האחרונה: {fmt.format(yearSearchBots)} סריקות של מנועי חיפוש
+                ו-{fmt.format(yearAiBots)} של בוטי AI.
+            </p>
+        {/if}
+    </div>
 
     <!-- גידול המאגר — גמ"חים חדשים לפי חודש -->
     <div class="card space-y-3 p-4">

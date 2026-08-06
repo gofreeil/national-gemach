@@ -1,5 +1,5 @@
 import { handle as authHandle } from './auth';
-import { recordVisit } from '$lib/server/visitStats';
+import { classifyAgent, recordVisit } from '$lib/server/visitStats';
 import type { Handle } from '@sveltejs/kit';
 
 /**
@@ -8,17 +8,23 @@ import type { Handle } from '@sveltejs/kit';
  * הפתרון: אם זרק — ממשיכים כמשתמש אנונימי.
  */
 export const handle: Handle = async ({ event, resolve }) => {
-	// ספירת כניסות חודשיות לפאנל האדמין: עמודים ציבוריים בלבד.
+	// ספירת פניות חודשיות לפאנל האדמין: עמודים ציבוריים בלבד.
 	// נספרים גם מסמכי HTML (טעינה ראשונה) וגם בקשות data (ניווט צד-לקוח).
+	// סורקים (מנועי חיפוש ובוטים של AI) נספרים גם כשהם שולחים Accept: */*
+	// ולא text/html — אחרת דווקא הם, שרק המונה הזה רואה, היו נופלים בחוץ.
 	const rid = event.route.id;
 	if (
 		rid &&
 		event.request.method === 'GET' &&
 		!rid.startsWith('/api') &&
-		!rid.startsWith('/admin') &&
-		(event.isDataRequest || (event.request.headers.get('accept') ?? '').includes('text/html'))
+		!rid.startsWith('/admin')
 	) {
-		try { recordVisit(); } catch { /* סטטיסטיקה לא מפילה דף */ }
+		const ua = event.request.headers.get('user-agent') ?? '';
+		const wantsPage =
+			event.isDataRequest || (event.request.headers.get('accept') ?? '').includes('text/html');
+		if (wantsPage || classifyAgent(ua)) {
+			try { recordVisit(ua); } catch { /* סטטיסטיקה לא מפילה דף */ }
+		}
 	}
 
 	try {
