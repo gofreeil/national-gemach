@@ -15,6 +15,7 @@
     const yearSearchBots = $derived(data.serverHits.reduce((s, m) => s + m.searchBots, 0));
     const yearAiBots = $derived(data.serverHits.reduce((s, m) => s + m.aiBots, 0));
     const hasServerHits = $derived(data.serverHits.some((m) => m.count > 0));
+    const hasEstimate = $derived(data.serverHits.some((m) => m.estimated));
 
     // גידול המאגר — 12 החודשים האחרונים, האחרון הוא החודש הנוכחי
     const addedThisMonth = $derived(data.growth.at(-1)?.added ?? 0);
@@ -162,6 +163,12 @@
                 המספרים הם של החודש הנוכחי · מתוכם {fmt.format(botsThisMonth)} סריקות.
                 בשנה האחרונה: {fmt.format(yearSearchBots)} סריקות של מנועי חיפוש
                 ו-{fmt.format(yearAiBots)} של בוטי AI.
+                {#if hasEstimate}
+                    <span class="text-gray-500">
+                        לתקופה שלפני 6.8.26 (לפני שהספירה בשרת עלתה לאוויר) מוצגת הערכה
+                        לפי גודל האתר וקצב סריקה טיפוסי; מכאן והלאה — ספירה בפועל.
+                    </span>
+                {/if}
             </p>
         {/if}
     </div>

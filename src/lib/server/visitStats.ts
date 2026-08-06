@@ -48,6 +48,30 @@ export interface MonthCount {
     searchBots: number;
     /** מתוכן: סריקות של בוטים מבוססי-AI */
     aiBots: number;
+    /** true אם חלק מהמספרים בחודש הזה הם הערכה (לפני תחילת המדידה) */
+    estimated: boolean;
+}
+
+// ------------------------------------------------------------
+// בסיס היסטורי — הספירה בשרת עלתה לאוויר ב-6.8.2026, אבל האתר נסרק הרבה
+// לפני כן. כדי שהכרטיס לא יראה 0 לתקופה שלא נמדדה, מוסיפים לה הערכה:
+// מספר הדפים באתר כפול קצב סריקה טיפוסי, לכל יום שקדם למדידה. מרגע
+// המדידה ואילך המספרים אמיתיים בלבד, והדף מציין איפה יש הערכה.
+// ------------------------------------------------------------
+const MEASURE_FROM = Date.UTC(2026, 7, 6); // 6.8.2026
+/** סורקי חיפוש עוברים על דף בערך אחת ל-3 ימים */
+const SEARCH_PER_PAGE_PER_DAY = 1 / 3;
+/** בוטי AI נדירים יותר — בערך אחת ל-12 יום לדף */
+const AI_PER_PAGE_PER_DAY = 1 / 12;
+
+/** כמה ימים בחודש הזה קדמו לתחילת המדידה (0 = החודש נמדד במלואו) */
+function daysBeforeMeasuring(month: string): number {
+    const y = Number(month.slice(0, 4));
+    const m = Number(month.slice(5, 7));
+    const start = Date.UTC(y, m - 1, 1);
+    const end = Date.UTC(y, m, 1);
+    const until = Math.min(end, MEASURE_FROM);
+    return until <= start ? 0 : (until - start) / 86_400_000;
 }
 
 /** מפת חודש→מספר, כפי שהיא נשמרת ב-extra_fields */
@@ -170,8 +194,11 @@ export function recordVisit(userAgent = ''): void {
     }
 }
 
-/** N החודשים האחרונים (כולל החודש הנוכחי), כולל חודשים ללא נתונים. */
-export async function getMonthlyVisits(months = 12): Promise<MonthCount[]> {
+/**
+ * N החודשים האחרונים (כולל החודש הנוכחי), כולל חודשים ללא נתונים.
+ * pages = מספר הדפים הציבוריים באתר; משמש להערכת הסריקות שלפני תחילת המדידה.
+ */
+export async function getMonthlyVisits(months = 12, pages = 0): Promise<MonthCount[]> {
     const { buckets } = await loadVisits();
     // מוסיפים את מה שעוד לא נשטף כדי שהפאנל יראה מספר עדכני
     if (hasPending()) {
@@ -181,14 +208,22 @@ export async function getMonthlyVisits(months = 12): Promise<MonthCount[]> {
     }
     const out: MonthCount[] = [];
     const now = new Date();
+    const sitePages = Math.max(1, pages);
     for (let i = months - 1; i >= 0; i--) {
         const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
         const key = d.toISOString().slice(0, 7);
+        // הערכה לימים שלפני תחילת המדידה, אמת מדודה לימים שאחריה — מחוברים יחד
+        const estDays = daysBeforeMeasuring(key);
+        const estSearch = Math.round(estDays * sitePages * SEARCH_PER_PAGE_PER_DAY);
+        const estAi = Math.round(estDays * sitePages * AI_PER_PAGE_PER_DAY);
+        const searchBots = (buckets.search[key] ?? 0) + estSearch;
+        const aiBots = (buckets.ai[key] ?? 0) + estAi;
         out.push({
             month:      key,
-            count:      buckets.total[key]  ?? 0,
-            searchBots: buckets.search[key] ?? 0,
-            aiBots:     buckets.ai[key]     ?? 0,
+            count:      (buckets.total[key] ?? 0) + estSearch + estAi,
+            searchBots,
+            aiBots,
+            estimated:  estDays > 0,
         });
     }
     return out;

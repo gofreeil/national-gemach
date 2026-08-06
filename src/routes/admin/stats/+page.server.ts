@@ -39,13 +39,15 @@ function gemachGrowth(all: Gemach[]): { yearMonth: string; added: number }[] {
 export const load: PageServerLoad = async ({ locals }) => {
 	await getAdminContext(locals);
 
-	const [monthly, insights, all, serverHits] = await Promise.all([
+	const [monthly, insights, all] = await Promise.all([
 		getMonthlyVisitorStats(),
 		getYearlyInsights(),
-		getMergedGemachim().catch(() => []),
-		// המונה של השרת — הוא היחיד שרואה את הסורקים (GA רץ בדפדפן ולכן מפספס אותם)
-		getMonthlyVisits().catch(() => [])
+		getMergedGemachim().catch(() => [])
 	]);
+
+	// המונה של השרת — הוא היחיד שרואה את הסורקים (GA רץ בדפדפן ולכן מפספס אותם).
+	// מספר הדפים (דף לכל גמ"ח + כ-10 דפים קבועים) משמש להערכת התקופה שלפני המדידה.
+	const serverHits = await getMonthlyVisits(12, all.length + 10).catch(() => []);
 
 	// נתיבי /gemach/{id} → גמ"חים: איחוד כפילויות (עם/בלי לוכסן סופי) וסינון
 	// נתיבים שאינם דף גמ"ח (add/claim/edit) או גמ"חים שכבר נמחקו.
