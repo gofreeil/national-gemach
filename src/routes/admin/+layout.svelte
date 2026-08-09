@@ -1,5 +1,6 @@
 <script lang="ts">
     import { page } from '$app/stores';
+    import { goto } from '$app/navigation';
     import { adminNav, type AdminNavRole } from '$lib/adminNav';
     let { children, data } = $props();
 
@@ -13,6 +14,12 @@
 
     function active(href: string, exact: boolean, current: string) {
         return exact ? current === href : (current === href || current.startsWith(href + '/'));
+    }
+
+    // חזרה דף אחורה. אם אין היסטוריה (כניסה ישירה לכתובת) — נופלים לעמוד הפאנל הראשי.
+    function goBack() {
+        if (typeof history !== 'undefined' && history.length > 1) history.back();
+        else goto('/admin');
     }
 </script>
 
@@ -38,7 +45,14 @@
                     </p>
                 </div>
             </div>
-            <a href="/" class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 shadow-md hover:bg-[#2a4379] hover:text-white transition-colors">← חזרה לאתר</a>
+            <div class="flex items-center gap-2">
+                <button
+                    type="button"
+                    onclick={goBack}
+                    class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 shadow-md hover:bg-[#2a4379] hover:text-white transition-colors"
+                >↩ חזור</button>
+                <a href="/" class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 shadow-md hover:bg-[#2a4379] hover:text-white transition-colors">← חזרה לאתר</a>
+            </div>
         </div>
 
         <!-- ניווט -->
