@@ -5,6 +5,7 @@
     import { categoryKeys, cities, catZoom } from '$lib/gemachData';
     import GemachCard from '$lib/components/GemachCard.svelte';
     import AvedotBanner from '$lib/components/AvedotBanner.svelte';
+    import YedidimBanner from '$lib/components/YedidimBanner.svelte';
     import JsonLd from '$lib/components/JsonLd.svelte';
     import Seo from '$lib/components/Seo.svelte';
     import {
@@ -41,6 +42,12 @@
      *  עם עריכה לבעלים וסנכרון ל"קהילה בשכונה" — והבאנר נסוג כדי לא לכפול. */
     let hasAvedotGemach = $derived(
         gemachim.some(g => (g.link ?? '').includes('avedot.gofreeil.com'))
+    );
+
+    /** אותו כלל עבור "ידידים – סיוע בדרכים" בקטגוריית הרכב: כל עוד אין לארגון
+     *  פריט משלו במאגר, הבאנר הוא זה שמביא אותו — עם חיוג ישיר למוקד. */
+    let hasYedidimGemach = $derived(
+        gemachim.some(g => (g.link ?? '').includes('yedidim-il.org'))
     );
 
     let searchQuery = $state('');
@@ -907,6 +914,10 @@
             {#if selectedCategory === 'initiatives' && !hasAvedotGemach}
                 <div class="mb-5"><AvedotBanner /></div>
             {/if}
+            <!-- וכך גם "רכב והסעות" — ידידים רלוונטי בדיוק למי שלא מצא כלום -->
+            {#if selectedCategory === 'transport' && !hasYedidimGemach}
+                <div class="mb-5"><YedidimBanner /></div>
+            {/if}
             <!-- קופסה כהה: טקסט אפור ישירות על הרקע הוורוד אינו קריא -->
             <div class="mx-auto max-w-md rounded-2xl border border-[#3b5794] bg-[#16264d] px-6 py-12 text-center text-gray-300 shadow-lg">
                 <div class="text-5xl mb-4" aria-hidden="true">🔍</div>
@@ -943,6 +954,10 @@
                      משבצת רגילה בגודל כרטיס, לא באנר-על מעל הרשימה -->
                 {#if selectedCategory === 'initiatives' && !hasAvedotGemach}
                     <AvedotBanner />
+                {/if}
+                <!-- ידידים ראשון בקטגוריית הרכב — מי שמחפש כאן מחפש עזרה עכשיו -->
+                {#if selectedCategory === 'transport' && !hasYedidimGemach}
+                    <YedidimBanner />
                 {/if}
                 {#each filteredGemachim as gemach (gemach.id)}
                     <GemachCard {gemach} {categories} />
