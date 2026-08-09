@@ -161,3 +161,9 @@ export const rightAds: RightAd[] = [
         interstitialColor: 'from-fuchsia-600 to-purple-700',
     },
 ];
+
+/** כמה מקומות ממוספרים יש בלוח הפרסומות — נגזר מרשימת המשבצות עצמה.
+ *  משותף לשרת (הקצאת המספרים ב-adsStore) וללקוח (הלוח ב-adSlots ובורר
+ *  המקום במסך הניהול) — כדי שלא ייווצר פער בין המספרים שהמנהל רואה
+ *  למה שהאתר מציג. */
+export const AD_SLOT_COUNT = rightAds.length;

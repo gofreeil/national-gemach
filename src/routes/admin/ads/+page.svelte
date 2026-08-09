@@ -3,6 +3,7 @@
     import { adPlans, planLabel } from '$lib/adPlans';
     import { ctr } from '$lib/adOwner';
     import { adImgFit, parseAdImageFit } from '$lib/adImageFit';
+    import { AD_SLOT_COUNT } from '$lib/rightAdsData';
 
     // מסך ניהול הפרסומות לסופר-אדמין:
     //   1. לוח מלאי — כמה משבצות תפוסות, עד מתי, וכמה פנויות לפרסום עכשיו
@@ -15,9 +16,16 @@
 
     // תקופות שאפשר לקצוב למודעה שכבר באוויר (נספרות מיום האישור)
     const DURATION_OPTIONS = [7, 14, 30, 60, 90, 180, 365];
+    // 12 המקומות הממוספרים בלוח — בורר "⇄ העבר" שליד כל מודעה מאושרת
+    const SLOT_NUMBERS = Array.from({ length: AD_SLOT_COUNT }, (_, i) => i + 1);
 
     let pending  = $derived(data.ads.filter((a: any) => a.status === 'pending'));
-    let approved = $derived(data.ads.filter((a: any) => a.status === 'approved'));
+    // טאב "מאושרות" בסדר הלוח — אותו סדר מספרים שהגולש רואה בטור
+    let approved = $derived(
+        data.ads
+            .filter((a: any) => a.status === 'approved')
+            .sort((x: any, y: any) => (x.slot ?? 9999) - (y.slot ?? 9999))
+    );
     let rejected = $derived(data.ads.filter((a: any) => a.status === 'rejected'));
     let shown    = $derived(tab === 'pending' ? pending : tab === 'approved' ? approved : rejected);
 
@@ -327,11 +335,16 @@
                     {/if}
 
                     {#if ad.isActive && ad.slotIndex >= 0}
-                        <!-- משבצת הפרסומת בטור + החלפת מקום. הסדר כאן הוא בדיוק
-                             הסדר שהגולש רואה בטור הימני. -->
+                        <!-- מקום מעל 12 (גלישה) מתווסף לבורר כדי שלא ייעלם -->
+                        {@const slotOptions = ad.slot && !SLOT_NUMBERS.includes(ad.slot)
+                            ? [...SLOT_NUMBERS, ad.slot].sort((a: number, b: number) => a - b)
+                            : SLOT_NUMBERS}
+                        <!-- מספר המקום הקבוע של המודעה בלוח + החלפת מקום: החצים
+                             מחליפים מספרים עם השכנה שבאוויר, והבורר מעביר ישירות
+                             למקום שנבחר (מקום תפוס — השתיים מתחלפות). -->
                         <div class="slot-row">
-                            <span class="slot-badge">{ad.slotIndex + 1}</span>
-                            <span class="slot-label">משבצת {ad.slotIndex + 1} מתוך {ad.slotTotal} בטור</span>
+                            <span class="slot-badge">{ad.slot ?? ad.slotIndex + 1}</span>
+                            <span class="slot-label">משבצת {ad.slot ?? ad.slotIndex + 1} מתוך {AD_SLOT_COUNT} בטור</span>
                             <form method="POST" action="?/move" use:enhance>
                                 <input type="hidden" name="id" value={ad.id} />
                                 <input type="hidden" name="dir" value="up" />
@@ -341,6 +354,19 @@
                                 <input type="hidden" name="id" value={ad.id} />
                                 <input type="hidden" name="dir" value="down" />
                                 <button type="submit" class="a-btn ghost" disabled={ad.slotIndex === ad.slotTotal - 1} title="הורד משבצת אחת">▼ למטה</button>
+                            </form>
+                            <form method="POST" action="?/setSlot" use:enhance class="slot-jump-form">
+                                <input type="hidden" name="id" value={ad.id} />
+                                <select name="slot" class="duration-select" aria-label="מספר מקום בלוח">
+                                    {#each slotOptions as n (n)}
+                                        <!-- רקע לבן + טקסט כהה חובה: רקע כהה נבלע בהדגשת הבחירה של המערכת -->
+                                        <option value={n} selected={n === ad.slot} style="background:#fff;color:#111">{n}</option>
+                                    {/each}
+                                </select>
+                                <button type="submit" class="a-btn ghost"
+                                        title="העבר למקום שנבחר; אם המקום תפוס — שתי הפרסומות מתחלפות">
+                                    ⇄ העבר
+                                </button>
                             </form>
                         </div>
                     {/if}
@@ -844,6 +870,12 @@
         font-size: 0.75rem;
         font-weight: 700;
         margin-inline-end: auto;
+    }
+    /* בורר "⇄ העבר" — מקום מספרי ישיר בלוח, ליד חצי ההחלפה */
+    .slot-jump-form {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
     }
     .a-btn:disabled {
         opacity: 0.35;

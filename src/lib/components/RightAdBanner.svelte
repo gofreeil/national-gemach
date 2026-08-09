@@ -17,25 +17,26 @@
         return parseAdStyle(ad.adStyle) ?? legacyAdStyle(ad.title);
     }
 
-    const PER_VIEW = 4;      // כמה משבצות נראות בטור בו-זמנית
+    const PER_GROUP = 4;     // כמה מקומות (מודעות ופנויים) נראים בו-זמנית
     const VIEW_MS = 14000;   // כמה זמן כל קבוצה נשארת על המסך (החלפה איטית)
     const FADE_MS = 900;     // אורך הדעיכה בין קבוצה לקבוצה
 
-    let rotation = $state(0);
+    let currentGroup = $state(0);
     let fading = $state(false);
 
     let slots = $derived($adSlots);
 
-    // כל המשבצות משתתפות בסבב — גם מודעה בתשלום מתחלפת כמו השאר,
-    // והסבב אינסופי (בלי תקרת החלפות שהייתה עוצרת אותו על קבוצה אחת).
-    let displayedAds = $derived.by(() => {
-        if (slots.length <= PER_VIEW) return slots;
-        const start = (rotation * PER_VIEW) % slots.length;
-        return Array.from(
-            { length: PER_VIEW },
-            (_, i) => slots[(start + i) % slots.length],
-        );
-    });
+    // לוח 12 המקומות בסדר מספרי, בקבוצות עוקבות של 4 (1-4, 5-8, 9-12):
+    // מודעה שנקבעה למקום 5 מופיעה עם קבוצת 5-8, בין 6 ל-8. כל הכרטיסים
+    // מתחלפים בסבב כרגיל — מודעות ומשבצות פנויות יחד, בלי הצמדת מודעות
+    // לראש הטור ובלי תקרת החלפות שהייתה עוצרת את הסבב על קבוצה אחת.
+    let groupCount = $derived(Math.max(1, Math.ceil(slots.length / PER_GROUP)));
+    // שינוי במספר הקבוצות תוך כדי סבב (למשל אישור מודעה) לא משאיר את
+    // הטור ריק עד לסיבוב הבא
+    let safeGroup = $derived(currentGroup % groupCount);
+    let displayedAds = $derived(
+        slots.slice(safeGroup * PER_GROUP, (safeGroup + 1) * PER_GROUP),
+    );
 
     // כל מודעה שנכנסת לקבוצה המוצגת נספרת כחשיפה (פעם אחת לכל ביקור)
     $effect(() => {
@@ -49,11 +50,13 @@
         let fadeTimer: ReturnType<typeof setTimeout> | undefined;
         // דעיכה החוצה → החלפת הקבוצה בזמן שהטור שקוף → דעיכה פנימה.
         // כך אין קפיצה: המשבצות לא מתחלפות מול העין אלא מתוך שקיפות מלאה.
+        // הסבב רץ כל עוד הדף פתוח: גם המודעות בתשלום מתחלפות בו, ולכן
+        // עצירה הייתה מקבעת קבוצה אחת ומסתירה לצמיתות את המודעות שבאחרות.
         const interval = setInterval(() => {
-            if (slots.length <= PER_VIEW) return;
+            if (groupCount <= 1) return;
             fading = true;
             fadeTimer = setTimeout(() => {
-                rotation++;
+                currentGroup = (currentGroup + 1) % groupCount;
                 fading = false;
             }, FADE_MS);
         }, VIEW_MS);

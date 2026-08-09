@@ -9,7 +9,7 @@
 
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-import { rightAds, type RightAd } from './rightAdsData';
+import { rightAds, AD_SLOT_COUNT, type RightAd } from './rightAdsData';
 import type { AdStyle } from './adStyle';
 
 /** הצורה הרזה שמחזיר /api/ads/approved (ApprovedAdPublic בשרת) */
@@ -27,6 +27,8 @@ export interface ApprovedAd {
     mainImageFit?: { x: number; y: number; z: number };
     /** העיצוב מהבילדר (לוגו, רצועה, כותרת); חסר במודעות ותיקות */
     adStyle?: AdStyle | null;
+    /** מספר המקום בלוח (1..12) — נקבע במסך הניהול; חסר בקאש ישן */
+    slot?: number;
 }
 
 export type AdSlot =
@@ -46,7 +48,9 @@ export const adsHydrated = writable(false);
 // התמונות הן data-URI ולכן הרשומה גדולה; חריגת מכסה נבלעת בשקט.
 // v2: נוספו הלוגו והעיצוב שהמפרסם קבע. מפתח חדש מוודא שמבקר חוזר לא
 // יראה שוב את הגרסה שנשמרה בלעדיהם ותיראה לו כמו מודעה בלי לוגו.
-const CACHE_KEY = 'ng_approved_ads_v2';
+// v3: נוסף מספר המקום (slot) — בלי המפתח החדש מבקר חוזר היה מצייר את
+// הלוח מרשימה ישנה בלי מספרים, והמודעות היו נדחסות לראש הלוח.
+const CACHE_KEY = 'ng_approved_ads_v3';
 
 function readLocalCache(): ApprovedAd[] | null {
     try {
@@ -96,18 +100,45 @@ export function loadApprovedAds(): void {
 // שב-app.html הבקשה כבר באוויר עוד לפני שה-JS הזה בכלל רץ.
 if (browser) loadApprovedAds();
 
-/** משבצות התצוגה: מודעות אמיתיות קודם, והיתרה — משבצות פנויות.
+/** לוח 12 המקומות בסדר מספרי: מקום שנתפס מציג את המודעה, מקום פנוי
+ *  מציג את משבצת "יכול להיות שלך" של אותו מספר — מודעה מאושרת *תופסת*
+ *  מקום, וסך הכרטיסים הוא תמיד 12 בדיוק. המספר מגיע מהשרת (נקבע במסך
+ *  הניהול); מודעה מקאש ישן בלי מספר ממלאת את המספר הפנוי הנמוך ביותר.
  *  כל עוד אין רשימה (טעינה ראשונה, בלי קאש) — שלדים ניטרליים. */
 export const adSlots = derived(
     [approvedAds, adsHydrated],
     ([$approved, $hydrated]): AdSlot[] => {
         if (!$hydrated) return rightAds.map((): AdSlot => ({ kind: 'pending' }));
-        const real: AdSlot[] = $approved
-            .slice(0, rightAds.length)
-            .map((ad) => ({ kind: 'real', ad }));
-        const vacant: AdSlot[] = rightAds
-            .slice(real.length)
-            .map((slot, i) => ({ kind: 'vacant', slot, no: real.length + i + 1 }));
-        return [...real, ...vacant];
+        const taken = new Set<number>();
+        for (const a of $approved) {
+            if (typeof a.slot === 'number' && a.slot >= 1) taken.add(a.slot);
+        }
+        let nextFree = 1;
+        const byNum = new Map<number, ApprovedAd>();
+        const overflow: AdSlot[] = [];
+        for (const a of $approved) {
+            let num = typeof a.slot === 'number' && a.slot >= 1 ? a.slot : 0;
+            // בלי מספר, או בהתנגשות נדירה — המספר הפנוי הנמוך ביותר
+            if (num === 0 || byNum.has(num)) {
+                while (taken.has(nextFree)) nextFree++;
+                num = nextFree;
+                taken.add(num);
+            }
+            if (num <= AD_SLOT_COUNT) byNum.set(num, a);
+            else overflow.push({ kind: 'real', ad: a });
+        }
+        const cells: AdSlot[] = [];
+        for (let n = 1; n <= AD_SLOT_COUNT; n++) {
+            const ad = byNum.get(n);
+            // תבניות הצבע קבועות למספר: משבצת 7 שומרת על הצבעים שלה
+            // גם כשמקומות לפניה נתפסים
+            cells.push(
+                ad
+                    ? { kind: 'real', ad }
+                    : { kind: 'vacant', slot: rightAds[(n - 1) % rightAds.length], no: n },
+            );
+        }
+        // מעבר ל-12 (גלישה) — בסוף הלוח, כדי שמודעה לא תיעלם
+        return [...cells, ...overflow];
     },
 );

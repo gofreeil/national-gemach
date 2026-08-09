@@ -17,6 +17,7 @@ import { strapiGet, strapiPost, strapiPut, strapiDelete } from './strapiClient.j
 import { DEFAULT_PLAN_DAYS, normalizePlanDays } from '../adPlans.js';
 import { parseAdImageFit, type AdImageFit } from '../adImageFit.js';
 import { parseAdStyle, type AdStyle } from '../adStyle.js';
+import { AD_SLOT_COUNT } from '../rightAdsData.js';
 
 const AD_CATEGORY = '__ng_ad';
 export const DEFAULT_DURATION_DAYS = DEFAULT_PLAN_DAYS;
@@ -70,7 +71,12 @@ export interface SubmittedAd {
     codeRequested: boolean;
     /** התקופה שהמפרסם ביקש בשליחה (אחד ממסלולי adPlans) — ברירת המחדל באישור */
     requestedDurationDays: number;
-    /** מיקום ידני בטור הפרסומות (0 = המשבצת הראשונה). ריק = לפי סדר האישור */
+    /**
+     * מספר המקום בלוח הפרסומות, 0-based (0 = מקום 1). המספר קבוע למודעה:
+     * הוא לא זז כשמאשרים מודעות אחרות, ונשמר לה גם דרך השהיה ופקיעה.
+     * undefined = מודעה ותיקה שטרם הוקצה לה מספר (מקבלת אחד בפעולת
+     * הניהול/האישור הבאה, לפי מקומה הנוכחי על האתר).
+     */
     slotOrder?: number;
     /** מושהית — יורדת מהאתר ושומרת את הימים שנותרו לה */
     paused?: boolean;
@@ -102,6 +108,8 @@ export interface ApprovedAdPublic {
     mainImageFit: AdImageFit;
     /** העיצוב מהבילדר; null במודעות שנשלחו לפני שהוא נשמר */
     adStyle: AdStyle | null;
+    /** מספר המקום בלוח (1..12) — נקבע במסך הניהול, מחושב תמיד בשרת */
+    slot: number;
 }
 
 interface StrapiItem {
@@ -166,9 +174,14 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
     };
 }
 
-/** סדר המשבצות בטור: קודם מי שקיבל מיקום ידני, אחריו לפי סדר הכניסה (ותיק→חדש) */
-function bySlotOrder(a: { slotOrder?: number }, b: { slotOrder?: number }): number {
-    return (a.slotOrder ?? Number.MAX_SAFE_INTEGER) - (b.slotOrder ?? Number.MAX_SAFE_INTEGER);
+/** סדר התצוגה בטור: קודם מי שקיבל מספר מקום, אחריו לפי סדר הכניסה
+ *  (ותיק→חדש) — בדיוק הסדר שהאתר מציג היום, ולכן ההקצאה הראשונה של
+ *  מספרים מקפיאה אותו כמו שהוא. */
+function byDisplayOrder(a: SubmittedAd, b: SubmittedAd): number {
+    const ao = a.slotOrder ?? Number.MAX_SAFE_INTEGER;
+    const bo = b.slotOrder ?? Number.MAX_SAFE_INTEGER;
+    if (ao !== bo) return ao - bo;
+    return Date.parse(a.submittedAt || '') - Date.parse(b.submittedAt || '');
 }
 
 // ---------- קאש קצר לרשימת המאושרות ----------
@@ -470,15 +483,20 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
             'pagination[pageSize]': '25',
         });
         const now = Date.now();
-        const list = (res.data ?? [])
+        const approvedAll = (res.data ?? [])
             .map(fromStrapi)
-            .filter((a): a is SubmittedAd => Boolean(a))
+            .filter((a): a is SubmittedAd => Boolean(a));
+        // מספרי המקומות מחושבים על *כל* המאושרות — גם מושהית/פגה שומרת את
+        // מקומה (המשבצת שלה מוצגת כפנויה עד שתחזור). חישוב בזיכרון בלבד:
+        // נתיב קריאה לא כותב ל-Strapi.
+        const slots = computeSlots(approvedAll);
+        const list = approvedAll
             // מודעה שפג תוקפה יורדת מהאתר אוטומטית (הרשומה נשארת לארכיון)
             .filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > now)
             // מודעה מושהית יורדת מהאתר ושומרת את הימים שנותרו לה
             .filter((a) => !a.paused)
-            // מיקום ידני שנקבע במסך הניהול גובר על סדר הכניסה
-            .sort(bySlotOrder)
+            // סדר הלוח = סדר המספרים שנקבעו במסך הניהול
+            .sort((a, b) => (slots.get(a.id) ?? 0) - (slots.get(b.id) ?? 0))
             .map((a) => ({
                 id: a.id,
                 title: a.title,
@@ -492,6 +510,9 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
                 mainImage: a.mainImage,
                 mainImageFit: a.mainImageFit,
                 adStyle: a.adStyle,
+                // המספר בלוח (1-based) — הלקוח מציב לפיו את המודעה בדיוק
+                // במקום שנקבע לה, והחורים ביניהם נשארים משבצות פנויות
+                slot: (slots.get(a.id) ?? 0) + 1,
             }));
         approvedCache = { at: Date.now(), list };
         return list;
@@ -679,14 +700,42 @@ export async function approveAd(
         .sort()
         .pop() ?? '';
     const expires = inheritedExpiry || new Date(Date.now() + days * DAY_MS).toISOString();
+
+    // ----- מספר המקום בלוח (1..12) -----
+    // ברירת המחדל: מודעה חדשה תופסת את המספר הפנוי הנמוך ביותר ואף אחת
+    // לא זזה ממקומה. גרסה מחליפה יורשת את המספר של הישנה; מודעה שהורדה
+    // ואושרה מחדש חוזרת למקומה הקודם אם הוא עדיין פנוי.
+    let slot: number | undefined;
+    try {
+        const approvedNow = (await listApprovedAll()).filter((a) => a.id !== id);
+        const slots = await ensureSlotsPersisted(approvedNow);
+        const taken = new Set(slots.values());
+        const inherited = replacing ? slots.get(replacing.id) : undefined;
+        if (inherited !== undefined) {
+            slot = inherited;
+        } else if (typeof current?.slotOrder === 'number' && current.slotOrder >= 0 && !taken.has(current.slotOrder)) {
+            slot = current.slotOrder;
+        } else {
+            slot = 0;
+            while (taken.has(slot)) slot++;
+        }
+    } catch (err) {
+        // כשל בהקצאה לא מפיל אישור — המודעה תקבל מספר בפעולת הניהול הבאה
+        console.warn('adsStore: slot assignment failed', err instanceof Error ? err.message : err);
+        slot = typeof current?.slotOrder === 'number' && current.slotOrder >= 0 ? current.slotOrder : undefined;
+    }
+
     await mergeExtra(id, {
         decided_at: new Date().toISOString(),
         decided_by: decidedBy,
         rejection_reason: '',
         duration_days: inheritedExpiry ? (replacing?.durationDays ?? days) : days,
         expires_at: expires,
-        // המשבצת בטור עוברת לגרסה החדשה, אחרת היא הייתה קופצת לסוף הרשימה
-        ...(replacing && typeof replacing.slotOrder === 'number' ? { slot_order: replacing.slotOrder } : {}),
+        ...(slot !== undefined ? { slot_order: slot } : {}),
+        // מודעה שמאושרת עכשיו היא בהגדרה לא "גרסה ישנה שהוחלפה". דגל
+        // superseded_by שנשאר מגלגול קודם גרם למודעה חיה להיראות מוחלפת:
+        // גרסה מעודכנת של המפרסם לא זיהתה אותה ולא הורידה אותה באישור.
+        superseded_by: null,
     }, 'approved');
     invalidateAdsCache();
 
@@ -802,26 +851,77 @@ export async function resumeAd(
     return { title: ad.title, expiresAt: expires.toISOString(), daysLeft };
 }
 
-// ---------- החלפת מקום בטור הפרסומות ----------
+// ---------- מקומות ממוספרים בלוח הפרסומות (1..12) ----------
 
 export type MoveDirection = 'up' | 'down';
 
-/** המודעות שבאוויר, בסדר התצוגה בטור (המשבצות). */
-async function listActiveInSlotOrder(): Promise<SubmittedAd[]> {
-    const now = Date.now();
+/** כל המאושרות — כולל מושהות ופגות תוקף. הבסיס לחישוב המספרים: מודעה
+ *  שומרת את מקומה גם דרך השהיה ופקיעה, ולכן גם מי שלא באוויר תופסת מספר. */
+async function listApprovedAll(): Promise<SubmittedAd[]> {
     const all = await listAllForAdmin();
-    return all
-        .filter((a) => a.status === 'approved')
-        .filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > now)
-        // מושהית אינה תופסת משבצת בטור
-        .filter((a) => !a.paused)
-        // listAllForAdmin מחזיר חדש→ותיק; סדר המשבצות הוא ותיק→חדש
-        .reverse()
-        .sort(bySlotOrder);
+    return all.filter((a) => a.status === 'approved');
+}
+
+/** האם המודעה מוצגת לגולש עכשיו (לא פגה ולא מושהית) */
+function isLiveNow(a: SubmittedAd, now = Date.now()): boolean {
+    if (a.paused) return false;
+    return !a.expiresAt || Date.parse(a.expiresAt) > now;
 }
 
 /**
- * מזיזה מודעה משבצת אחת למעלה/למטה בטור. המיקום נשמר ב-slot_order בתוך
+ * המספר האפקטיבי של כל מודעה ברשימה (0-based). מי שכבר נקבע לה מספר —
+ * שומרת עליו (בהתנגשות, הראשונה בסדר התצוגה גוברת); מי שאין לה מקבלת את
+ * המספר הפנוי הנמוך ביותר, לפי סדר התצוגה הנוכחי. כך מודעות ותיקות בלי
+ * מספר מקבלות בדיוק את מקומן של היום — ההקצאה הראשונה לא מזיזה כלום.
+ */
+function computeSlots(list: SubmittedAd[]): Map<string, number> {
+    const bySlot = new Map<string, number>();
+    const taken = new Set<number>();
+    const display = [...list].sort(byDisplayOrder);
+    for (const ad of display) {
+        if (typeof ad.slotOrder === 'number' && ad.slotOrder >= 0 && !taken.has(ad.slotOrder)) {
+            bySlot.set(ad.id, ad.slotOrder);
+            taken.add(ad.slotOrder);
+        }
+    }
+    let next = 0;
+    for (const ad of display) {
+        if (bySlot.has(ad.id)) continue;
+        while (taken.has(next)) next++;
+        bySlot.set(ad.id, next);
+        taken.add(next);
+    }
+    return bySlot;
+}
+
+/** מספרי המקומות לתצוגה (1-based) — למסך הניהול שמציג "משבצת N מתוך 12" */
+export function computeAdSlots(list: SubmittedAd[]): Map<string, number> {
+    return new Map([...computeSlots(list)].map(([id, s]) => [id, s + 1]));
+}
+
+/**
+ * מקבע ב-Strapi מספר מקום לכל מודעה ברשימה שעדיין אין לה (או שהמספר
+ * השמור מתנגש). כותב רק את מי שהשתנה — בהקצאה הראשונה זו כל הרשימה,
+ * ומכאן והלאה כלום. רץ בפעולות ניהול בלבד, לא בנתיבי קריאה.
+ */
+async function ensureSlotsPersisted(list: SubmittedAd[]): Promise<Map<string, number>> {
+    const slots = computeSlots(list);
+    const dirty = list.filter((ad) => ad.slotOrder !== slots.get(ad.id));
+    if (dirty.length > 0) {
+        // סדרתי בכוונה — mergeExtra עושה GET+PUT לכל מודעה, והרשומות כבדות
+        // (תמונות data-URI); מקבילי היה חונק את koa בבת אחת.
+        for (const ad of dirty) {
+            await mergeExtra(ad.id, { slot_order: slots.get(ad.id)! });
+        }
+        invalidateAdsCache();
+    }
+    return slots;
+}
+
+/**
+ * מזיזה מודעה מקום אחד למעלה/למטה בלוח: מחליפה מספרים עם השכנה *שבאוויר*
+ * בלבד — מושהית/פגה שומרת את המספר שלה ואינה זזה, ושאר המודעות נשארות
+ * במקומן (בלי מספור-מחדש דוחס). המיקום נשמר ב-slot_order בתוך
  * extra_fields — אין עמודה ייעודית ב-items, ואותה עמודת json כבר נושאת
  * את כל שאר שדות המודעה.
  * מחזירה null אם המודעה לא באוויר או שהיא כבר בקצה הטור.
@@ -830,21 +930,54 @@ export async function moveApprovedAd(
     id: string,
     direction: MoveDirection,
 ): Promise<{ title: string; position: number; total: number } | null> {
-    const list = await listActiveInSlotOrder();
-    const from = list.findIndex((a) => a.id === id);
+    const all = await listApprovedAll();
+    const slots = await ensureSlotsPersisted(all);
+    const now = Date.now();
+    const live = all
+        .filter((a) => isLiveNow(a, now))
+        .sort((a, b) => (slots.get(a.id) ?? 0) - (slots.get(b.id) ?? 0));
+    const from = live.findIndex((a) => a.id === id);
     if (from === -1) return null;
     const to = direction === 'up' ? from - 1 : from + 1;
-    if (to < 0 || to >= list.length) return null;
+    if (to < 0 || to >= live.length) return null;
 
-    const reordered = [...list];
-    [reordered[from], reordered[to]] = [reordered[to], reordered[from]];
-
-    // כותבים רק את מי שהמשבצת שלו באמת השתנתה: בפעם הראשונה זה כל הטור
-    // (לאף מודעה אין עדיין slot_order), ומכאן והלאה שתי המודעות שהוחלפו.
-    for (const [i, ad] of reordered.entries()) {
-        if (ad.slotOrder === i) continue;
-        await mergeExtra(ad.id, { slot_order: i });
-    }
+    const moved = live[from];
+    const other = live[to];
+    const movedSlot = slots.get(moved.id)!;
+    const otherSlot = slots.get(other.id)!;
+    await mergeExtra(moved.id, { slot_order: otherSlot });
+    await mergeExtra(other.id, { slot_order: movedSlot });
     invalidateAdsCache();
-    return { title: reordered[to].title, position: to + 1, total: reordered.length };
+    return { title: moved.title, position: otherSlot + 1, total: AD_SLOT_COUNT };
+}
+
+/**
+ * מציבה מודעה מאושרת במקום מספרי מסוים בלוח (1..12). מקום תפוס — השתיים
+ * מתחלפות זו בזו; שאר המודעות לא זזות. המספר נשאר קבוע למודעה גם דרך
+ * השהיה ופקיעה — כשהיא חוזרת לאוויר היא חוזרת לאותו מקום.
+ */
+export async function setAdSlot(
+    id: string,
+    requested: number,
+): Promise<{ title: string; slot: number; swappedTitle?: string; swappedSlot?: number } | null> {
+    const n = Math.round(Number(requested));
+    if (!Number.isFinite(n)) return null;
+    const target = Math.min(AD_SLOT_COUNT, Math.max(1, n)) - 1;
+
+    const list = await listApprovedAll();
+    const ad = list.find((a) => a.id === id);
+    if (!ad) return null;
+    const slots = await ensureSlotsPersisted(list);
+    const cur = slots.get(id) ?? 0;
+    if (cur === target) return { title: ad.title, slot: target + 1 };
+
+    const occupant = list.find((a) => a.id !== id && slots.get(a.id) === target) ?? null;
+    await mergeExtra(ad.id, { slot_order: target });
+    if (occupant) await mergeExtra(occupant.id, { slot_order: cur });
+    invalidateAdsCache();
+    return {
+        title: ad.title,
+        slot: target + 1,
+        ...(occupant ? { swappedTitle: occupant.title, swappedSlot: cur + 1 } : {}),
+    };
 }

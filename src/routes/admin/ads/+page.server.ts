@@ -7,6 +7,8 @@ import {
     rejectAd,
     unapproveAd,
     moveApprovedAd,
+    setAdSlot,
+    computeAdSlots,
     setAdDuration,
     normalizeDurationDays,
     pauseAd,
@@ -54,15 +56,16 @@ export const load: PageServerLoad = async ({ locals }) => {
         .catch((): Record<string, AdStats> => ({}));
 
     const now = Date.now();
-    // סדר המשבצות בטור — זהה לסדר שהאתר מציג בו (מיקום ידני, ואחריו ותיק→חדש).
-    // ממנו נגזר מספר המשבצת שמוצג ליד כל מודעה וכפתורי ההחלפה.
-    const slotOrder = raw
+    // המספר הקבוע של כל מודעה מאושרת בלוח (1..12) — חישוב בזיכרון בלבד,
+    // בלי כתיבה ל-Strapi; ההצמדה נעשית בפעולות הניהול עצמן.
+    const slotMap = computeAdSlots(raw.filter((a) => a.status === 'approved'));
+    // סדר הלוח בין המודעות *שבאוויר* — לחצי ההחלפה (מי שכנה של מי, והקצוות)
+    const liveOrder = raw
         .filter((a) => a.status === 'approved')
         .filter((a) => !a.expiresAt || Date.parse(a.expiresAt) > now)
         .filter((a) => !a.paused)
         .slice()
-        .reverse()
-        .sort((x, y) => (x.slotOrder ?? Number.MAX_SAFE_INTEGER) - (y.slotOrder ?? Number.MAX_SAFE_INTEGER))
+        .sort((x, y) => (slotMap.get(x.id) ?? 0) - (slotMap.get(y.id) ?? 0))
         .map((a) => a.id);
 
     const ads = raw.map((a) => {
@@ -91,8 +94,10 @@ export const load: PageServerLoad = async ({ locals }) => {
             isActive,
             isExpired,
             isPaused,
-            slotIndex: slotOrder.indexOf(a.id),
-            slotTotal: slotOrder.length,
+            // מספר המקום הקבוע בלוח (1..12) — מה שהבורר "⇄ העבר" משנה
+            slot: slotMap.get(a.id) ?? null,
+            slotIndex: liveOrder.indexOf(a.id),
+            slotTotal: liveOrder.length,
         };
     });
 
@@ -225,6 +230,26 @@ export const actions: Actions = {
         } catch (err) {
             console.error('move failed:', err);
             return fail(502, { error: 'החלפת המקום נכשלה — נסו שוב' });
+        }
+    },
+    // הצבת מודעה במקום מספרי בלוח (1..12); מקום תפוס — השתיים מתחלפות
+    setSlot: async ({ request, locals }) => {
+        await getAdminContext(locals);
+        const form = await request.formData();
+        const id = String(form.get('id') ?? '');
+        if (!id) return fail(400, { error: 'חסר מזהה פרסומת' });
+        try {
+            const r = await setAdSlot(id, Number(form.get('slot')));
+            if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
+            return {
+                success: true,
+                message: r.swappedTitle
+                    ? `"${r.title}" עברה למקום ${r.slot}, ו"${r.swappedTitle}" עברה למקום ${r.swappedSlot}`
+                    : `"${r.title}" עברה למקום ${r.slot}`,
+            };
+        } catch (err) {
+            console.error('setSlot failed:', err);
+            return fail(502, { error: 'העברת המקום נכשלה — נסו שוב' });
         }
     },
 };
