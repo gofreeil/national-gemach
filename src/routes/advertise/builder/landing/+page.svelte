@@ -8,6 +8,7 @@
         bodyBytes, fmtWeight, approxDataUrlBytes, compressImageToFit,
         shrinkAdPayload, heaviestImageLabel,
     } from "$lib/adPayloadBudget";
+    import { getAdIntent, clearAdIntent } from "$lib/adIntent";
 
     // עורך דף הנחיתה + שליחה סופית - פורט מקבוצות רכישה (במקור מ"קהילה בשכונה").
     // חולק את אותה טיוטת localStorage עם ה-builder הראשי.
@@ -444,8 +445,10 @@
         submitting = true;
         submitError = "";
         try {
-            // הקוד עצמו נשלח לשרת והוא מאמת אותו שוב — הדגל לא נקבע בדפדפן
-            const payload = buildPayloadSnapshot();
+            // הקוד עצמו נשלח לשרת והוא מאמת אותו שוב — הדגל לא נקבע בדפדפן.
+            // intent: הגעה מדף המחירים = מודעה *נוספת*, והשרת לא יקשר אותה
+            // לקודמת ולא יוריד את מה שכבר רץ. עריכה (editId) מעדכנת במקום.
+            const payload = { ...buildPayloadSnapshot(), intent: getAdIntent() };
             if (!(await shrinkAdPayload(payload, AD_BODY_LIMIT)).ok) {
                 throw new Error("התמונות כבדות מדי לשליחה אחת - הקטינו את התמונה הראשית או תמונות המוצרים ונסו שוב");
             }
@@ -471,6 +474,8 @@
                 try { localStorage.removeItem(EDIT_KEY); } catch {}
             }
             submitted = true;
+            // הכוונה נצרכה - הכניסה הבאה לסטודיו תיקבע לפי הדלת שנכנסים בה
+            clearAdIntent();
         } catch (e) {
             if (e instanceof TypeError) {
                 submitError = "בעיית תקשורת - בדקו את החיבור ונסו שוב";

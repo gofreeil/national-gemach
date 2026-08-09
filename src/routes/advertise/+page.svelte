@@ -18,6 +18,7 @@
 
     // המחירון — מקור אמת יחיד ב-$lib/adPlans (משותף לבילדר, לשרת ולמסך האישור)
     import { adPlans } from '$lib/adPlans';
+    import { setAdIntent } from '$lib/adIntent';
 
     // פרסומת אחת בלבד באתר — אותה מודעה מוצגת בשני המסכים:
     // בדסקטופ בטור הימני, ובנייד למשך INTERSTITIAL_SECONDS אחרי לחיצה על פריט.
@@ -113,8 +114,12 @@
                 <span class="text-gray-200 text-sm md:text-base leading-relaxed">הפרסומת עוברת אישור מנהל — ומיד עולה לאוויר.</span>
             </li>
         </ol>
+        <!-- הגעה מדף המחירים = רכישת מודעה *נוספת*, לא עריכה של הקיימת.
+             בלי הסימון הזה השרת זיהה "מפרסם חוזר" והאישור הוריד את המודעה
+             שכבר רצה - גם כשהמפרסם שילם בכוונה על שתיים. -->
         <a
             href={builderUrl}
+            onclick={() => setAdIntent('new')}
             class="inline-block rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 px-8 py-4 font-black text-white text-lg shadow-xl transition hover:opacity-90 hover:scale-[1.02]"
         >
             🎨 לעיצוב הפרסומת

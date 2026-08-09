@@ -53,6 +53,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             // עם ברירות המחדל של האתר ולא עם מה שהמפרסם ראה על המסך
             adStyle: payload.adStyle,
             landing: normalizeLanding(payload.landing),
+            // 'new' = המפרסם הגיע מדף המחירים וקנה משבצת נוספת. השליחה לא
+            // מתקשרת למודעה הקיימת והאישור לא יוריד אותה.
+            standalone: payload.intent === 'new',
         });
         // התראה על *כל* בקשת פרסום — קודם היא נשלחה רק על שימוש בקוד בעלים,
         // כך שמפרסם רגיל הגיש פרסומת ואיש לא ידע עליה. לא חוסמת ולא מפילה.

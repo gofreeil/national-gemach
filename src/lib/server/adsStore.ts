@@ -84,6 +84,8 @@ export interface SubmittedAd {
     replacesTitle?: string;
     /** מי החליפה אותה. מודעה מסומנת כך היא היסטוריה ולא מועמדת להחלפה נוספת */
     supersededBy?: string;
+    /** מודעה נוספת שנקנתה בכוונה - האישור לא מוריד את מה שכבר רץ למפרסם */
+    standalone?: boolean;
 }
 
 /** הצורה הרזה שמוזרמת לתצוגה הציבורית (טור ימני + פרסומת-ביניים) */
@@ -160,6 +162,7 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         replacesAdId: typeof x.replaces_ad_id === 'string' ? x.replaces_ad_id : undefined,
         replacesTitle: typeof x.replaces_title === 'string' ? x.replaces_title : undefined,
         supersededBy: typeof x.superseded_by === 'string' ? x.superseded_by : undefined,
+        standalone: x.standalone === true,
     };
 }
 
@@ -371,6 +374,8 @@ export async function submitAd(payload: {
     submittedBy?: { id: string; email: string; name: string };
     payment?: string;
     requestedDurationDays?: number;
+    /** מודעה *נוספת* שנקנתה בכוונה - לא מתקשרת לקודמת ולא מורידה אותה באישור */
+    standalone?: boolean;
 }): Promise<{
     id: string;
     status: AdStatus;
@@ -379,11 +384,16 @@ export async function submitAd(payload: {
     replacesStatus: AdStatus | '';
     retiredPendingIds: string[];
 }> {
-    // מפרסם חוזר: מחפשים לפני היצירה, כדי שהרשומה החדשה עצמה לא תיספר
-    const { target: predecessor, stalePending } = await findPredecessors({
-        submittedBy: payload.submittedBy,
-        landing: payload.landing as { email?: string; phone?: string } | undefined,
-    });
+    // מפרסם חוזר: מחפשים לפני היצירה, כדי שהרשומה החדשה עצמה לא תיספר.
+    // מודעה נוספת שנקנתה בכוונה (הגעה מדף המחירים) לא מחפשת קודמת בכלל -
+    // היא לא באה במקום שום דבר, וזיהוי לפי זהות היה הורג את המודעה
+    // שהמפרסם כבר משלם עליה.
+    const { target: predecessor, stalePending } = payload.standalone
+        ? { target: null, stalePending: [] as SubmittedAd[] }
+        : await findPredecessors({
+            submittedBy: payload.submittedBy,
+            landing: payload.landing as { email?: string; phone?: string } | undefined,
+        });
     const res = await strapiPost<{ data: StrapiItem }>('/api/items', {
         data: {
             category:    AD_CATEGORY,
@@ -408,6 +418,8 @@ export async function submitAd(payload: {
                 payment: 'pending',
                 code_requested: payload.payment === 'code',
                 requested_duration_days: normalizePlanDays(payload.requestedDurationDays),
+                // נשמר עם המודעה: גם באישור, שבא אחר-כך, אסור להוריד את הקיימת
+                ...(payload.standalone ? { standalone: true } : {}),
                 ...(predecessor
                     ? { replaces_ad_id: predecessor.id, replaces_title: predecessor.title }
                     : {}),
@@ -641,13 +653,16 @@ export async function approveAd(
     }: { durationDays?: number; decidedBy?: string; keepPrevious?: boolean } = {},
 ): Promise<{ replacedTitle: string }> {
     const current = await getAd(id);
-    const predecessor = current?.replacesAdId && !keepPrevious ? await getAd(current.replacesAdId) : null;
+    // מודעה נוספת שנקנתה בכוונה מתנהגת בדיוק כמו keepPrevious: היא לא
+    // באה במקום כלום, והמפרסם משלם על שתי המשבצות.
+    const keep = keepPrevious || current?.standalone === true;
+    const predecessor = current?.replacesAdId && !keep ? await getAd(current.replacesAdId) : null;
 
     // כל מה שחי כרגע לאותו מפרסם: replacesAdId מצביע על מה שהיה חי *בזמן
     // השליחה* בלבד. כששתי גרסאות היו באוויר, האישור הוריד את הישנה, השאיר
     // את השנייה ודחף אותה למטה. מפרסם מקבל משבצת אחת, ולכן ברירת המחדל
     // היא שהחדשה מכסה את כולן.
-    const liveBefore = keepPrevious || !current ? [] : await findLiveAdsOfAdvertiser(current);
+    const liveBefore = keep || !current ? [] : await findLiveAdsOfAdvertiser(current);
     const replacingAll = predecessor && predecessor.status === 'approved' && !predecessor.supersededBy
         && !liveBefore.some((a) => a.id === predecessor.id)
         ? [predecessor, ...liveBefore]
