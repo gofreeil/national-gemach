@@ -20,6 +20,18 @@
     --bg-deep: #4e2a5b;
 }
 
+/* אין גרירה אופקית של המסך — בשום דף ובשום מכשיר.
+   overflow-x על ה-body לבדו לא מספיק בנייד: הוא מונע גלילה אופקית של הדף,
+   אבל גליל אופקי פנימי (מסילת הקטגוריות) עדיין משרשר את הגרירה החוצה
+   (scroll chaining) והמסך כולו נגרר/מקפץ הצידה. שתי החגורות ביחד סוגרות זאת:
+   clip חוסם גם גלילה תכנותית ואינו יוצר מיכל-גלילה (בשונה מ-hidden, שגורר
+   overflow-y: auto ושובר sticky), ו-overscroll-behavior-x עוצר את השרשור.
+   דפדפן ישן שאינו מכיר clip מתעלם מהשורה ונשאר עם ה-hidden שמתחת. */
+html {
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -29,6 +41,8 @@ body {
     direction: rtl;
     font-size: 16.5px;
     overflow-x: hidden;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
 }
 
 * {
