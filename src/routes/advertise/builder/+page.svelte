@@ -571,6 +571,27 @@
     }
 
     /**
+     * תיבת טקסט שגדלה לפי התוכן. 90 תווים עם ירידות שורה מגיעים בקלות
+     * לארבע-חמש שורות, ותיבה בגובה קבוע חתכה אותן: המפרסם ראה גלילה
+     * פנימית ולא את סוף המשפט שכתב. הפרמטר הוא הערך עצמו, כדי שגם
+     * טעינת הטיוטה (ולא רק הקלדה) תתאים את הגובה.
+     * @param {HTMLTextAreaElement} node
+     * @param {string} _value
+     */
+    function autoGrow(node, _value) {
+        const fit = () => {
+            node.style.height = "auto";
+            node.style.height = `${node.scrollHeight}px`;
+        };
+        fit();
+        node.addEventListener("input", fit);
+        return {
+            update: () => fit(),
+            destroy: () => node.removeEventListener("input", fit),
+        };
+    }
+
+    /**
      * @param {DragEvent} e
      * @param {(v: boolean) => void} setActive
      */
@@ -1307,10 +1328,11 @@
                         <br /><strong class="amber-strong">זה המקום למכור:</strong> מה מקבלים, למה דווקא אתם (עד 90 תווים).
                     </p>
 
-                    <!-- rows=3 - 90 תווים בשתי שורות + שורה שלישית פנויה, כדי שאפשר יהיה
-                         לרדת שורה ולראות את סוף המשפט בלי גלילה בתוך התיבה -->
+                    <!-- התיבה גדלה לפי התוכן (autoGrow): גובה קבוע חתך את השורות
+                         האחרונות והמפרסם לא ראה את סוף המשפט שכתב -->
                     <textarea
                         bind:value={hoverText}
+                        use:autoGrow={hoverText}
                         maxlength="90"
                         rows="3"
                         onfocus={() => activeStep === "hover" || (activeStep = "hover")}
@@ -2011,6 +2033,12 @@
     }
 
     /* ============== קלטים ============== */
+    /* תיבת הריחוף גדלה לפי התוכן ולכן אין בה גלילה פנימית שמסתירה שורות */
+    textarea.text-input[rows="3"] {
+        overflow-y: hidden;
+        resize: none;
+        min-height: 4.5rem;
+    }
     .text-input {
         width: 100%;
         padding: 0.75rem 1rem;
