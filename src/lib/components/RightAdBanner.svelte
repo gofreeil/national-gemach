@@ -141,7 +141,8 @@
                                     <p class="text-gray-200 text-[11px] leading-tight">{item.ad.subtitle}</p>
                                 {/if}
                                 {#if item.ad.hover}
-                                    <p class="mt-2 pt-2 border-t border-white/20 text-amber-200 text-[11px] font-bold leading-snug">
+                                    <!-- pre-line: ירידות שורה שהמפרסם הקליד בשלב 6 נשמרות -->
+                                    <p class="mt-2 pt-2 border-t border-white/20 text-amber-200 text-[11px] font-bold leading-snug whitespace-pre-line">
                                         {item.ad.hover}
                                     </p>
                                 {/if}

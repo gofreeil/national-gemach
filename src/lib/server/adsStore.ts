@@ -326,6 +326,22 @@ async function findPredecessors(
 }
 
 /**
+ * המודעה המאושרת שכבר חיה על האתר לאותו מפרסם - חוץ מזו שמאשרים כרגע.
+ * מפרסם מקבל משבצת אחת; שתי מודעות זהות זו לצידה זו הן תמיד תקלה ולא
+ * בחירה - מי שבאמת רוצה שתיים מאשר עם keepPrevious.
+ */
+async function findLiveAdsOfAdvertiser(current: SubmittedAd): Promise<SubmittedAd[]> {
+    try {
+        const all = await listAllForAdmin();
+        return all.filter((a) => a.id !== current.id && a.status === 'approved'
+            && !a.supersededBy && sameAdvertiser(a, current));
+    } catch (err) {
+        console.warn('adsStore: findLiveAdsOfAdvertiser failed', err instanceof Error ? err.message : err);
+        return [];
+    }
+}
+
+/**
  * מוציא גרסה ישנה מהמחזור אחרי שגרסה מעודכנת נכנסה במקומה. הסטטוס
  * 'rejected' הוא הארכיון היחיד שיש — המודעה יורדת מהאתר ומהתור אבל
  * נשארת במסך הניהול עם הסיבה, ואפשר להחזיר אותה. שום דבר לא נמחק.
@@ -626,17 +642,27 @@ export async function approveAd(
 ): Promise<{ replacedTitle: string }> {
     const current = await getAd(id);
     const predecessor = current?.replacesAdId && !keepPrevious ? await getAd(current.replacesAdId) : null;
-    const replacing = predecessor && predecessor.status === 'approved' && !predecessor.supersededBy
-        ? predecessor
-        : null;
+
+    // כל מה שחי כרגע לאותו מפרסם: replacesAdId מצביע על מה שהיה חי *בזמן
+    // השליחה* בלבד. כששתי גרסאות היו באוויר, האישור הוריד את הישנה, השאיר
+    // את השנייה ודחף אותה למטה. מפרסם מקבל משבצת אחת, ולכן ברירת המחדל
+    // היא שהחדשה מכסה את כולן.
+    const liveBefore = keepPrevious || !current ? [] : await findLiveAdsOfAdvertiser(current);
+    const replacingAll = predecessor && predecessor.status === 'approved' && !predecessor.supersededBy
+        && !liveBefore.some((a) => a.id === predecessor.id)
+        ? [predecessor, ...liveBefore]
+        : liveBefore;
+    // הכי חדשה מביניהן היא זו שהחדשה יורשת ממנה את המשבצת בטור
+    const replacing = [...replacingAll].sort(byNewest)[0] ?? null;
 
     const days = normalizePlanDays(durationDays);
     // התקופה שהמפרסם כבר שילם עליה ממשיכה כרגיל: אותו תאריך פקיעה, לא
-    // ספירה חדשה. שדרוג המודעה לא מאריך ולא מקצר את הזמן שנותר לה.
-    const inheritedExpiry = replacing && !replacing.paused && replacing.expiresAt
-        && Date.parse(replacing.expiresAt) > Date.now()
-        ? replacing.expiresAt
-        : '';
+    // ספירה חדשה. מבין כמה גרסאות שיורדות - הרחוקה ביותר.
+    const inheritedExpiry = replacingAll
+        .filter((a) => !a.paused && a.expiresAt && Date.parse(a.expiresAt) > Date.now())
+        .map((a) => a.expiresAt)
+        .sort()
+        .pop() ?? '';
     const expires = inheritedExpiry || new Date(Date.now() + days * DAY_MS).toISOString();
     await mergeExtra(id, {
         decided_at: new Date().toISOString(),
@@ -652,15 +678,16 @@ export async function approveAd(
     // סדר הפעולות מכוון: קודם החדשה עולה, רק אחר-כך הישנה יורדת. כשל כאן
     // משאיר את שתיהן באוויר (מצב שהמנהל רואה ומתקן) — עדיף מלהוריד את
     // הישנה ואז להיכשל בהעלאת החדשה ולהשאיר את המפרסם בלי מודעה.
-    if (replacing) {
+    const retiredTitles: string[] = [];
+    for (const old of replacingAll) {
         try {
-            await supersedeAd(replacing.id, id, decidedBy, 'הוחלפה בגרסה מעודכנת שאישרת');
-            return { replacedTitle: replacing.title };
+            await supersedeAd(old.id, id, decidedBy, 'הוחלפה בגרסה מעודכנת שאישרת');
+            retiredTitles.push(old.title);
         } catch (err) {
             console.warn('adsStore: supersede on approve failed', err instanceof Error ? err.message : err);
         }
     }
-    return { replacedTitle: '' };
+    return { replacedTitle: retiredTitles.join('", "') };
 }
 
 /** דחיית מודעה (עם סיבה אופציונלית). */

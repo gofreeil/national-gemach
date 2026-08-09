@@ -40,9 +40,12 @@
                 <div class="relative group/cta bg-gradient-to-r {ad.color} p-3 text-center">
                     <p class="text-white font-bold text-xs leading-tight">{ad.cta}</p>
                     {#if ad.hover}
+                        <!-- pre-line + w-max: משפט בשורה אחת נשאר בשורה אחת, אבל ירידות שורה
+                             שהמפרסם הקליד נשמרות, וטקסט ארוך נגמר ב-max-w במקום לגלוש -->
                         <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/cta:block
                                      bg-gray-900 text-white text-xs font-bold rounded-lg px-3 py-1.5
-                                     whitespace-nowrap border border-[#3b5794] shadow-xl pointer-events-none z-50">
+                                     whitespace-pre-line w-max max-w-[15rem] text-center
+                                     border border-[#3b5794] shadow-xl pointer-events-none z-50">
                             {ad.hover}
                         </span>
                     {/if}

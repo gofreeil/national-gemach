@@ -17,6 +17,8 @@
 
 export type LogoShape = 'square' | 'circle';
 export type LogoAnchor = 'right' | 'left' | 'cta';
+/** יישור תת-הכותרת: ימין / מרכז / שמאל / מילוי רוחב */
+export type SubAlign = 'right' | 'center' | 'left' | 'justify';
 
 export interface AdStyle {
     /** ריבוע (פינות מעוגלות) או עיגול מלא */
@@ -32,6 +34,12 @@ export interface AdStyle {
     titleOffsetY: number;
     /** צבע הכותרת (#rgb / #rrggbb בלבד — הערך נכנס ל-style inline) */
     titleColor: string;
+    /** גודל תת-הכותרת ב-rem */
+    subFontSize: number;
+    /** רווח בין שורות תת-הכותרת (יחס, לא יחידה) */
+    subLineHeight: number;
+    /** יישור תת-הכותרת */
+    subAlign: SubAlign;
 }
 
 /** ברירת המחדל של הבילדר: רצועה בגובה 12% מהתמונה */
@@ -43,6 +51,14 @@ export const BAND_MAX = 50;
 export const TITLE_OFFSET_MIN = -20;
 export const TITLE_OFFSET_MAX = 60;
 
+/** תת-הכותרת: הערכים שהיו קבועים ב-CSS לפני שהמפרסם קיבל שליטה עליהם */
+export const DEFAULT_SUB_FONT_SIZE = 0.7;
+export const SUB_FONT_SIZE_MIN = 0.5;
+export const SUB_FONT_SIZE_MAX = 1.3;
+export const DEFAULT_SUB_LINE_HEIGHT = 1.3;
+export const SUB_LINE_HEIGHT_MIN = 0.9;
+export const SUB_LINE_HEIGHT_MAX = 2.2;
+
 export const DEFAULT_AD_STYLE: AdStyle = {
     logoShape: 'square',
     logoAnchor: 'right',
@@ -51,6 +67,9 @@ export const DEFAULT_AD_STYLE: AdStyle = {
     bandHeight: DEFAULT_BAND_HEIGHT,
     titleOffsetY: 0,
     titleColor: '#ffffff',
+    subFontSize: DEFAULT_SUB_FONT_SIZE,
+    subLineHeight: DEFAULT_SUB_LINE_HEIGHT,
+    subAlign: 'right',
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -82,7 +101,14 @@ export function parseAdStyle(raw: unknown): AdStyle | null {
         bandHeight: clamp(num(o.bandHeight) ?? DEFAULT_BAND_HEIGHT, BAND_MIN, BAND_MAX),
         titleOffsetY: clamp(num(o.titleOffsetY) ?? 0, TITLE_OFFSET_MIN, TITLE_OFFSET_MAX),
         titleColor: parseColor(o.titleColor),
+        subFontSize: clamp(num(o.subFontSize) ?? DEFAULT_SUB_FONT_SIZE, SUB_FONT_SIZE_MIN, SUB_FONT_SIZE_MAX),
+        subLineHeight: clamp(num(o.subLineHeight) ?? DEFAULT_SUB_LINE_HEIGHT, SUB_LINE_HEIGHT_MIN, SUB_LINE_HEIGHT_MAX),
+        subAlign: parseSubAlign(o.subAlign),
     };
+}
+
+function parseSubAlign(v: unknown): SubAlign {
+    return v === 'center' || v === 'left' || v === 'justify' ? v : 'right';
 }
 
 /**
@@ -108,10 +134,15 @@ export function bandCorners(bandHeight: number): { left: number; right: number }
     return { left, right: Math.max(0, left - BAND_SLOPE) };
 }
 
-/** משתני ה-CSS של הרצועה, לשתילה ב-style של כרטיס בודד */
+/**
+ * משתני ה-CSS של הכרטיס (רצועה + טיפוגרפיית תת-הכותרת), לשתילה ב-style
+ * של כרטיס בודד. אותם משתנים נצרכים ע"י ה-CSS בבילדר ובטור הימני, כדי
+ * שהמפרסם יקבל בדיוק את מה שכיוון על המסך.
+ */
 export function adStyleVars(style: AdStyle): string {
     const { left, right } = bandCorners(style.bandHeight);
-    return `--diag-top-left:${left}%;--diag-top-right:${right}%;`;
+    return `--diag-top-left:${left}%;--diag-top-right:${right}%;`
+        + `--sub-size:${style.subFontSize}rem;--sub-lh:${style.subLineHeight};--sub-align:${style.subAlign};`;
 }
 
 /** מחלקת המיקום של הלוגו (ריק כשהמיקום חופשי ומגיע מ-style inline) */
