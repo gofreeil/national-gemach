@@ -14,7 +14,9 @@
 /** מיקום התמונה במשבצת: x/y באחוזי object-position (50/50 = מרכז), z = תקריב ≥1.
  *  contain = "תמונה שלמה": התמונה מוקטנת עד שכולה נכנסת למשבצת, בלי חיתוך
  *  (הקצה הרחוק ביותר של הזום-אאוט). אז z חסר משמעות, ו-x/y רק מזיזים את
- *  התמונה בתוך הרצועה הריקה שנשארת בציר הקצר. */
+ *  התמונה בתוך הרצועה הריקה שנשארת בציר הקצר.
+ *  contain:false מפורש = המעלה בחר "מילוי המשבצת" — גובר על נפילת ה-contain
+ *  האוטומטית לתמונה ביחס קיצוני. מפתח חסר = לא נבחר דבר, הניחוש האוטומטי חופשי. */
 export interface ImageFit {
     x: number;
     y: number;
@@ -33,17 +35,20 @@ export function parseImageFit(raw: unknown): ImageFit | null {
     const num = (v: unknown, fallback: number) =>
         typeof v === 'number' && isFinite(v) ? v : fallback;
     const contain = o.contain === true || o.contain === 'true';
+    // false מפורש (להבדיל ממפתח חסר) = בחירה ידנית ב"מילוי המשבצת"
+    const cover = o.contain === false || o.contain === 'false';
     return {
         x: clamp(num(o.x, 50), 0, 100),
         y: clamp(num(o.y, 50), 0, 100),
         z: contain ? 1 : clamp(num(o.z, 1), 1, 3),
-        ...(contain ? { contain: true } : {}),
+        ...(contain ? { contain: true } : cover ? { contain: false } : {}),
     };
 }
 
-/** האם ה-fit שונה מברירת המחדל (מרכז בלי תקריב) — רק כזה שווה שמירה/החלה */
+/** האם ה-fit שונה מברירת המחדל (מרכז בלי תקריב, בלי בחירת מילוי/שלמה) —
+ *  רק כזה שווה שמירה/החלה */
 export function isCustomFit(fit: ImageFit): boolean {
-    return fit.x !== DEFAULT_FIT.x || fit.y !== DEFAULT_FIT.y || fit.z !== DEFAULT_FIT.z || fit.contain === true;
+    return fit.x !== DEFAULT_FIT.x || fit.y !== DEFAULT_FIT.y || fit.z !== DEFAULT_FIT.z || fit.contain !== undefined;
 }
 
 /** מפת המיקומים של פריט (extra_fields.image_fit) מקלט לא-בטוח.

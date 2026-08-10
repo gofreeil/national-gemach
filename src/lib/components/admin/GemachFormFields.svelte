@@ -151,11 +151,13 @@
     }
 
     /** מעבר בין "מילוי המשבצת" (חיתוך + תקריב) ל"תמונה שלמה" (בלי חיתוך).
-     *  ב"תמונה שלמה" אין תקריב, ולכן z חוזר ל-1 ומפתח contain נמחק בחזרה. */
+     *  ב"תמונה שלמה" אין תקריב, ולכן z חוזר ל-1. "מילוי" נשמר כ-contain:false
+     *  מפורש — מחיקת המפתח הייתה משאירה fit ברירת-מחדל שנשמט בשמירה, ואז
+     *  נפילת ה-contain האוטומטית לתמונה רחבה הציגה "תמונה שלמה" בכרטיס בכל זאת. */
     function setContain(on: boolean) {
         if (fitEditing === null) return;
         const { contain: _was, ...rest } = editedFit;
-        fit = { ...fit, [fitEditing]: on ? { ...rest, z: 1, contain: true } : rest };
+        fit = { ...fit, [fitEditing]: on ? { ...rest, z: 1, contain: true } : { ...rest, contain: false } };
     }
 
     /** כותב מחדש את מפתחות הגלריה אחרי שינוי סדר/מחיקה (הלוגו נשאר במקומו) */
