@@ -79,10 +79,13 @@
         <!-- ב-RTL האיבר האחרון יושב בצד שמאל — שם התמונה הגדולה.
              העטיפה relative בלי overflow — חותמת "מאושר" רוכבת על פינת
              התמונה, חציה על התמונה וחציה באוויר; ה-overflow-hidden שחותך
-             את פינות התמונה יושב על הקונטיינר הפנימי בלבד. -->
-        <div class="relative w-2/5 max-w-[210px] flex-shrink-0 self-stretch">
+             את פינות התמונה יושב על הקונטיינר הפנימי בלבד.
+             המשבצת ממלאת אבסולוטית את העמודה כדי שהתמונה לא תקבע את גובה
+             הכרטיס: img עם h-full בתוך גובה בלתי-מוגדר נופל לגובה הטבעי,
+             ותמונה גבוהה מתחה את הכרטיס עד ש"מילוי המשבצת" לא חתך כלום. -->
+        <div class="relative min-h-[150px] w-2/5 max-w-[210px] flex-shrink-0 self-stretch">
             <div
-                class="flex h-full min-h-[150px] items-center justify-center overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d]"
+                class="absolute inset-0 flex items-center justify-center overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d]"
             >
                 <GemachAvatar {gemach} {categories} banner />
             </div>
