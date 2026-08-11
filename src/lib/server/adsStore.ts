@@ -342,19 +342,18 @@ async function findPredecessors(
 }
 
 /**
- * המודעה המאושרת שכבר חיה על האתר לאותו מפרסם - חוץ מזו שמאשרים כרגע.
- * מפרסם מקבל משבצת אחת; שתי מודעות זהות זו לצידה זו הן תמיד תקלה ולא
- * בחירה - מי שבאמת רוצה שתיים מאשר עם keepPrevious.
+ * עוקב אחרי שרשרת ההחלפות (superseded_by) עד הגלגול העדכני ביותר של
+ * המודעה. נחוץ כשהקישור נוצר בשליחה ובינתיים אושרה גרסה נוספת:
+ * האישור צריך לפגוש את מה שחי על האתר בפועל.
  */
-async function findLiveAdsOfAdvertiser(current: SubmittedAd): Promise<SubmittedAd[]> {
-    try {
-        const all = await listAllForAdmin();
-        return all.filter((a) => a.id !== current.id && a.status === 'approved'
-            && !a.supersededBy && sameAdvertiser(a, current));
-    } catch (err) {
-        console.warn('adsStore: findLiveAdsOfAdvertiser failed', err instanceof Error ? err.message : err);
-        return [];
+async function resolveLatestVersion(id: string): Promise<SubmittedAd | null> {
+    let cur = await getAd(id).catch(() => null);
+    for (let hops = 0; cur?.supersededBy && hops < 6; hops++) {
+        const next = await getAd(cur.supersededBy).catch(() => null);
+        if (!next) break;
+        cur = next;
     }
+    return cur;
 }
 
 /**
@@ -677,19 +676,19 @@ export async function approveAd(
     // מודעה נוספת שנקנתה בכוונה מתנהגת בדיוק כמו keepPrevious: היא לא
     // באה במקום כלום, והמפרסם משלם על שתי המשבצות.
     const keep = keepPrevious || current?.standalone === true;
-    const predecessor = current?.replacesAdId && !keep ? await getAd(current.replacesAdId) : null;
 
-    // כל מה שחי כרגע לאותו מפרסם: replacesAdId מצביע על מה שהיה חי *בזמן
-    // השליחה* בלבד. כששתי גרסאות היו באוויר, האישור הוריד את הישנה, השאיר
-    // את השנייה ודחף אותה למטה. מפרסם מקבל משבצת אחת, ולכן ברירת המחדל
-    // היא שהחדשה מכסה את כולן.
-    const liveBefore = keep || !current ? [] : await findLiveAdsOfAdvertiser(current);
-    const replacingAll = predecessor && predecessor.status === 'approved' && !predecessor.supersededBy
-        && !liveBefore.some((a) => a.id === predecessor.id)
-        ? [predecessor, ...liveBefore]
-        : liveBefore;
-    // הכי חדשה מביניהן היא זו שהחדשה יורשת ממנה את המשבצת בטור
-    const replacing = [...replacingAll].sort(byNewest)[0] ?? null;
+    // גרסה מעודכנת נכנסת *במקום* המודעה שאליה היא מקושרת - ורק במקומה.
+    // הקישור נקבע בשליחה (עריכה של מודעה קיימת / זיהוי מפרסם חוזר), וכאן
+    // עוקבים אחרי שרשרת ההחלפות למקרה שבינתיים אושרה גרסה נוספת. שאר
+    // המודעות החיות של אותו מפרסם לא נוגעות: מפרסם עם כמה משבצות מעדכן
+    // אחת בלי שהאחרות יירדו מהאתר.
+    const linked = current?.replacesAdId && !keep
+        ? await resolveLatestVersion(current.replacesAdId)
+        : null;
+    const replacing = linked && linked.id !== id && linked.status === 'approved' && !linked.supersededBy
+        ? linked
+        : null;
+    const replacingAll = replacing ? [replacing] : [];
 
     const days = normalizePlanDays(durationDays);
     // התקופה שהמפרסם כבר שילם עליה ממשיכה כרגיל: אותו תאריך פקיעה, לא
