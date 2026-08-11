@@ -18,15 +18,13 @@
     }
 
     const PER_GROUP = 4;     // כמה מקומות (מודעות ופנויים) נראים בו-זמנית
-    const VIEW_MS = 14000;   // כמה זמן כל קבוצה נשארת על המסך (החלפה איטית)
-    const FADE_MS = 900;     // אורך הדעיכה בין קבוצה לקבוצה
+    const VIEW_MS = 7000;    // כמה זמן כל קבוצה נשארת על המסך — חצי מהקצב הישן (14 ש׳)
 
     let currentGroup = $state(0);
-    let fading = $state(false);
 
     let slots = $derived($adSlots);
 
-    // לוח 12 המקומות בסדר מספרי, בקבוצות עוקבות של 4 (1-4, 5-8, 9-12):
+    // לוח 16 המקומות בסדר מספרי, בקבוצות עוקבות של 4 (1-4, 5-8, 9-12, 13-16):
     // מודעה שנקבעה למקום 5 מופיעה עם קבוצת 5-8, בין 6 ל-8. כל הכרטיסים
     // מתחלפים בסבב כרגיל — מודעות ומשבצות פנויות יחד, בלי הצמדת מודעות
     // לראש הטור ובלי תקרת החלפות שהייתה עוצרת את הסבב על קבוצה אחת.
@@ -34,9 +32,15 @@
     // שינוי במספר הקבוצות תוך כדי סבב (למשל אישור מודעה) לא משאיר את
     // הטור ריק עד לסיבוב הבא
     let safeGroup = $derived(currentGroup % groupCount);
-    let displayedAds = $derived(
-        slots.slice(safeGroup * PER_GROUP, (safeGroup + 1) * PER_GROUP),
+    // כל הקבוצות מרונדרות זו על גבי זו ורק הפעילה נראית, כך שההחלפה
+    // היא מיזוג עדין (crossfade) ולא החלפת תוכן מול העין.
+    let groups = $derived(
+        Array.from({ length: groupCount }, (_, g) =>
+            slots.slice(g * PER_GROUP, (g + 1) * PER_GROUP),
+        ),
     );
+    // הקבוצה הנראית כרגע — משמשת את ספירת החשיפות שלמטה
+    let displayedAds = $derived(groups[safeGroup] ?? []);
 
     // כל מודעה שנכנסת לקבוצה המוצגת נספרת כחשיפה (פעם אחת לכל ביקור)
     $effect(() => {
@@ -47,24 +51,16 @@
 
     onMount(() => {
         loadApprovedAds();
-        let fadeTimer: ReturnType<typeof setTimeout> | undefined;
-        // דעיכה החוצה → החלפת הקבוצה בזמן שהטור שקוף → דעיכה פנימה.
-        // כך אין קפיצה: המשבצות לא מתחלפות מול העין אלא מתוך שקיפות מלאה.
+        // ההחלפה עצמה היא מיזוג שקיפות (crossfade) שקורה כולו ב-CSS —
+        // כאן רק מקדמים את מספר הקבוצה, בלי מכונת מצבים של דעיכה.
         // הסבב רץ כל עוד הדף פתוח: גם המודעות בתשלום מתחלפות בו, ולכן
         // עצירה הייתה מקבעת קבוצה אחת ומסתירה לצמיתות את המודעות שבאחרות.
         const interval = setInterval(() => {
             if (groupCount <= 1) return;
-            fading = true;
-            fadeTimer = setTimeout(() => {
-                currentGroup = (currentGroup + 1) % groupCount;
-                fading = false;
-            }, FADE_MS);
+            currentGroup = (currentGroup + 1) % groupCount;
         }, VIEW_MS);
 
-        return () => {
-            clearInterval(interval);
-            clearTimeout(fadeTimer);
-        };
+        return () => clearInterval(interval);
     });
 </script>
 
@@ -78,8 +74,12 @@
     >
         תוכן שיווקי
     </h4>
-    <div class="space-y-3 ads-track" class:fading>
-        {#each displayedAds as item}
+    <!-- כל הקבוצות שוכבות זו על זו באותו תא grid; ההחלפה היא מיזוג
+         שקיפות איטי בין השכבות — בלי רגע ריק ובלי קפיצות תוכן. -->
+    <div class="ads-stage">
+        {#each groups as grp, gi}
+        <div class="space-y-3 ads-group" class:active={gi === safeGroup}>
+        {#each grp as item}
             {#if item.kind === 'real'}
                 {@const st = styleOf(item.ad)}
                 {@const cornerSide = logoCornerSide(st, Boolean(item.ad.logo))}
@@ -218,22 +218,38 @@
                 </a>
             {/if}
         {/each}
+        </div>
+        {/each}
     </div>
 </aside>
 
 <style>
-    /* דעיכה רכה בין קבוצות המודעות — במקום החלקה קופצנית של כל כרטיס.
-       הערך חייב להתאים ל-FADE_MS שבסקריפט. */
-    .ads-track {
-        opacity: 1;
-        transition: opacity 900ms ease-in-out;
+    /* מעבר עדין בין קבוצות הלוח: כל הקבוצות שוכבות זו על זו באותו תא
+       grid, וההחלפה היא מיזוג שקיפות איטי (crossfade) - הקבוצה הנכנסת
+       מופיעה בהדרגה בזמן שהיוצאת נמוגה. אין רגע שבו הטור ריק, אין הבזק
+       ואין שום תזוזה. */
+    .ads-stage {
+        display: grid;
     }
-    .ads-track.fading {
+    .ads-group {
+        grid-area: 1 / 1;
         opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+            opacity 1800ms ease-in-out,
+            visibility 0s linear 1800ms;
+    }
+    .ads-group.active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition: opacity 1800ms ease-in-out;
     }
     @media (prefers-reduced-motion: reduce) {
-        .ads-track {
-            transition-duration: 1ms;
+        .ads-group,
+        .ads-group.active {
+            transition: none;
         }
     }
 
