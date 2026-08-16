@@ -126,7 +126,7 @@
                             ? `${pendingCount} פריטים ממתינים לטיפול`
                             : user.name || user.email}
                     >
-                        <span class="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-[10px]" aria-hidden="true">👤</span>
+                        <span class="flex h-5 w-5 items-center justify-center rounded-full login-grad text-[10px]" aria-hidden="true">👤</span>
                         {#if pendingCount > 0}
                             <span class="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-[#874b90]" aria-hidden="true">
                                 {pendingCount}
@@ -136,7 +136,7 @@
                 {:else}
                     <a
                         href="/login?redirect=/profile"
-                        class="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white transition-colors"
+                        class="flex items-center justify-center w-8 h-8 rounded-lg login-grad hover:brightness-110 text-white transition-colors"
                         aria-label="התחברות / אזור אישי"
                         title="התחברות"
                     >
@@ -226,7 +226,7 @@
                         class="relative flex items-center gap-2 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-2 text-sm font-bold text-white transition-colors"
                         title={pendingCount > 0 ? `${pendingCount} פריטים ממתינים לטיפול` : 'האזור האישי שלי'}
                     >
-                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-pink-600 text-xs">👤</span>
+                        <span class="flex h-6 w-6 items-center justify-center rounded-full login-grad text-xs">👤</span>
                         <span class="hidden sm:inline max-w-[120px] truncate">{user.name || user.email}</span>
                         {#if pendingCount > 0}
                             <span class="absolute -top-1.5 -left-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-black leading-none text-white ring-2 ring-[#874b90]">
@@ -237,7 +237,7 @@
                 {:else}
                     <a
                         href="/login?redirect=/profile"
-                        class="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 px-3 py-2 text-sm font-bold text-white transition-all"
+                        class="flex items-center gap-1.5 rounded-lg login-grad hover:brightness-110 px-3 py-2 text-sm font-bold text-white transition-all"
                     >
                         <span aria-hidden="true">👤</span>
                         <span class="hidden sm:inline">התחברות</span>

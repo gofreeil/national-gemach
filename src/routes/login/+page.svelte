@@ -133,7 +133,7 @@
 		<button
 			type="button"
 			onclick={communitySSO}
-			class="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-3.5 font-bold text-white transition hover:from-amber-400 hover:to-pink-500"
+			class="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl login-grad px-4 py-3.5 font-bold text-white transition hover:brightness-110"
 		>
 			<span class="text-xl" aria-hidden="true">🕊️</span>
 			<span>התחבר דרך "יוצאים לחירות"</span>
