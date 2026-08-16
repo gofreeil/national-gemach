@@ -18,6 +18,7 @@ import { DEFAULT_PLAN_DAYS, normalizePlanDays } from '../adPlans.js';
 import { parseAdImageFit, type AdImageFit } from '../adImageFit.js';
 import { parseAdStyle, type AdStyle } from '../adStyle.js';
 import { AD_SLOT_COUNT } from '../rightAdsData.js';
+import { imageStamp, decodeDataImage } from './inlineImage.js';
 
 const AD_CATEGORY = '__ng_ad';
 export const DEFAULT_DURATION_DAYS = DEFAULT_PLAN_DAYS;
@@ -51,6 +52,11 @@ export interface SubmittedAd {
     gradient: string;           // מחרוזת CSS מלאה (linear-gradient(...))
     logo: string;               // data URI
     mainImage: string;          // data URI
+    /**
+     * חותם התוכן של כל תמונות הפרסומת - משמש כ-?v= בכתובת שמגישה אותן,
+     * כדי שקאש "לנצח" בדפדפן ובקצה יתחלף ברגע שתמונה מוחלפת. ראה imageStamp.
+     */
+    imgVersion: string;
     /** מיקום+זום של התמונה הראשית במשבצת (מהבילדר) */
     mainImageFit: AdImageFit;
     /** העיצוב שנקבע בבילדר (לוגו, רצועה, כותרת). null = מודעה ותיקה */
@@ -134,6 +140,16 @@ function fromItemStatus(s: string | null): AdStatus {
 function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
     if (!row) return null;
     const x = (row.extra_fields ?? {}) as Record<string, any>;
+    const logo = x.logo ?? '';
+    const mainImage = x.main_image ?? '';
+    // גם תמונות דף הנחיתה נכנסות לחותם: כולן מוגשות מאותה כתובת עם אותו ?v=,
+    // ולכן החלפת אחת מהן חייבת להחליף אותו - אחרת קאש ה-immutable יחזיק ישנה.
+    const landingImages: string[] = [
+        typeof x.landing?.image === 'string' ? x.landing.image : '',
+        ...(Array.isArray(x.landing?.products)
+            ? x.landing.products.map((p: { image?: string }) => p?.image ?? '')
+            : []),
+    ];
     return {
         id: row.documentId,
         status: fromItemStatus(row.status1),
@@ -142,8 +158,9 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         hoverText: x.hover_text ?? '',
         cta: x.cta ?? '',
         gradient: x.gradient ?? '',
-        logo: x.logo ?? '',
-        mainImage: x.main_image ?? '',
+        logo,
+        mainImage,
+        imgVersion: imageStamp(logo, mainImage, ...landingImages),
         mainImageFit: parseAdImageFit(x.main_image_fit),
         // null במודעות שנשלחו לפני שהעיצוב נשמר — הצרכן נופל ל-legacyAdStyle
         adStyle: parseAdStyle(x.ad_style),
@@ -465,6 +482,85 @@ export async function submitAd(payload: {
     };
 }
 
+// ============================================================
+// הגשת תמונות הפרסומת ככתובת, לא כ-base64 בתוך הנתונים
+// ------------------------------------------------------------
+// התמונות שמורות ב-Strapi כ-data:image/...;base64 בתוך הרשומה. כשהן עברו
+// כמות שהן, כל גולש הוריד אותן מחדש: /api/ads/approved שקל 2.2MB (100%
+// base64), ודפי הנחיתה 1.1-1.4MB עם X-Vercel-Cache: MISS - כלומר יצאו
+// מה-origin בכל צפייה.
+//
+// במקום זה מוחזרת כתובת ל-/api/ad-image/<id>/<kind>, והתמונה נשלפת פעם
+// אחת ונשמרת בקאש של הדפדפן ושל הקצה.
+// ============================================================
+
+/**
+ * logo/main הן תמונות הכרטיס בלוח. landing ו-product-<n> הן של דף הנחיתה
+ * (/ads/<id>) - הדף שאליו מגיעה כל לחיצה על פרסומת.
+ */
+export type AdImageKind = 'logo' | 'main' | 'landing' | `product-${number}`;
+
+export function isAdImageKind(v: string | undefined): v is AdImageKind {
+    if (!v) return false;
+    return v === 'logo' || v === 'main' || v === 'landing' || /^product-\d+$/.test(v);
+}
+
+function pickImage(ad: SubmittedAd, kind: AdImageKind): string {
+    if (kind === 'logo') return ad.logo;
+    if (kind === 'main') return ad.mainImage;
+    if (kind === 'landing') return ad.landing?.image ?? '';
+    const idx = Number(kind.slice('product-'.length));
+    return ad.landing?.products?.[idx]?.image ?? '';
+}
+
+/**
+ * הכתובת שבה הצרכן ימשוך את התמונה. ריק נשאר ריק (הצרכן בודק אמת/שקר),
+ * וערך שאינו data: - למשל כתובת חיצונית במודעה ותיקה - עובר כמות שהוא.
+ */
+export function adImageUrl(ad: SubmittedAd, kind: AdImageKind): string {
+    const raw = pickImage(ad, kind);
+    if (!raw) return '';
+    if (!raw.startsWith('data:')) return raw;
+    return `/api/ad-image/${ad.id}/${kind}?v=${ad.imgVersion}`;
+}
+
+/**
+ * אותה רשומה, כשכל שדות התמונה שבה הוחלפו בכתובות - לדף הנחיתה /ads/<id>,
+ * שמחזיר את הפרסומת המלאה ולכן סחב את כל התמונות המוטבעות.
+ */
+export function withAdImageUrls(ad: SubmittedAd): SubmittedAd {
+    if (ad.status !== 'approved') return ad;
+    const products = Array.isArray(ad.landing?.products)
+        ? ad.landing.products.map((p, i) => ({
+            ...p,
+            image: p?.image ? adImageUrl(ad, `product-${i}`) : '',
+        }))
+        : [];
+    return {
+        ...ad,
+        logo: adImageUrl(ad, 'logo'),
+        mainImage: adImageUrl(ad, 'main'),
+        landing: { ...ad.landing, image: adImageUrl(ad, 'landing'), products },
+    };
+}
+
+/**
+ * הבייטים עצמם, לנתיב שמגיש אותם. מאושרות בלבד - תמונות של פרסומת
+ * ממתינה/נדחית לא נחשפות דרך ניחוש מזהה.
+ *
+ * getAd ולא הרשימה שב-cache: listApproved מסננת החוצה מושהות ופגות-תוקף
+ * (ומוגבלת ל-25), אבל דף הנחיתה של פרסומת מושהית עדיין נטען - ובלי זה כל
+ * התמונות שלו היו מחזירות 404. רץ רק כשהתמונה לא בקאש של הקצה.
+ */
+export async function getApprovedAdImage(
+    id: string,
+    kind: AdImageKind,
+): Promise<{ mime: string; bytes: ArrayBuffer } | null> {
+    const ad = await getAd(id);
+    if (!ad || ad.status !== 'approved') return null;
+    return decodeDataImage(pickImage(ad, kind));
+}
+
 /** רשימת המודעות המאושרות — גרסה רזה לתצוגה, עם אכיפת תוקף בזמן קריאה. */
 export async function listApproved(): Promise<ApprovedAdPublic[]> {
     if (approvedCache && Date.now() - approvedCache.at < TTL_MS) {
@@ -504,9 +600,11 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
                 hover: a.hoverText,
                 gradient: a.gradient,
                 // הלוגו והעיצוב עוברים לתצוגה הציבורית — בלעדיהם המודעה
-                // מתפרסמת בלי הלוגו שהמפרסם העלה ובלי העיצוב שקבע
-                logo: a.logo,
-                mainImage: a.mainImage,
+                // מתפרסמת בלי הלוגו שהמפרסם העלה ובלי העיצוב שקבע.
+                // ככתובת ולא כ-base64: הרשימה הזו נמשכת בצד-הלקוח בכל טעינת
+                // אתר, ושקלה 2.2MB שכולם base64. ראה adImageUrl.
+                logo: adImageUrl(a, 'logo'),
+                mainImage: adImageUrl(a, 'main'),
                 mainImageFit: a.mainImageFit,
                 adStyle: a.adStyle,
                 // המספר בלוח (1-based) — הלקוח מציב לפיו את המודעה בדיוק
