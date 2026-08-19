@@ -125,6 +125,8 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         description:   item.description ?? '',
         tags,
         contact:       item.contact ?? undefined,
+        contact2:      toStr(extra.contact2),
+        phone2:        toStr(extra.phone2),
         link:          toStr(extra.link),
         notes:         toStr(extra.notes),
         address:       item.address ?? undefined,
@@ -370,6 +372,9 @@ function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     if (input.hours)      extra.hours   = input.hours;
     if (input.link)       extra.link    = input.link;
     if (input.notes)      extra.notes   = input.notes;
+    // איש קשר/טלפון נוספים — אין להם עמודה משלהם ב-items, ולכן הם יושבים ב-extra
+    if (input.contact2)   extra.contact2 = input.contact2;
+    if (input.phone2)     extra.phone2   = input.phone2;
     // שמות המפתחות זהים ל"קהילה בשכונה" — אותו פריט נערך בשני האתרים
     if (input.floor)        extra.floor         = input.floor;
     if (input.apartment)    extra.apartment     = input.apartment;
@@ -534,6 +539,8 @@ export async function updateGemach(
     if (!input.hours)        delete mergedExtra.hours;
     if (!input.link)         delete mergedExtra.link;
     if (!input.notes)        delete mergedExtra.notes;
+    if (!input.contact2)     delete mergedExtra.contact2;
+    if (!input.phone2)       delete mergedExtra.phone2;
     if (!input.floor)        delete mergedExtra.floor;
     if (!input.apartment)    delete mergedExtra.apartment;
     if (!input.arrivalNotes) delete mergedExtra.arrival_notes;

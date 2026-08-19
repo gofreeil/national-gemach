@@ -15,6 +15,10 @@ export interface Gemach {
     description: string;
     tags: string[];
     contact?: string;
+    /** איש קשר וטלפון נוספים (extra_fields.contact2 / phone2). אופציונליים,
+     *  ונחשפים בדף הגמ"ח באותה לחיצת "גלה טלפון" כמו הראשיים. */
+    contact2?: string;
+    phone2?: string;
     link?: string;
     notes?: string;
     address?: string;
@@ -61,7 +65,7 @@ export interface Gemach {
 /** הצורה שרשימות ציבוריות (דף הבית, /gemachim, "גמ"חים נוספים") מעבירות
  *  ללקוח: בלי הטלפון — הוא נחשף רק בעמוד הגמ"ח, אחרי "גלה טלפון" (פרסומת).
  *  hasPhone מאפשר להעדיף פריטים שיש להם טלפון בלי לחשוף את המספר. */
-export type ListGemach = Omit<Gemach, 'phone'> & { hasPhone?: boolean };
+export type ListGemach = Omit<Gemach, 'phone' | 'phone2'> & { hasPhone?: boolean };
 
 /** כל מפתחות הנושאים של הגמ"ח, הראשי ראשון — נקודת האמת היחידה לסינון ולתצוגה.
  *  עובד גם על רשומות ישנות שיש להן רק `category`. */

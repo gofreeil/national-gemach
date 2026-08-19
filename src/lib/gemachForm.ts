@@ -14,6 +14,9 @@ export interface CreateGemachInput {
     address?: string;
     phone?: string;
     contact?: string;
+    /** איש קשר וטלפון נוספים — אופציונליים (extra_fields.contact2 / phone2) */
+    contact2?: string;
+    phone2?: string;
     description?: string;
     hours?: string;         // JSON של $lib/openingHours, או טקסט חופשי ישן
     floor?: string;
@@ -99,6 +102,8 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		phone:        str('phone'),
 		address:      str('address'),
 		contact:      str('contact'),
+		contact2:     str('contact2'),
+		phone2:       str('phone2'),
 		hours:        str('hours'),
 		floor:        str('floor'),
 		apartment:    str('apartment'),
@@ -130,7 +135,8 @@ export function hasContent(input: CreateGemachInput | null | undefined): boolean
 	if (!input) return false;
 	return !!(
 		input.name || input.city || input.description || input.phone || input.address ||
-		input.contact || input.neighborhood || input.hours || input.link || input.notes ||
+		input.contact || input.contact2 || input.phone2 || input.neighborhood ||
+		input.hours || input.link || input.notes ||
 		input.icon || input.image || input.floor || input.apartment || input.arrivalNotes ||
 		(input.tags?.length ?? 0) > 0 ||
 		(input.images?.length ?? 0) > 0 ||

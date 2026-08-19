@@ -52,14 +52,15 @@ export function withImageUrls<T extends { id: string; image?: string; gallery?: 
  * של העמוד ועוקף את השער.
  */
 export function toListItem(g: Gemach): ListGemach {
-    const { phone, ...rest } = g;
+    const { phone, phone2, ...rest } = g;
     return withImageUrls({
         ...rest,
         description: withoutPhones(g.description) ?? '',
         contact: withoutPhones(g.contact),
+        contact2: withoutPhones(g.contact2),
         notes: withoutPhones(g.notes),
         arrivalNotes: withoutPhones(g.arrivalNotes),
-        hasPhone: Boolean(phone),
+        hasPhone: Boolean(phone || phone2),
     });
 }
 

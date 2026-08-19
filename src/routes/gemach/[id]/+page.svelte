@@ -93,8 +93,11 @@
     let openNow = $state<boolean | null>(null);
     $effect(() => { openNow = isOpenNow(gemach.hours); });
 
-    /** טלפון לחיוג/ואטסאפ: ספרות בלבד, עם קידומת בינלאומית לוואטסאפ */
-    const phoneDigits = $derived((gemach.phone ?? '').replace(/\D/g, ''));
+    /** יש טלפון כלשהו (ראשי או נוסף) — מה שקובע אם יש בכלל מה לחשוף */
+    const hasAnyPhone = $derived(Boolean(gemach.phone || gemach.phone2));
+    /** טלפון לחיוג/ואטסאפ: הראשי, ואם אין — הנוסף. ספרות בלבד, עם קידומת בינלאומית לוואטסאפ */
+    const callPhone = $derived(gemach.phone || gemach.phone2 || '');
+    const phoneDigits = $derived(callPhone.replace(/\D/g, ''));
     const waPhone = $derived(
         phoneDigits.startsWith('0') ? `972${phoneDigits.slice(1)}` : phoneDigits
     );
@@ -131,7 +134,7 @@
             alternateName: `גמ"ח ${categoryLabel}${inPlace}`,
             description: gemach.description || `גמ"ח ${categoryLabel}${inPlace}`,
             url: canonical,
-            telephone: gemach.phone || undefined,
+            telephone: callPhone || undefined,
             image: gemach.image || SITE_LOGO,
             inLanguage: 'he-IL',
             address: {
@@ -321,9 +324,9 @@
 
                 <!-- פעולות -->
                 <div class="flex flex-wrap gap-2 mt-3.5">
-                    {#if gemach.phone}
+                    {#if callPhone}
                         {#if phoneRevealed}
-                            <a href="tel:{gemach.phone}"
+                            <a href="tel:{callPhone}"
                                 class="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 px-4 py-2 text-sm font-bold text-white transition-colors">
                                 <PhoneIcon class="h-4 w-4 text-green-200" /> התקשר
                             </a>
@@ -359,7 +362,7 @@
                     {#if gemach.contact}
                         <div class="flex gap-1.5">
                             <dt class="text-gray-400 flex-shrink-0">איש קשר:</dt>
-                            {#if phoneRevealed || !gemach.phone}
+                            {#if phoneRevealed || !hasAnyPhone}
                                 <dd class="text-white font-bold">{gemach.contact}</dd>
                             {:else}
                                 <!-- איש הקשר נחשף יחד עם הטלפון — אותה לחיצה, אותה פרסומת -->
@@ -377,6 +380,38 @@
                             <dt class="text-gray-400 flex-shrink-0">טלפון:</dt>
                             {#if phoneRevealed}
                                 <dd class="text-white font-bold" dir="ltr">{gemach.phone}</dd>
+                            {:else}
+                                <dd>
+                                    <button type="button" onclick={revealPhone}
+                                        class="inline-flex items-center gap-1.5 font-bold text-green-400 hover:text-green-300 transition-colors">
+                                        <PhoneIcon class="h-4 w-4" /> גלה טלפון
+                                    </button>
+                                </dd>
+                            {/if}
+                        </div>
+                    {/if}
+                    {#if gemach.contact2}
+                        <div class="flex gap-1.5">
+                            <dt class="text-gray-400 flex-shrink-0">איש קשר נוסף:</dt>
+                            {#if phoneRevealed || !hasAnyPhone}
+                                <dd class="text-white font-bold">{gemach.contact2}</dd>
+                            {:else}
+                                <dd>
+                                    <button type="button" onclick={revealPhone}
+                                        class="inline-flex items-center gap-1.5 font-bold text-green-400 hover:text-green-300 transition-colors">
+                                        👤 גלה איש קשר
+                                    </button>
+                                </dd>
+                            {/if}
+                        </div>
+                    {/if}
+                    {#if gemach.phone2}
+                        <div class="flex gap-1.5">
+                            <dt class="text-gray-400 flex-shrink-0">טלפון נוסף:</dt>
+                            {#if phoneRevealed}
+                                <!-- קישור ולא טקסט: לטלפון הנוסף אין כפתור "התקשר" משלו -->
+                                <dd><a href="tel:{gemach.phone2}" dir="ltr"
+                                    class="text-white font-bold hover:text-green-300 transition-colors">{gemach.phone2}</a></dd>
                             {:else}
                                 <dd>
                                     <button type="button" onclick={revealPhone}

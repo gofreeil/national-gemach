@@ -22,6 +22,13 @@
 
     let tags = $state<string[]>(gemach?.tags ? [...gemach.tags] : []);
 
+    // ---- איש קשר וטלפון נוספים ----
+    // גמ"ח לא מעט פעמים מתנהל בשתי ידיים (בעל/ת הבית + מתנדב/ת, או קו בית וקו נייד),
+    // אבל רוב הגמ"חים עם איש קשר אחד — ולכן הזוג השני מקופל עד שמבקשים אותו,
+    // כדי שהטופס לא יתארך לכולם. נפתח מעצמו כשיש כבר ערך שמור.
+    let showSecondContact = $state(false);
+    const hasSecondContact = $derived(Boolean(gemach?.phone2 || gemach?.contact2));
+
     // ---- נושאים ----
     // גמ"ח אחד משרת לא פעם כמה נושאים (ציוד רפואי + ריהוט, ביגוד + תינוקות),
     // ולכן הבחירה מרובה. הסדר הוא סדר הסימון, והראשון הוא הנושא הראשי —
@@ -520,6 +527,29 @@
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="שם האחראי/ת על הגמ&quot;ח" />
     </div>
+
+    <!-- טלפון ואיש קשר נוספים -->
+    {#if showSecondContact || hasSecondContact}
+        <div>
+            <label for="f-phone2" class="block text-sm font-bold text-gray-300 mb-1">טלפון נוסף</label>
+            <input id="f-phone2" name="phone2" defaultValue={gemach?.phone2 ?? ''} inputmode="tel" dir="ltr"
+                class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
+                placeholder="לדוגמה: 050-1234567" />
+        </div>
+        <div>
+            <label for="f-contact2" class="block text-sm font-bold text-gray-300 mb-1">איש קשר נוסף</label>
+            <input id="f-contact2" name="contact2" defaultValue={gemach?.contact2 ?? ''}
+                class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                placeholder="שם נוסף לפנייה" />
+        </div>
+    {:else}
+        <div class="md:col-span-2 -mt-1">
+            <button type="button" onclick={() => (showSecondContact = true)}
+                class="text-sm font-bold text-purple-300 hover:text-purple-200 transition-colors">
+                ＋ הוסף איש קשר וטלפון נוסף
+            </button>
+        </div>
+    {/if}
 
     <!-- שעות פעילות — לוח ימים/שעות מובנה, בפורמט המשותף עם "קהילה בשכונה" -->
     <div class="md:col-span-2">
