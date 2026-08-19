@@ -66,7 +66,7 @@ export const networkSites: NetworkSite[] = [
     },
     {
         id: 8,
-        title: 'קבוצת רכישה',
+        title: 'רכישות קבוצתיות',
         href: 'https://groups.gofreeil.com/',
         image: '/images/whatsapp_cta.webp',
         color: 'from-green-800 to-emerald-900'
