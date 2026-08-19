@@ -137,6 +137,31 @@ function fromItemStatus(s: string | null): AdStatus {
     return s === 'rejected' ? 'rejected' : 'pending';
 }
 
+
+/**
+ * כתובת אתר בטוחה להצמדה ל-href. Svelte לא מחטאת href, ולכן מפרסם
+ * שהזין `javascript:...` בשדה האתר היה מקבל קוד שרץ בדומיין של האתר
+ * ברגע שגולש לוחץ. מחזירה '' לכל מה שאינו http/https תקין (וגם
+ * לכתובת שנושאת שם משתמש/סיסמה, שמשמשת להטעיה).
+ */
+function safeHttpUrl(value: unknown): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    try {
+        const u = new URL(raw);
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+        if (u.username || u.password) return '';
+        return u.toString().slice(0, 400);
+    } catch {
+        return '';
+    }
+}
+
+/** מנקה את דף הנחיתה בקריאה: כל כתובת שנשלחת לדפדפן עוברת דרך safeHttpUrl */
+function sanitizeLanding(l: Record<string, any> | null | undefined): Partial<AdLanding> {
+    const src = (l ?? {}) as Record<string, any>;
+    return { ...src, website: safeHttpUrl(src.website) } as Partial<AdLanding>;
+}
 function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
     if (!row) return null;
     const x = (row.extra_fields ?? {}) as Record<string, any>;
@@ -164,7 +189,7 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         mainImageFit: parseAdImageFit(x.main_image_fit),
         // null במודעות שנשלחו לפני שהעיצוב נשמר — הצרכן נופל ל-legacyAdStyle
         adStyle: parseAdStyle(x.ad_style),
-        landing: x.landing ?? {},
+        landing: sanitizeLanding(x.landing),
         submittedBy: {
             id: x.submitted_by?.id ?? '',
             email: x.submitted_by?.email ?? '',
