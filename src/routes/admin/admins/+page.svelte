@@ -18,6 +18,7 @@
     let identifier = $state('');
     let display = $state('');
     let hits = $state<UserHit[]>([]);
+    let fuzzy = $state(false);   // התוצאות הן "דומים" (שגיאת כתיב) ולא התאמה מדויקת
     let searching = $state(false);
     let searched = $state(false);        // האם הושלם חיפוש עבור הערך הנוכחי
     let searchError = $state('');
@@ -41,11 +42,13 @@
             const body = await res.json();
             if (seq !== searchSeq) return; // הוקלד ערך חדש בינתיים
             hits = body.users ?? [];
+            fuzzy = body.fuzzy ?? false;
             searchError = body.error ?? '';
             searched = true;
         } catch {
             if (seq !== searchSeq) return;
             hits = [];
+            fuzzy = false;
             searchError = 'החיפוש נכשל — אפשר להזין מזהה ידנית';
             searched = true;
         } finally {
@@ -85,6 +88,11 @@
                 {#if searching}
                     <div class="mt-2 rounded-xl bg-[#16264d] px-4 py-2.5 text-sm text-gray-300">🔍 מחפש בין המשתמשים הרשומים…</div>
                 {:else if hits.length > 0}
+                    {#if fuzzy}
+                        <div class="mt-2 rounded-xl border border-amber-400/50 bg-amber-950/60 px-4 py-2 text-sm text-amber-100">
+                            לא נמצאה התאמה מדויקת ל"{identifier.trim()}" — אולי התכוונת לאחד מאלה:
+                        </div>
+                    {/if}
                     <div class="mt-2 overflow-hidden rounded-xl border border-[#3b5794] bg-[#16264d] divide-y divide-[#3b5794]/50">
                         {#each hits as u (u.identifier)}
                             <button type="button" onclick={() => pickHit(u)}
