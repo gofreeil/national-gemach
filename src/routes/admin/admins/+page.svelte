@@ -12,6 +12,55 @@
 
     const typeLabel: Record<string, string> = { email: 'מייל', username: 'שם משתמש', phone: 'טלפון' };
     let saving = $state(false);
+
+    // ---- חיפוש חי בין המשתמשים הרשומים ----
+    interface UserHit { name: string; email: string; phone?: string; username?: string; identifier: string }
+    let identifier = $state('');
+    let display = $state('');
+    let hits = $state<UserHit[]>([]);
+    let searching = $state(false);
+    let searched = $state(false);        // האם הושלם חיפוש עבור הערך הנוכחי
+    let searchError = $state('');
+    let searchTimer: ReturnType<typeof setTimeout> | undefined;
+    let searchSeq = 0;                   // מגן מפני תשובות שהגיעו באיחור
+
+    function onIdentifierInput() {
+        searched = false;
+        searchError = '';
+        clearTimeout(searchTimer);
+        const q = identifier.trim();
+        if (q.length < 2) { hits = []; return; }
+        searchTimer = setTimeout(() => runSearch(q), 350);
+    }
+
+    async function runSearch(q: string) {
+        const seq = ++searchSeq;
+        searching = true;
+        try {
+            const res = await fetch(`/admin/admins/search?q=${encodeURIComponent(q)}`);
+            const body = await res.json();
+            if (seq !== searchSeq) return; // הוקלד ערך חדש בינתיים
+            hits = body.users ?? [];
+            searchError = body.error ?? '';
+            searched = true;
+        } catch {
+            if (seq !== searchSeq) return;
+            hits = [];
+            searchError = 'החיפוש נכשל — אפשר להזין מזהה ידנית';
+            searched = true;
+        } finally {
+            if (seq === searchSeq) searching = false;
+        }
+    }
+
+    function pickHit(u: UserHit) {
+        identifier = u.identifier;
+        if (!display && u.name) display = u.name;
+        hits = [];
+        searched = false;
+        searchSeq++; // מבטל חיפוש שעדיין רץ
+        clearTimeout(searchTimer);
+    }
 </script>
 
 <svelte:head><title>ניהול אדמינים – פאנל ניהול</title></svelte:head>
@@ -25,12 +74,39 @@
     <!-- הוספה -->
     <div class="card p-5">
         <h3 class="font-bold text-white mb-3">➕ הוספת אדמין</h3>
-        <form method="POST" action="?/add" use:enhance={() => { saving = true; return async ({ update }) => { await update(); saving = false; }; }}
+        <form method="POST" action="?/add" use:enhance={() => { saving = true; return async ({ update, result }) => { await update(); saving = false; if (result.type === 'redirect') { identifier = ''; display = ''; hits = []; searched = false; } }; }}
             class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <div>
-                <input name="identifier" required placeholder="מייל / שם משתמש / מספר טלפון"
+                <input name="identifier" required placeholder="חיפוש לפי שם / מייל / טלפון — או הזנת מזהה ידנית"
+                    bind:value={identifier} oninput={onIdentifierInput} autocomplete="off"
                     class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none" />
-                <input name="display" placeholder="שם לתצוגה (לא חובה)"
+
+                <!-- הצעות מתוך המשתמשים הרשומים -->
+                {#if searching}
+                    <div class="mt-2 rounded-xl bg-[#16264d] px-4 py-2.5 text-sm text-gray-300">🔍 מחפש בין המשתמשים הרשומים…</div>
+                {:else if hits.length > 0}
+                    <div class="mt-2 overflow-hidden rounded-xl border border-[#3b5794] bg-[#16264d] divide-y divide-[#3b5794]/50">
+                        {#each hits as u (u.identifier)}
+                            <button type="button" onclick={() => pickHit(u)}
+                                class="flex w-full items-center gap-3 px-4 py-2.5 text-right transition-colors hover:bg-[#1e335f]">
+                                <span aria-hidden="true">👤</span>
+                                <span class="flex-1 min-w-0">
+                                    <span class="block truncate font-bold text-white">{u.name || u.identifier}</span>
+                                    <span class="block truncate text-xs text-gray-400" dir="ltr">{u.email || u.phone || u.username}</span>
+                                </span>
+                                <span class="text-xs text-purple-300">בחירה</span>
+                            </button>
+                        {/each}
+                    </div>
+                {:else if searchError}
+                    <div class="mt-2 rounded-xl border border-amber-400/50 bg-amber-950/60 px-4 py-2.5 text-sm text-amber-100">{searchError}</div>
+                {:else if searched && identifier.trim().length >= 2}
+                    <div class="mt-2 rounded-xl bg-[#16264d] px-4 py-2.5 text-sm text-gray-300">
+                        לא נמצא משתמש רשום התואם ל"{identifier.trim()}". אפשר עדיין להוסיף מזהה ידנית — ההרשאה תיתפס כשיתחברו איתו.
+                    </div>
+                {/if}
+
+                <input name="display" placeholder="שם לתצוגה (לא חובה)" bind:value={display}
                     class="w-full mt-2 rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-2.5 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none" />
             </div>
             <select name="role" class="rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-2.5 text-white focus:border-purple-500 focus:outline-none h-fit">
