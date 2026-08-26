@@ -6,6 +6,7 @@
     import { heMatches } from '$lib/search';
     import { adImgFit, parseAdImageFit } from '$lib/adImageFit';
     import { AD_SLOT_COUNT } from '$lib/rightAdsData';
+    import AdCardPreview from '$lib/components/AdCardPreview.svelte';
 
     let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -31,6 +32,67 @@
         if (n % 4 === 1) return '#dbeafe';
         if (n % 4 === 2) return '#dcfce7';
         return '#fff';
+    }
+
+    // מי תופסת כל מקום בטור - גם מושהית/פגה שומרת את המקום שלה
+    let slotOccupants = $derived(new Map(
+        data.schedules
+            .filter((s) => typeof s.slot === 'number')
+            .map((s) => [s.slot as number, { id: s.id, title: s.title }])
+    ));
+    function shortTitle(t: string): string {
+        return t.length > 22 ? t.slice(0, 21) + '…' : t;
+    }
+    /** תווית אפשרות בבורר המקום - מקום תפוס מסומן עם שם הפרסומת שיושבת בו */
+    function slotOptionLabel(n: number, selfId: string): string {
+        const occ = slotOccupants.get(n);
+        if (!occ) return `${n}`;
+        if (occ.id === selfId) return `${n} — המקום הנוכחי`;
+        return `${n} ⚠ תפוס: ${shortTitle(occ.title)}`;
+    }
+    // אזהרה חיה מתחת לבורר ברגע שנבחר מקום תפוס (לפי מזהה השורה)
+    let slotWarning = $state<Record<string, string>>({});
+    function onSlotPick(e: Event, self: { id: string }) {
+        const n = Number((e.currentTarget as HTMLSelectElement).value);
+        const occ = slotOccupants.get(n);
+        slotWarning = {
+            ...slotWarning,
+            [self.id]: occ && occ.id !== self.id
+                ? `מקום ${n} תפוס ע"י "${shortTitle(occ.title)}" — לחיצה על "העבר" תחליף ביניהן`
+                : '',
+        };
+    }
+    // תצוגה מקדימה של הכרטיס כפי שהוא באמת מוצג בטור הפרסומות באתר:
+    // ריחוף על הכותרת בטבלת התזמון (דסקטופ) או הקשה עליה (נייד/דסקטופ)
+    let approvedById = $derived(new Map(data.approved.map((a) => [a.id, a] as const)));
+    let hoverPreview = $state<{ id: string; x: number; y: number } | null>(null);
+    let modalPreviewId = $state<string | null>(null);
+    const PREVIEW_W = 144, PREVIEW_H = 490; // מידות הכרטיס האמיתי בטור (w-36 × h-[490px])
+    function openHoverPreview(e: MouseEvent, id: string) {
+        if (!approvedById.has(id)) return;
+        // מסך מגע - אין ריחוף אמיתי; ההקשה פותחת את המודאל במקום
+        if (window.matchMedia('(hover: none)').matches) return;
+        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        // הכרטיס צף משמאל לתא, מוצמד לגבולות המסך - מחוץ למכל הגלילה של
+        // הטבלה (fixed), אחרת ה-overflow היה חותך אותו
+        const y = Math.max(8, Math.min(window.innerHeight - PREVIEW_H - 8, r.top + r.height / 2 - PREVIEW_H / 2));
+        const x = Math.max(8, r.left - PREVIEW_W - 16);
+        hoverPreview = { id, x, y };
+    }
+
+    /** אישור אחרון לפני העברה למקום תפוס - אישור = החלפה, ביטול = כלום לא זז */
+    function confirmSlotMove(e: MouseEvent, self: { id: string; title: string; slot?: number | null }) {
+        const form = (e.currentTarget as HTMLButtonElement).form;
+        const sel = form?.elements.namedItem('slot');
+        const n = Number((sel as HTMLSelectElement | null)?.value);
+        const occ = slotOccupants.get(n);
+        if (!occ || occ.id === self.id) return;
+        const ok = confirm(
+            `⚠ מקום ${n} כבר תפוס על ידי "${occ.title}".\n\n` +
+            `אישור — החלפה: "${self.title}" תעבור למקום ${n}, ו"${occ.title}" תעבור למקום ${self.slot ?? '-'}.\n` +
+            `ביטול — ההעברה מתבטלת ושתי הפרסומות נשארות במקומן.`
+        );
+        if (!ok) e.preventDefault();
     }
     let canReorder = $derived(sortOrder === 'display' && !searchQuery.trim());
 
@@ -622,22 +684,42 @@
                                                 {s.slot ?? '-'}
                                             </span>
                                             <select name="slot"
+                                                    onchange={(e) => onSlotPick(e, s)}
                                                     class="px-1.5 py-1 rounded-lg bg-black/40 border border-white/15 text-white text-[11px] focus:outline-none focus:border-amber-400/50">
                                                 {#each slotOptions as n (n)}
-                                                    <option value={n} selected={n === s.slot} style="background:{slotOptionBg(n)};color:#111">{n}</option>
+                                                    {@const occ = slotOccupants.get(n)}
+                                                    {@const takenByOther = !!occ && occ.id !== s.id}
+                                                    <option value={n} selected={n === s.slot}
+                                                            style="background:{takenByOther ? '#fee2e2' : slotOptionBg(n)};color:{takenByOther ? '#991b1b' : '#111'}">
+                                                        {slotOptionLabel(n, s.id)}
+                                                    </option>
                                                 {/each}
                                             </select>
                                         </div>
                                         <button type="submit"
+                                                onclick={(e) => confirmSlotMove(e, s)}
                                                 class="px-2 py-1 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-200 text-[11px] font-black hover:bg-purple-500/30 whitespace-nowrap"
-                                                title="העבר למקום שנבחר; אם המקום תפוס - שתי הפרסומות מתחלפות">
+                                                title="העבר למקום שנבחר; מקום תפוס - תתבקש לאשר החלפה בין השתיים">
                                             ⇄ העבר
                                         </button>
+                                        {#if slotWarning[s.id]}
+                                            <span class="text-[10px] font-bold text-amber-300 leading-snug max-w-[150px]">
+                                                ⚠ {slotWarning[s.id]}
+                                            </span>
+                                        {/if}
                                     </form>
                                 </td>
-                                <!-- הכותרת בשתי שורות במקום שורה אחת חתוכה - רואים יותר וחוסכים רוחב -->
+                                <!-- הכותרת בשתי שורות במקום שורה אחת חתוכה - רואים יותר וחוסכים רוחב.
+                                     ריחוף = תצוגה מקדימה צפה של הכרטיס; הקשה = מודאל עם הכרטיס עצמו -->
                                 <td class="px-2 py-2 font-bold text-white">
-                                    <div class="line-clamp-2 break-words max-w-[130px] leading-snug">{s.title}</div>
+                                    <button type="button"
+                                            onmouseenter={(e) => openHoverPreview(e, s.id)}
+                                            onmouseleave={() => hoverPreview = null}
+                                            onclick={() => { hoverPreview = null; modalPreviewId = s.id; }}
+                                            title="תצוגה מקדימה של הפרסומת כפי שהיא מוצגת באתר"
+                                            class="line-clamp-2 break-words max-w-[130px] leading-snug text-right cursor-pointer underline decoration-dotted decoration-white/30 underline-offset-2 hover:text-amber-300">
+                                        {s.title}
+                                    </button>
                                 </td>
                                 <td class="px-2 py-2 text-gray-300 hidden md:table-cell">
                                     <div class="truncate max-w-[120px]">{s.advertiserName || '-'}</div>
@@ -796,4 +878,45 @@
             </div>
         {/if}
     </section>
+
+    <!-- תצוגה מקדימה צפה בריחוף על כותרת בטבלת התזמון (דסקטופ בלבד) -->
+    {#if hoverPreview}
+        {@const pAd = approvedById.get(hoverPreview.id)}
+        {#if pAd}
+            <div class="fixed z-40 pointer-events-none drop-shadow-2xl hidden md:block"
+                 style="left:{hoverPreview.x}px; top:{hoverPreview.y}px">
+                <AdCardPreview ad={pAd} />
+            </div>
+        {/if}
+    {/if}
+
+    <!-- מודאל תצוגה מקדימה בהקשה על הכותרת (נייד ודסקטופ) -->
+    {#if modalPreviewId}
+        {@const mAd = approvedById.get(modalPreviewId)}
+        {#if mAd}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+            <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+                 role="presentation"
+                 onclick={() => modalPreviewId = null}>
+                <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                <div class="flex flex-col items-center gap-3 my-auto"
+                     role="dialog" aria-modal="true" aria-label="תצוגה מקדימה של הפרסומת" tabindex="-1"
+                     onclick={(e) => e.stopPropagation()}>
+                    <AdCardPreview ad={mAd} />
+                    <div class="flex items-center gap-2">
+                        <a href={`/ads/${mAd.id}`} target="_blank" rel="noopener"
+                           class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs font-black hover:bg-amber-500/30">
+                            פתח דף נחיתה
+                        </a>
+                        <button type="button" onclick={() => modalPreviewId = null}
+                                class="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-gray-200 text-xs font-black hover:bg-white/20">
+                            ✕ סגור
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {/if}
+    {/if}
 </div>
+
+<svelte:window onkeydown={(e) => { if (e.key === 'Escape') { modalPreviewId = null; hoverPreview = null; } }} />
