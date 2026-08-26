@@ -1,945 +1,799 @@
 <script lang="ts">
+    import type { PageData, ActionData } from './$types';
     import { enhance } from '$app/forms';
-    import { adPlans, planLabel } from '$lib/adPlans';
-    import { ctr } from '$lib/adOwner';
+    import { invalidateAll } from '$app/navigation';
+    import { onMount, onDestroy } from 'svelte';
+    import { heMatches } from '$lib/search';
     import { adImgFit, parseAdImageFit } from '$lib/adImageFit';
     import { AD_SLOT_COUNT } from '$lib/rightAdsData';
 
-    // מסך ניהול הפרסומות לסופר-אדמין:
-    //   1. לוח מלאי — כמה משבצות תפוסות, עד מתי, וכמה פנויות לפרסום עכשיו
-    //   2. המפרסמים — הנתונים של כל מפרסם (אותם מדדים שהוא רואה בדשבורד שלו)
-    //   3. אישור / דחייה — הטאבים המקוריים
-    // פורט מקבוצות רכישה; עטוף בקופסה כהה כי הרקע באתר ורוד בהיר.
-    let { data, form } = $props();
+    let { data, form }: { data: PageData; form: ActionData } = $props();
 
-    let tab = $state<'pending' | 'approved' | 'rejected'>('pending');
-
-    // תקופות שאפשר לקצוב למודעה שכבר באוויר (נספרות מיום האישור)
+    type Tab = 'pending' | 'approved' | 'rejected';
+    let activeTab = $state<Tab>('pending');
+    let searchQuery = $state('');
+    // 'display' = הסדר שבו הפרסומות מוצגות באתר (כפי שהשרת מחזיר אותן).
+    // רק במיון הזה אפשר להחליף מקום - אחרת החצים היו מזיזים ביחס לתצוגה אחרת.
+    let sortOrder = $state<'display' | 'newest' | 'oldest'>('display');
+    let canDelete = $derived(data.role === 'super_admin');
+    /** מתי הפרסומת פורסמה לאחרונה בכל אתרי הרשת (חותמת שנשמרת על עותק שסונכרן מהרשת) */
+    function syndicatedAt(ad: unknown): string {
+        const at = (ad as { landing?: { _syndicatedAt?: unknown } } | null)?.landing?._syndicatedAt;
+        return typeof at === 'string' ? at : '';
+    }
+    // תקופות הפרסום שאפשר לקצוב מהטבלה (התקופה נספרת מיום הפרסום)
     const DURATION_OPTIONS = [7, 14, 30, 60, 90, 180, 365];
-    // 12 המקומות הממוספרים בלוח — בורר "⇄ העבר" שליד כל מודעה מאושרת
+    // 16 המקומות הממוספרים בטור הפרסומות - בורר המקום בטבלת התזמון
     const SLOT_NUMBERS = Array.from({ length: AD_SLOT_COUNT }, (_, i) => i + 1);
-
-    let pending  = $derived(data.ads.filter((a: any) => a.status === 'pending'));
-    // טאב "מאושרות" בסדר הלוח — אותו סדר מספרים שהגולש רואה בטור
-    let approved = $derived(
-        data.ads
-            .filter((a: any) => a.status === 'approved')
-            .sort((x: any, y: any) => (x.slot ?? 9999) - (y.slot ?? 9999))
-    );
-    let rejected = $derived(data.ads.filter((a: any) => a.status === 'rejected'));
-    let shown    = $derived(tab === 'pending' ? pending : tab === 'approved' ? approved : rejected);
-
-    /** המודעות שתופסות משבצת כרגע — לפי הקרוב להתפנות */
-    let active = $derived(
-        data.ads
-            .filter((a: any) => a.isActive)
-            .sort((x: any, y: any) => (x.daysLeft ?? 9999) - (y.daysLeft ?? 9999))
-    );
-
-    // ===== קיבוץ לפי מפרסם =====
-    // מפתח הקבוצה: המייל של השולח (fallback לשם; מודעות בלי זיהוי נאספות יחד).
-    interface AdvGroup {
-        key: string;
-        name: string;
-        email: string;
-        ads: any[];
-        activeCount: number;
-        pendingCount: number;
-        totals: { impressions: number; clicks: number; landing: number; leads: number };
-        /** ההתפנות הרחוקה ביותר — עד מתי המפרסם "מחזיק" משבצת */
-        maxDaysLeft: number | null;
+    // רקע לאפשרויות בורר המקום: הראשון בכל רביעייה (1,5,9,13) בתכלת והשני
+    // (2,6,10,14) בירוק בהיר (רקע בהיר בלבד - כהה נשבר בהדגשת המערכת)
+    function slotOptionBg(n: number): string {
+        if (n % 4 === 1) return '#dbeafe';
+        if (n % 4 === 2) return '#dcfce7';
+        return '#fff';
     }
-    let advertisers = $derived.by((): AdvGroup[] => {
-        const map = new Map<string, AdvGroup>();
-        for (const a of data.ads as any[]) {
-            const email = (a.submittedBy?.email ?? '').trim();
-            const name = (a.submittedBy?.name ?? '').trim();
-            const key = (email || name || 'ללא זיהוי').toLowerCase();
-            let g = map.get(key);
-            if (!g) {
-                g = {
-                    key,
-                    name: name || email || 'מפרסם ללא זיהוי',
-                    email,
-                    ads: [],
-                    activeCount: 0,
-                    pendingCount: 0,
-                    totals: { impressions: 0, clicks: 0, landing: 0, leads: 0 },
-                    maxDaysLeft: null,
-                };
-                map.set(key, g);
-            }
-            g.ads.push(a);
-            if (a.isActive) g.activeCount++;
-            if (a.status === 'pending') g.pendingCount++;
-            g.totals.impressions += a.totals.impressions;
-            g.totals.clicks += a.totals.clicks;
-            g.totals.landing += a.totals.landing;
-            g.totals.leads += a.totals.leads;
-            if (a.isActive && a.daysLeft !== null) {
-                g.maxDaysLeft = Math.max(g.maxDaysLeft ?? 0, a.daysLeft);
-            }
-        }
-        // פעילים קודם, אחריהם לפי היקף החשיפות
-        return [...map.values()].sort(
-            (x, y) => y.activeCount - x.activeCount || y.totals.impressions - x.totals.impressions
-        );
+    let canReorder = $derived(sortOrder === 'display' && !searchQuery.trim());
+
+    /** מספר המקום של פרסומת מאושרת; לממתינות/נדחות אין מקום */
+    function slotOf(ad: unknown, fallback: number): number {
+        const s = (ad as { slot?: unknown } | null)?.slot;
+        return typeof s === 'number' ? s : fallback;
+    }
+
+    // בחירה רב-פריטית
+    let selected = $state<Set<string>>(new Set());
+    function toggleSelect(id: string) {
+        const next = new Set(selected);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        selected = next;
+    }
+    function clearSelection() { selected = new Set(); }
+    function selectAllVisible(ids: string[]) {
+        const next = new Set(selected);
+        for (const id of ids) next.add(id);
+        selected = next;
+    }
+
+    // עריכה בשורה
+    let editingId = $state<string | null>(null);
+    let editTitle = $state('');
+    let editSubtitle = $state('');
+    let editCta = $state('');
+    let editHover = $state('');
+    function startEdit(ad: any) {
+        editingId = ad.id;
+        editTitle = ad.title ?? '';
+        editSubtitle = ad.subtitle ?? '';
+        editCta = ad.cta ?? '';
+        editHover = ad.hoverText ?? '';
+    }
+    function cancelEdit() { editingId = null; }
+
+    // רענון אוטומטי כל 30 שניות (כדי לראות פרסומות חדשות שנכנסות).
+    //
+    // הבדיקה עוברת דרך /admin/ads-review/signal - חתימה של עשרות בייטים -
+    // ו-invalidateAll() (שמושך מחדש את כל הפרסומות על התמונות שבהן) רץ רק
+    // כשהחתימה השתנתה. קודם הוא רץ בכל פעימה, וטאב אדמין שנשאר פתוח שרף כך
+    // מגה-בייטים כל חצי דקה.
+    let autoRefresh = $state(true);
+    let refreshTimer: ReturnType<typeof setInterval> | null = null;
+    let lastRefresh = $state(Date.now());
+    let lastSig: string | null = null;
+    onMount(() => {
+        refreshTimer = setInterval(async () => {
+            if (!autoRefresh || document.visibilityState !== 'visible') return;
+            try {
+                const res = await fetch('/admin/ads/signal');
+                if (!res.ok) return;
+                const { sig } = (await res.json()) as { sig?: string };
+                if (typeof sig !== 'string') return;
+                // הפעימה הראשונה רק לומדת את המצב הנוכחי - הדף הרגע נטען
+                if (lastSig !== null && sig !== lastSig) {
+                    await invalidateAll();
+                    lastRefresh = Date.now();
+                }
+                lastSig = sig;
+            } catch { /* תקלת רשת זמנית - ננסה בפעימה הבאה */ }
+        }, 30000);
     });
+    onDestroy(() => { if (refreshTimer) clearInterval(refreshTimer); });
 
-    function fmtDate(iso: string): string {
-        if (!iso) return '';
-        const d = new Date(iso);
-        if (isNaN(d.getTime())) return '';
-        return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    // חישוב רשימות מסוננות
+    function applyFilter<T extends { title?: string; subtitle?: string; submittedBy?: { email?: string; name?: string }; submittedAt: string }>(list: T[]): T[] {
+        const q = searchQuery.trim().toLowerCase();
+        const filtered = q
+            ? list.filter(a =>
+                heMatches(q, a.title, a.subtitle, a.submittedBy?.email, a.submittedBy?.name))
+            : list;
+        // הסדר מהשרת = סדר התצוגה באתר (מיקום ידני, ואחריו החדשות ביותר)
+        if (sortOrder === 'display') return [...filtered];
+        return [...filtered].sort((x, y) => {
+            const xt = new Date(x.submittedAt).getTime();
+            const yt = new Date(y.submittedAt).getTime();
+            return sortOrder === 'newest' ? yt - xt : xt - yt;
+        });
     }
 
-    /** תווית הזמן שנותר למודעה פעילה */
-    function leftLabel(a: any): string {
-        if (a.daysLeft === null) return 'ללא תוקף מוגדר';
-        if (a.daysLeft <= 0) return 'פג תוקף';
-        if (a.daysLeft === 1) return 'מתפנה מחר';
-        return `נותרו ${a.daysLeft} ימים`;
+    let pendingList = $derived(applyFilter(data.pending.filter(p => p.status === 'pending')));
+    let rejectedList = $derived(applyFilter(data.pending.filter(p => p.status === 'rejected')));
+    let approvedList = $derived(applyFilter(data.approved));
+
+    let visibleList = $derived(
+        activeTab === 'pending' ? pendingList :
+        activeTab === 'approved' ? approvedList :
+        rejectedList
+    );
+
+    let visibleSelectedIds = $derived(
+        Array.from(selected).filter(id => visibleList.some(a => a.id === id))
+    );
+
+    function fmtDate(s?: string) {
+        if (!s) return '';
+        return new Date(s).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // תאריך ושעה בשתי שורות נפרדות בטבלת התזמון - חוסך רוחב כדי שכל
+    // הטבלה תיכנס ברוחב המסך בלי גלילה אופקית
+    function fmtDay(s?: string) {
+        if (!s) return '';
+        return new Date(s).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    }
+    function fmtTime(s?: string) {
+        if (!s) return '';
+        return new Date(s).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
     }
 </script>
 
 <svelte:head>
-    <title>ניהול פרסומות | ניהול</title>
+    <title>אישור פרסומות - מנהל ראשי</title>
 </svelte:head>
 
-<div class="ads-admin" dir="rtl">
-    <h1>📢 ניהול פרסומות</h1>
+<div class="max-w-6xl mx-auto px-3 md:px-4 py-4 md:py-10" dir="rtl">
+    <!-- כותרת + ניווט -->
+    <header class="mb-5 md:mb-6 flex flex-wrap items-start gap-3 justify-between">
+        <div class="min-w-0">
+            <h1 class="text-2xl md:text-3xl font-black text-white mb-1">📢 אישור פרסומות</h1>
+            <p class="text-xs md:text-sm text-gray-400">פרסומות שנשלחו על־ידי משתמשים - אשר/דחה לפני פרסום באתר.</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <a href="/admin"
+               class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/10">
+                ← לוח ניהול
+            </a>
+            <a href="/profile"
+               class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/10">
+                פרופיל
+            </a>
+            <button type="button"
+                    onclick={() => { invalidateAll(); lastRefresh = Date.now(); }}
+                    class="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs font-bold hover:bg-amber-500/25"
+                    title="רענן עכשיו">
+                🔄 רענן
+            </button>
+            <label class="text-xs text-gray-400 flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" bind:checked={autoRefresh} class="accent-amber-500" />
+                רענון אוטומטי
+            </label>
+        </div>
+    </header>
 
     {#if data.backendUnavailable}
-        <div class="admin-alert error">שרת התוכן אינו זמין כרגע — נסו לרענן בעוד רגע.</div>
-    {/if}
-    {#if form?.message}
-        <div class="admin-alert ok">{form.message}</div>
-    {/if}
-    {#if form?.error}
-        <div class="admin-alert error">{form.error}</div>
+        <div class="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            ⚠️ הבאקאנד (Strapi) לא זמין כרגע - הרשימות והסטטיסטיקות עשויות להיות חלקיות. נסה לרענן בעוד רגע.
+        </div>
     {/if}
 
-    <!-- ═══ 1. לוח המלאי — תפוסה ופניוּת ═══ -->
-    <section class="inv">
-        <div class="inv-tiles">
-            <div class="inv-tile">
-                <span class="inv-num">{data.inventory.totalSlots}</span>
-                <span class="inv-label">משבצות בסבב</span>
+    <!-- סטטיסטיקות -->
+    <section class="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-5">
+        <div class="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-center">
+            <div class="text-[10px] md:text-xs text-amber-300 font-bold uppercase tracking-wide">ממתינות</div>
+            <div class="text-2xl md:text-3xl font-black text-amber-200">{data.stats.pending}</div>
+        </div>
+        <div class="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2.5 text-center">
+            <div class="text-[10px] md:text-xs text-emerald-300 font-bold uppercase tracking-wide">פורסמו</div>
+            <div class="text-2xl md:text-3xl font-black text-emerald-200">{data.stats.approved}</div>
+        </div>
+        <div class="rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2.5 text-center">
+            <div class="text-[10px] md:text-xs text-red-300 font-bold uppercase tracking-wide">נדחו</div>
+            <div class="text-2xl md:text-3xl font-black text-red-200">{data.stats.rejected}</div>
+        </div>
+        <div class="rounded-xl border border-blue-500/30 bg-blue-500/5 px-3 py-2.5 text-center">
+            <div class="text-[10px] md:text-xs text-blue-300 font-bold uppercase tracking-wide">השבוע נשלחו</div>
+            <div class="text-2xl md:text-3xl font-black text-blue-200">{data.stats.submittedThisWeek}</div>
+        </div>
+        <div class="rounded-xl border border-purple-500/30 bg-purple-500/5 px-3 py-2.5 text-center col-span-2 md:col-span-1">
+            <div class="text-[10px] md:text-xs text-purple-300 font-bold uppercase tracking-wide">השבוע אושרו</div>
+            <div class="text-2xl md:text-3xl font-black text-purple-200">{data.stats.approvedThisWeek}</div>
+        </div>
+    </section>
+
+    <!-- הודעות -->
+    {#if form?.success}
+        <div class="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-emerald-200 text-sm font-bold">
+            ✅ {form.message}
+        </div>
+    {/if}
+    {#if form && 'error' in form && form.error}
+        <div class="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200 text-sm font-bold">
+            ❌ {form.error}
+        </div>
+    {/if}
+
+    <!-- טאבים -->
+    <div class="flex gap-1.5 md:gap-2 mb-4 overflow-x-auto pb-1">
+        <button type="button" onclick={() => { activeTab = 'pending'; clearSelection(); }}
+                class="px-4 py-2 rounded-xl font-black text-sm whitespace-nowrap transition-all
+                       {activeTab === 'pending' ? 'bg-amber-500 text-black' : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'}">
+            ⏳ ממתינות ({data.stats.pending})
+        </button>
+        <button type="button" onclick={() => { activeTab = 'approved'; clearSelection(); }}
+                class="px-4 py-2 rounded-xl font-black text-sm whitespace-nowrap transition-all
+                       {activeTab === 'approved' ? 'bg-emerald-500 text-black' : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'}">
+            ✅ פורסמו ({data.stats.approved})
+        </button>
+        <button type="button" onclick={() => { activeTab = 'rejected'; clearSelection(); }}
+                class="px-4 py-2 rounded-xl font-black text-sm whitespace-nowrap transition-all
+                       {activeTab === 'rejected' ? 'bg-red-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'}">
+            ❌ נדחו ({data.stats.rejected})
+        </button>
+    </div>
+
+    <!-- חיפוש + מיון -->
+    <div class="flex flex-wrap gap-2 md:gap-3 mb-4">
+        <input type="text" bind:value={searchQuery}
+               placeholder="🔎 חיפוש לפי כותרת, תיאור או מגיש..."
+               class="flex-1 min-w-[200px] px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-amber-400/50" />
+        <select bind:value={sortOrder}
+                class="px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400/50">
+            <option value="display" style="background:#fff;color:#111">סדר התצוגה באתר</option>
+            <option value="newest" style="background:#fff;color:#111">חדש לישן</option>
+            <option value="oldest" style="background:#fff;color:#111">ישן לחדש</option>
+        </select>
+    </div>
+
+    <!-- שורת בחירה רב־פריטית (רק ב-pending) -->
+    {#if activeTab === 'pending' && visibleList.length > 0}
+        <div class="flex flex-wrap items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
+            <button type="button"
+                    onclick={() => selectAllVisible(visibleList.map(a => a.id))}
+                    class="text-xs font-bold text-amber-300 hover:text-amber-200">
+                בחר הכל ({visibleList.length})
+            </button>
+            <span class="text-gray-600 text-xs">·</span>
+            <button type="button" onclick={clearSelection}
+                    class="text-xs font-bold text-gray-400 hover:text-gray-300">
+                נקה
+            </button>
+            {#if visibleSelectedIds.length > 0}
+                <span class="text-xs text-gray-300 mr-2">נבחרו {visibleSelectedIds.length}</span>
+                <form method="POST" action="?/bulkApprove" use:enhance={() => async ({ update }) => { clearSelection(); await update(); }}
+                      class="inline-flex">
+                    <input type="hidden" name="ids" value={visibleSelectedIds.join(',')} />
+                    <button type="submit"
+                            class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-black text-xs hover:bg-emerald-400">
+                        ✅ אשר את הנבחרים
+                    </button>
+                </form>
+                <form method="POST" action="?/bulkReject" use:enhance={() => async ({ update }) => { clearSelection(); await update(); }}
+                      class="inline-flex gap-1">
+                    <input type="hidden" name="ids" value={visibleSelectedIds.join(',')} />
+                    <input type="text" name="reason" placeholder="סיבת דחייה (אופציונלי)"
+                           class="px-2 py-1 rounded-lg bg-black/30 border border-white/10 text-white text-xs w-40" />
+                    <button type="submit"
+                            class="px-3 py-1.5 rounded-lg bg-red-600 text-white font-black text-xs hover:bg-red-500">
+                        ❌ דחה את הנבחרים
+                    </button>
+                </form>
+            {/if}
+        </div>
+    {/if}
+
+    <!-- רשימה -->
+    {#if visibleList.length === 0}
+        <div class="text-center py-12 text-gray-500 text-sm italic border border-dashed border-white/10 rounded-2xl">
+            {searchQuery ? 'לא נמצאו תוצאות לחיפוש' :
+             activeTab === 'pending' ? 'אין פרסומות שממתינות לאישור' :
+             activeTab === 'approved' ? 'עוד לא פורסמו פרסומות' : 'אין פרסומות שנדחו'}
+        </div>
+    {:else}
+        <div class="grid gap-3 md:gap-4">
+            {#each visibleList as ad, adIndex (ad.id)}
+                <article class="rounded-2xl border border-white/10 bg-white/5 p-3 md:p-5">
+                    {#if activeTab === 'approved'}
+                        <!-- מיקום הפרסומת בטור הפרסומות באתר + החלפת מקום -->
+                        <div class="flex items-center gap-2 mb-3 pb-3 border-b border-white/10 flex-wrap">
+                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-black text-sm">
+                                {slotOf(ad, adIndex + 1)}
+                            </span>
+                            <span class="text-[11px] md:text-xs text-gray-400 font-bold">
+                                מקום {slotOf(ad, adIndex + 1)} מתוך {AD_SLOT_COUNT} בטור הפרסומות
+                            </span>
+                            {#if canReorder}
+                                <div class="flex items-center gap-1.5 mr-auto">
+                                    <form method="POST" action="?/move" use:enhance>
+                                        <input type="hidden" name="id" value={ad.id} />
+                                        <input type="hidden" name="dir" value="up" />
+                                        <button type="submit" disabled={adIndex === 0}
+                                                class="px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-gray-200 font-black text-xs hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                title="העלה מקום אחד למעלה">
+                                            ▲ למעלה
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="?/move" use:enhance>
+                                        <input type="hidden" name="id" value={ad.id} />
+                                        <input type="hidden" name="dir" value="down" />
+                                        <button type="submit" disabled={adIndex === visibleList.length - 1}
+                                                class="px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-gray-200 font-black text-xs hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                title="הורד מקום אחד למטה">
+                                            ▼ למטה
+                                        </button>
+                                    </form>
+                                </div>
+                            {:else}
+                                <span class="text-[10px] text-gray-500 mr-auto">
+                                    כדי להחליף מקום - בחר מיון "סדר התצוגה באתר" ונקה את החיפוש
+                                </span>
+                            {/if}
+                        </div>
+                    {/if}
+                    <div class="flex flex-col md:flex-row gap-3 md:gap-4">
+                        {#if activeTab === 'pending'}
+                            <label class="flex-shrink-0 inline-flex items-start pt-1 cursor-pointer">
+                                <input type="checkbox"
+                                       checked={selected.has(ad.id)}
+                                       onchange={() => toggleSelect(ad.id)}
+                                       class="w-5 h-5 accent-amber-500" />
+                            </label>
+                        {/if}
+
+                        {#if ad.mainImage}
+                            <!-- אותו מיקום/זום שהמפרסם קבע בבילדר — המנהל מאשר את מה שבאמת יוצג -->
+                            <div class="relative overflow-hidden w-full md:w-40 h-32 md:h-40 rounded-xl border border-white/10 flex-shrink-0">
+                                <img src={ad.mainImage} alt={ad.title}
+                                     class="w-full h-full object-cover"
+                                     use:adImgFit={parseAdImageFit(ad.mainImageFit)} />
+                            </div>
+                        {/if}
+
+                        <div class="flex-1 min-w-0">
+                            {#if editingId === ad.id}
+                                <form method="POST" action="?/update" use:enhance={() => async ({ update }) => { editingId = null; await update(); }}
+                                      class="space-y-2">
+                                    <input type="hidden" name="id" value={ad.id} />
+                                    <input type="text" name="title" bind:value={editTitle}
+                                           class="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-amber-400/40 text-white font-bold text-base" />
+                                    <input type="text" name="subtitle" bind:value={editSubtitle}
+                                           class="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-white text-sm" />
+                                    <input type="text" name="cta" bind:value={editCta} placeholder="טקסט CTA"
+                                           class="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-white text-xs" />
+                                    <!-- textarea ולא input: המפרסם יכול לרדת שורה בטקסט ה-hover,
+                                         ו-input היה משטח את ירידות השורה בכל שמירה של האדמין -->
+                                    <textarea name="hoverText" bind:value={editHover} placeholder="טקסט hover" rows="2"
+                                              class="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-white text-xs resize-y"></textarea>
+                                    <div class="flex gap-2">
+                                        <button type="submit"
+                                                class="px-3 py-1.5 rounded-lg bg-amber-500 text-black font-black text-xs">
+                                            💾 שמור
+                                        </button>
+                                        <button type="button" onclick={cancelEdit}
+                                                class="px-3 py-1.5 rounded-lg bg-white/10 text-gray-300 text-xs">
+                                            ביטול
+                                        </button>
+                                    </div>
+                                </form>
+                            {:else}
+                                <!-- המפרסם הקליד קוד-בעלים בבילדר: בקשה לפרסום חינם -
+                                     האדמין מוודא את הזכאות לפני האישור -->
+                                {#if ad.codeRequested && ad.status === 'pending'}
+                                    <div class="mb-2 rounded-lg border border-amber-400/50 bg-amber-500/10 px-2.5 py-1.5">
+                                        <p class="text-[11px] md:text-xs font-black text-amber-200 m-0">
+                                            🎟 הוזן קוד בעלים - בקשה לפרסום חינם
+                                        </p>
+                                        <p class="text-[10px] md:text-[11px] text-amber-100/70 m-0 mt-0.5">
+                                            מומלץ לוודא את הזכאות לפני האישור.
+                                        </p>
+                                    </div>
+                                {/if}
+                                <!-- מפרסם חוזר ששיפר את הפרסומת שלו: לא בקשה חדשה אלא גרסה
+                                     מעודכנת, והאישור מחליף את הישנה במקום להוסיף פרסומת שנייה -->
+                                {#if ad.replacesAdId && ad.status === 'pending'}
+                                    {@const prevLive = data.approved.some(a => a.id === ad.replacesAdId)}
+                                    <div class="mb-2 rounded-lg border border-blue-400/40 bg-blue-500/10 px-2.5 py-1.5">
+                                        <p class="text-[11px] md:text-xs font-black text-blue-200 m-0">
+                                            🔄 עדכון לפרסומת קיימת{ad.replacesTitle ? ` - גרסה קודמת: "${ad.replacesTitle}"` : ''}
+                                        </p>
+                                        <p class="text-[10px] md:text-[11px] text-blue-100/70 m-0 mt-0.5">
+                                            {prevLive
+                                                ? 'עם האישור הגרסה הזו נכנסת במקום הישנה, באותו מקום בטור ועם אותו תאריך סיום - הישנה יורדת מהאתר.'
+                                                : 'למפרסם אין כרגע פרסומת פעילה על האתר - האישור פשוט יפרסם את הגרסה הזו.'}
+                                        </p>
+                                    </div>
+                                {:else if ad.supersededBy}
+                                    <div class="mb-2 rounded-lg border border-gray-500/40 bg-white/5 px-2.5 py-1.5">
+                                        <p class="text-[11px] md:text-xs font-black text-gray-300 m-0">
+                                            🔄 גרסה ישנה - הוחלפה בגרסה מעודכנת של המפרסם
+                                        </p>
+                                    </div>
+                                {/if}
+                                <h3 class="text-base md:text-lg font-black text-white mb-1">{ad.title}</h3>
+                                <p class="text-xs md:text-sm text-gray-300 mb-1">{ad.subtitle}</p>
+                                {#if ad.cta}
+                                    <p class="text-[10px] md:text-xs text-amber-300 mb-2">CTA: {ad.cta}</p>
+                                {/if}
+                                {#if ad.hoverText}
+                                    <p class="text-[10px] md:text-xs text-gray-500 mb-2">Hover: {ad.hoverText}</p>
+                                {/if}
+                                <div class="text-[10px] md:text-xs text-gray-400 space-y-0.5">
+                                    {#if ad.submittedBy?.email}<div>📧 {ad.submittedBy.email}</div>{/if}
+                                    <div>📅 נשלח: {fmtDate(ad.submittedAt)}</div>
+                                    {#if ad.decidedAt}<div>🕒 הוחלט: {fmtDate(ad.decidedAt)}</div>{/if}
+                                    {#if ad.landing?.phone}<div>☎️ {ad.landing.phone}</div>{/if}
+                                    {#if ad.landing?.website}<div>🌐 {ad.landing.website}</div>{/if}
+                                    {#if ad.landing?.address}<div>📍 {ad.landing.address}</div>{/if}
+                                    {#if ad.rejectionReason}<div class="text-red-300">❌ סיבת דחייה: {ad.rejectionReason}</div>{/if}
+                                    {#if syndicatedAt(ad)}<div class="text-sky-300">🌐 פורסמה בכל אתרי הרשת: {fmtDate(syndicatedAt(ad))}</div>{/if}
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
+
+                    {#if editingId !== ad.id}
+                        <details class="mt-3 text-xs text-gray-300">
+                            <summary class="cursor-pointer text-amber-300 font-bold">תצוגה מקדימה של דף הנחיתה</summary>
+                            <div class="mt-2 p-3 rounded-lg bg-black/40 border border-white/10 space-y-2">
+                                {#if ad.landing?.headline}<p class="font-bold text-white">{ad.landing.headline}</p>{/if}
+                                {#if ad.landing?.pitch}<p>{ad.landing.pitch}</p>{/if}
+                                {#if ad.landing?.advantages?.some((a: string) => a?.trim())}
+                                    <ul class="list-disc pr-5">
+                                        {#each ad.landing.advantages as a}
+                                            {#if a?.trim()}<li>{a}</li>{/if}
+                                        {/each}
+                                    </ul>
+                                {/if}
+                                <!-- preview=1: הכרטיס הזה מוצג גם ב"ממתינות" ו"נדחו",
+                                     ושם /ads/<id> חסום לציבור. השרת פותח אותו לסופר-אדמין בלבד. -->
+                                <a href={`/ads/${ad.id}?preview=1`} target="_blank" rel="noopener noreferrer"
+                                   class="inline-block mt-2 px-3 py-1.5 rounded-lg bg-white/10 text-amber-300 font-bold hover:bg-white/15">
+                                    פתח את דף הנחיתה המלא →
+                                </a>
+                            </div>
+                        </details>
+
+                        <!-- פעולות לפי טאב -->
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            {#if activeTab === 'pending'}
+                                {@const replacesLive = !!ad.replacesAdId && data.approved.some(a => a.id === ad.replacesAdId)}
+                                <form method="POST" action="?/approve" use:enhance>
+                                    <input type="hidden" name="id" value={ad.id} />
+                                    <button type="submit"
+                                            class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-black text-sm hover:bg-emerald-400"
+                                            title={replacesLive ? 'אשר את הגרסה החדשה במקום הישנה' : 'אשר ופרסם בטור הפרסומות'}>
+                                        {replacesLive ? '✅ אשר והחלף את הישנה' : '✅ אשר ופרסם'}
+                                    </button>
+                                </form>
+                                {#if replacesLive}
+                                    <!-- מפרסם שבאמת רוצה שתי פרסומות במקביל, ולא שדרג את הקיימת -->
+                                    <form method="POST" action="?/approve" use:enhance>
+                                        <input type="hidden" name="id" value={ad.id} />
+                                        <input type="hidden" name="keepPrevious" value="1" />
+                                        <button type="submit"
+                                                class="px-4 py-2 rounded-xl bg-white/5 border border-white/15 text-gray-300 font-black text-sm hover:bg-white/10"
+                                                title="הישנה תישאר על האתר וזו תתווסף לידה">
+                                            ➕ אשר כפרסומת נוספת
+                                        </button>
+                                    </form>
+                                {/if}
+                                <button type="button" onclick={() => startEdit(ad)}
+                                        class="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-500/40 text-blue-200 font-black text-sm hover:bg-blue-500/30">
+                                    ✏️ ערוך לפני אישור
+                                </button>
+                                <form method="POST" action="?/reject" use:enhance class="flex gap-2 flex-1 min-w-[220px]">
+                                    <input type="hidden" name="id" value={ad.id} />
+                                    <input type="text" name="reason" placeholder="סיבת דחייה (אופציונלי)"
+                                           class="flex-1 px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-white text-sm" />
+                                    <button type="submit"
+                                            class="px-4 py-2 rounded-xl bg-red-600 text-white font-black text-sm hover:bg-red-500">
+                                        ❌ דחה
+                                    </button>
+                                </form>
+                            {:else if activeTab === 'approved'}
+                                <a href={`/ads/${ad.id}`} target="_blank" rel="noopener"
+                                   class="px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 font-black text-sm hover:bg-amber-500/25">
+                                    פתח דף נחיתה
+                                </a>
+                                <button type="button" onclick={() => startEdit(ad)}
+                                        class="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-500/40 text-blue-200 font-black text-sm hover:bg-blue-500/30">
+                                    ✏️ ערוך
+                                </button>
+                                <form method="POST" action="?/unapprove" use:enhance>
+                                    <input type="hidden" name="id" value={ad.id} />
+                                    <button type="submit"
+                                            class="px-4 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 font-black text-sm hover:bg-amber-500/30"
+                                            onclick={(e) => { if (!confirm('להוריד את הפרסומת מהאתר ולהחזיר אותה לממתינות?')) e.preventDefault(); }}>
+                                        ⏸ הורד מהאתר
+                                    </button>
+                                </form>
+                                {#if canDelete}
+                                    <form method="POST" action="?/remove" use:enhance>
+                                        <input type="hidden" name="id" value={ad.id} />
+                                        <button type="submit"
+                                                class="px-4 py-2 rounded-xl bg-red-600/20 border border-red-500/40 text-red-300 font-black text-sm hover:bg-red-600/30"
+                                                onclick={(e) => { if (!confirm('למחוק את הפרסומת לצמיתות?')) e.preventDefault(); }}>
+                                            🗑 מחק
+                                        </button>
+                                    </form>
+                                {/if}
+                            {:else}
+                                <form method="POST" action="?/unreject" use:enhance>
+                                    <input type="hidden" name="id" value={ad.id} />
+                                    <button type="submit"
+                                            class="px-4 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 font-black text-sm hover:bg-amber-500/30">
+                                        ↩️ החזר לממתינות
+                                    </button>
+                                </form>
+                                {#if canDelete}
+                                    <form method="POST" action="?/remove" use:enhance>
+                                        <input type="hidden" name="id" value={ad.id} />
+                                        <button type="submit"
+                                                class="px-4 py-2 rounded-xl bg-red-600/20 border border-red-500/40 text-red-300 font-black text-sm hover:bg-red-600/30"
+                                                onclick={(e) => { if (!confirm('למחוק את הפרסומת לצמיתות?')) e.preventDefault(); }}>
+                                            🗑 מחק
+                                        </button>
+                                    </form>
+                                {/if}
+                            {/if}
+                        </div>
+                    {/if}
+                </article>
+            {/each}
+        </div>
+    {/if}
+
+    <!-- ============================================================ -->
+    <!-- תזמון פרסומות פעילות + תאריכי פקיעה                          -->
+    <!-- ============================================================ -->
+    <section class="mt-10">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">📅</span>
+                <h2 class="text-lg font-black text-white">תזמון פרסומות</h2>
+                <span class="text-xs font-bold bg-white/10 text-gray-300 border border-white/20 px-2 py-0.5 rounded-full">{data.schedules.length}</span>
             </div>
-            <div class="inv-tile occupied">
-                <span class="inv-num">{data.inventory.occupied}</span>
-                <span class="inv-label">תפוסות עכשיו</span>
-            </div>
-            <div class="inv-tile free">
-                <span class="inv-num">{data.inventory.freeNow}</span>
-                <span class="inv-label">פנויות לפרסום</span>
-            </div>
-            <div class="inv-tile" class:warn={data.inventory.pending > 0}>
-                <span class="inv-num">{data.inventory.pending}</span>
-                <span class="inv-label">ממתינות לאישור</span>
+            <div class="flex items-center gap-2 text-[10px] md:text-xs">
+                <span class="inline-flex items-center gap-1 text-emerald-300"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>פעילה</span>
+                <span class="inline-flex items-center gap-1 text-amber-300"><span class="w-2 h-2 rounded-full bg-amber-400"></span>≤ 7 ימים</span>
+                <span class="inline-flex items-center gap-1 text-red-300"><span class="w-2 h-2 rounded-full bg-red-400"></span>פגה</span>
+                <span class="inline-flex items-center gap-1 text-blue-300"><span class="w-2 h-2 rounded-full bg-blue-400"></span>מושהית</span>
             </div>
         </div>
 
-        {#if data.inventory.freeNow > 0}
-            <p class="inv-note free">
-                🟢 יש {data.inventory.freeNow === 1 ? 'משבצת פנויה אחת' : `${data.inventory.freeNow} משבצות פנויות`}
-                — אפשר לקלוט {data.inventory.freeNow === 1 ? 'מפרסם חדש' : 'מפרסמים חדשים'} כבר עכשיו.
-            </p>
-        {:else if active.length > 0}
-            <p class="inv-note full">
-                🔴 כל המשבצות תפוסות — המשבצת הקרובה מתפנה
-                ב-{fmtDate(active[0].expiresAt)} ({leftLabel(active[0])}).
-            </p>
+        {#if data.schedules.length === 0}
+            <div class="text-center py-8 text-gray-500 text-sm italic border border-dashed border-white/10 rounded-2xl">
+                אין כרגע פרסומות פעילות באתר
+            </div>
+        {:else}
+            <div class="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+                <table class="w-full text-sm" dir="rtl">
+                    <thead class="bg-white/5">
+                        <tr class="text-[11px] md:text-xs text-gray-400 uppercase tracking-wide">
+                            <th class="text-right font-bold px-2 py-2.5">מקום</th>
+                            <th class="text-right font-bold px-2 py-2.5">פרסומת</th>
+                            <th class="text-right font-bold px-2 py-2.5 hidden md:table-cell">מפרסם</th>
+                            <th class="text-right font-bold px-2 py-2.5">פורסם</th>
+                            <th class="text-right font-bold px-2 py-2.5">פג בתאריך</th>
+                            <th class="text-right font-bold px-2 py-2.5">משך</th>
+                            <th class="text-right font-bold px-2 py-2.5">ימים שנותרו</th>
+                            <th class="text-right font-bold px-2 py-2.5">סטטוס</th>
+                            <th class="text-right font-bold px-2 py-2.5">ניהול</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {#each data.schedules as s (s.id)}
+                            {@const stateColor = s.state === 'paused' ? 'bg-blue-500/15 text-blue-300 border-blue-500/40'
+                                : s.state === 'expired' ? 'bg-red-500/15 text-red-300 border-red-500/40'
+                                : s.state === 'ending' ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'}
+                            {@const stateLabel = s.state === 'paused' ? 'מושהית'
+                                : s.state === 'expired' ? 'פגה'
+                                : s.state === 'ending' ? 'פגה בקרוב'
+                                : 'פעילה'}
+                            {@const daysColor = s.state === 'paused' ? 'text-blue-300'
+                                : s.daysLeft < 0 ? 'text-red-300'
+                                : s.daysLeft <= 7 ? 'text-amber-300'
+                                : 'text-emerald-300'}
+                            {@const progress = Math.min(100, Math.max(0, ((s.durationDays - Math.max(0, s.daysLeft)) / s.durationDays) * 100))}
+                            <!-- תקופה נוכחית שאינה ברשימה (למשל 45 יום) מתווספת לבורר, כדי שלא תיעלם -->
+                            {@const durOptions = DURATION_OPTIONS.includes(s.durationDays)
+                                ? DURATION_OPTIONS
+                                : [...DURATION_OPTIONS, s.durationDays].sort((a, b) => a - b)}
+                            <!-- מקום מעל 12 (גלישה) מתווסף לבורר כדי שלא ייעלם -->
+                            {@const slotOptions = s.slot && !SLOT_NUMBERS.includes(s.slot)
+                                ? [...SLOT_NUMBERS, s.slot].sort((a, b) => a - b)
+                                : SLOT_NUMBERS}
+                            <tr class="border-t border-white/10 hover:bg-white/5">
+                                <!-- מספר המקום בטור + העברה ישירה למקום אחר (מקום תפוס - מתחלפות).
+                                     פריסה אנכית צרה - כדי שכל הטבלה תיכנס ברוחב המסך בלי גלילה -->
+                                <td class="px-2 py-2">
+                                    <form method="POST" action="?/setSlot" use:enhance class="flex flex-col items-start gap-1">
+                                        <input type="hidden" name="id" value={s.id} />
+                                        <div class="flex items-center gap-1">
+                                            <span class="inline-flex items-center justify-center min-w-6 h-6 px-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-black text-xs">
+                                                {s.slot ?? '-'}
+                                            </span>
+                                            <select name="slot"
+                                                    class="px-1.5 py-1 rounded-lg bg-black/40 border border-white/15 text-white text-[11px] focus:outline-none focus:border-amber-400/50">
+                                                {#each slotOptions as n (n)}
+                                                    <option value={n} selected={n === s.slot} style="background:{slotOptionBg(n)};color:#111">{n}</option>
+                                                {/each}
+                                            </select>
+                                        </div>
+                                        <button type="submit"
+                                                class="px-2 py-1 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-200 text-[11px] font-black hover:bg-purple-500/30 whitespace-nowrap"
+                                                title="העבר למקום שנבחר; אם המקום תפוס - שתי הפרסומות מתחלפות">
+                                            ⇄ העבר
+                                        </button>
+                                    </form>
+                                </td>
+                                <!-- הכותרת בשתי שורות במקום שורה אחת חתוכה - רואים יותר וחוסכים רוחב -->
+                                <td class="px-2 py-2 font-bold text-white">
+                                    <div class="line-clamp-2 break-words max-w-[130px] leading-snug">{s.title}</div>
+                                </td>
+                                <td class="px-2 py-2 text-gray-300 hidden md:table-cell">
+                                    <div class="truncate max-w-[120px]">{s.advertiserName || '-'}</div>
+                                    <div class="text-[10px] text-gray-500 truncate max-w-[120px]">{s.advertiserEmail}</div>
+                                </td>
+                                <!-- תאריך ושעה בשתי שורות - העמודה צרה בחצי -->
+                                <td class="px-2 py-2 text-gray-300 text-xs leading-snug whitespace-nowrap">
+                                    <div>{fmtDay(s.publishedAt)}</div>
+                                    <div class="text-[10px] text-gray-500">{fmtTime(s.publishedAt)}</div>
+                                </td>
+                                <td class="px-2 py-2 text-gray-300 text-xs leading-snug whitespace-nowrap">
+                                    <div>{fmtDay(s.expiresAt)}</div>
+                                    <div class="text-[10px] text-gray-500">{fmtTime(s.expiresAt)}</div>
+                                </td>
+                                <td class="px-2 py-2 text-gray-300 text-xs">{s.durationDays} ימים</td>
+                                <td class="px-2 py-2 font-black {daysColor} text-xs whitespace-nowrap">
+                                    {s.daysLeft < 0 ? `${-s.daysLeft}- ימים` : `${s.daysLeft} ימים`}
+                                    <div class="mt-1 h-1.5 w-16 rounded-full bg-white/10 overflow-hidden">
+                                        <div class="h-full {s.state === 'expired' ? 'bg-red-400' : s.state === 'ending' ? 'bg-amber-400' : 'bg-emerald-400'}"
+                                             style="width: {progress}%"></div>
+                                    </div>
+                                </td>
+                                <td class="px-2 py-2">
+                                    <span class="text-[11px] font-black border px-2 py-0.5 rounded-full whitespace-nowrap {stateColor}">{stateLabel}</span>
+                                </td>
+                                <!-- ניהול הפרסומת ישירות מהשורה: קציבת תקופה, השהיה, הורדה, מחיקה -->
+                                <td class="px-2 py-2">
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <form method="POST" action="?/setDuration" use:enhance class="flex items-center gap-1">
+                                            <input type="hidden" name="id" value={s.id} />
+                                            <select name="days"
+                                                    class="px-2 py-1 rounded-lg bg-black/40 border border-white/15 text-white text-[11px] focus:outline-none focus:border-amber-400/50">
+                                                {#each durOptions as d (d)}
+                                                    <option value={d} selected={d === s.durationDays} style="background:#fff;color:#111">{d} ימים</option>
+                                                {/each}
+                                            </select>
+                                            <button type="submit"
+                                                    class="px-2.5 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-200 text-[11px] font-black hover:bg-blue-500/30 whitespace-nowrap"
+                                                    title="התקופה נספרת מיום הפרסום">
+                                                ⏱ קצוב
+                                            </button>
+                                        </form>
+
+                                        {#if s.state === 'paused'}
+                                            <form method="POST" action="?/resume" use:enhance>
+                                                <input type="hidden" name="id" value={s.id} />
+                                                <button type="submit"
+                                                        class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[11px] font-black hover:bg-emerald-500/30 whitespace-nowrap"
+                                                        title="הימים השמורים נספרים מהיום">
+                                                    ▶ המשך
+                                                </button>
+                                            </form>
+                                        {:else}
+                                            <form method="POST" action="?/pause" use:enhance>
+                                                <input type="hidden" name="id" value={s.id} />
+                                                <button type="submit"
+                                                        class="px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-gray-200 text-[11px] font-black hover:bg-white/20 whitespace-nowrap"
+                                                        title="יורדת מהאתר ושומרת את הימים שנותרו"
+                                                        onclick={(e) => { if (!confirm('להשהות את הפרסומת? היא תרד מהאתר והימים שנותרו יישמרו לה.')) e.preventDefault(); }}>
+                                                    ⏸ השהה
+                                                </button>
+                                            </form>
+                                        {/if}
+
+                                        <form method="POST" action="?/unapprove" use:enhance>
+                                            <input type="hidden" name="id" value={s.id} />
+                                            <button type="submit"
+                                                    class="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-200 text-[11px] font-black hover:bg-amber-500/25 whitespace-nowrap"
+                                                    title="חוזרת לתור האישורים"
+                                                    onclick={(e) => { if (!confirm('להוריד את הפרסומת מהאתר ולהחזיר אותה לממתינות?')) e.preventDefault(); }}>
+                                                ⤴ הורד
+                                            </button>
+                                        </form>
+
+                                        {#if canDelete}
+                                            <form method="POST" action="?/remove" use:enhance>
+                                                <input type="hidden" name="id" value={s.id} />
+                                                <button type="submit"
+                                                        class="px-2.5 py-1 rounded-lg bg-red-600/20 border border-red-500/40 text-red-300 text-[11px] font-black hover:bg-red-600/30 whitespace-nowrap"
+                                                        onclick={(e) => { if (!confirm(`למחוק לצמיתות את "${s.title}"?`)) e.preventDefault(); }}>
+                                                    🗑 מחק
+                                                </button>
+                                            </form>
+                                        {/if}
+                                    </div>
+                                </td>
+                            </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
         {/if}
 
-        <!-- לוח התפוסה: כל מודעה פעילה, כמה זמן נשאר לה ומתי היא מתפנה -->
-        {#if active.length > 0}
-            <h2 class="sec-title">לוח התפוסה — מי מחזיק משבצת ועד מתי</h2>
-            <div class="occ-list">
-                {#each active as a (a.id)}
-                    <div class="occ-row">
-                        <div class="occ-head">
-                            <span class="occ-title">{a.title}</span>
-                            <span class="occ-who">{a.submittedBy?.email || a.submittedBy?.name || 'ללא זיהוי'}</span>
-                        </div>
-                        <div class="occ-bar" title="נוצלו {a.usedPct}% מהתקופה">
-                            <div class="occ-bar-fill" class:ending={a.daysLeft !== null && a.daysLeft <= 7} style="width: {a.usedPct}%"></div>
-                        </div>
-                        <div class="occ-meta">
-                            <span class:soon={a.daysLeft !== null && a.daysLeft <= 7}>⏳ {leftLabel(a)}</span>
-                            {#if a.expiresAt}<span>מתפנה ב-{fmtDate(a.expiresAt)}</span>{/if}
-                            {#if a.totalDays}<span>מסלול: {planLabel(a.totalDays)}</span>{/if}
-                        </div>
-                    </div>
-                {/each}
-            </div>
+        {#if data.reminderRun?.sent > 0}
+            <p class="mt-2 text-[11px] text-emerald-300/80 italic">
+                ✉️ נשלחו {data.reminderRun.sent} תזכורות אוטומטיות למפרסמים בטעינה זו.
+            </p>
         {/if}
     </section>
 
-    <!-- ═══ 2. המפרסמים — הנתונים של כל אחד ═══ -->
-    {#if advertisers.length > 0}
-        <section class="advs">
-            <h2 class="sec-title">המפרסמים — הנתונים של כל אחד</h2>
-            {#each advertisers as g (g.key)}
-                <div class="adv-card">
-                    <div class="adv-head">
-                        <div class="adv-id">
-                            <span class="adv-name">👤 {g.name}</span>
-                            {#if g.email}
-                                <a class="adv-mail" href="mailto:{g.email}" dir="ltr">{g.email}</a>
-                            {/if}
-                        </div>
-                        <div class="adv-flags">
-                            {#if g.activeCount > 0}
-                                <span class="status-pill approved">
-                                    {g.activeCount === 1 ? 'מודעה באוויר' : `${g.activeCount} באוויר`}{#if g.maxDaysLeft !== null}&nbsp;· עוד {g.maxDaysLeft} ימים{/if}
-                                </span>
-                            {/if}
-                            {#if g.pendingCount > 0}
-                                <span class="status-pill pending">{g.pendingCount} ממתינות</span>
-                            {/if}
-                        </div>
-                    </div>
+    <!-- ============================================================ -->
+    <!-- מפרסמים - קיבוץ לפי אימייל                                  -->
+    <!-- ============================================================ -->
+    <section class="mt-10 mb-12">
+        <div class="flex items-center gap-2 mb-3">
+            <span class="text-2xl">👤</span>
+            <h2 class="text-lg font-black text-white">מפרסמים</h2>
+            <span class="text-xs font-bold bg-white/10 text-gray-300 border border-white/20 px-2 py-0.5 rounded-full">{data.advertisers.length}</span>
+        </div>
 
-                    <!-- המדדים המצטברים של המפרסם — כמו בדשבורד שלו -->
-                    <div class="adv-stats">
-                        <div class="adv-stat"><span class="n">{g.totals.impressions}</span><span class="l">צפיות</span></div>
-                        <div class="adv-stat"><span class="n">{g.totals.clicks}</span><span class="l">הקלקות</span></div>
-                        <div class="adv-stat"><span class="n">{ctr(g.totals.clicks, g.totals.impressions)}</span><span class="l">אחוז הקלקה</span></div>
-                        <div class="adv-stat"><span class="n">{g.totals.landing}</span><span class="l">דף נחיתה</span></div>
-                        <div class="adv-stat leads"><span class="n">{g.totals.leads}</span><span class="l">פניות</span></div>
-                    </div>
-
-                    <!-- המודעות של המפרסם -->
-                    <div class="adv-ads">
-                        {#each g.ads as a (a.id)}
-                            <div class="promo-adv">
-                                <span class="adv-ad-title">{a.title}</span>
-                                <span class="status-pill {a.isExpired ? 'rejected' : a.status}">
-                                    {a.isExpired ? 'פג תוקף' : a.status === 'pending' ? 'ממתינה' : a.status === 'approved' ? 'באוויר' : 'נדחתה'}
-                                </span>
-                                {#if a.isActive}
-                                    <span class="adv-ad-left" class:soon={a.daysLeft !== null && a.daysLeft <= 7}>
-                                        ⏳ {leftLabel(a)}{#if a.expiresAt}&nbsp;(עד {fmtDate(a.expiresAt)}){/if}
-                                    </span>
-                                {/if}
-                                <span class="adv-ad-nums" title="צפיות · הקלקות · דף נחיתה · פניות (בסוגריים: 7 הימים האחרונים)">
-                                    👁️ {a.totals.impressions} ({a.week.impressions})
-                                    · 🖱️ {a.totals.clicks} ({a.week.clicks})
-                                    · 📄 {a.totals.landing}
-                                    · 🤝 {a.totals.leads}
-                                </span>
-                                {#if a.status === 'approved'}
-                                    <a class="adv-ad-link" href="/ads/{a.id}" target="_blank" rel="noopener">לדף הנחיתה ↗</a>
-                                {/if}
-                            </div>
-                        {/each}
-                    </div>
-                </div>
-            {/each}
-        </section>
-    {/if}
-
-    <!-- ═══ 3. אישור / דחייה ═══ -->
-    <h2 class="sec-title">אישור ודחייה</h2>
-    <div class="tabs">
-        <button type="button" class="tab-btn" class:active={tab === 'pending'} onclick={() => (tab = 'pending')}>
-            ⏳ ממתינות ({pending.length})
-        </button>
-        <button type="button" class="tab-btn" class:active={tab === 'approved'} onclick={() => (tab = 'approved')}>
-            ✅ מאושרות ({approved.length})
-        </button>
-        <button type="button" class="tab-btn" class:active={tab === 'rejected'} onclick={() => (tab = 'rejected')}>
-            ❌ נדחו ({rejected.length})
-        </button>
-    </div>
-
-    {#if shown.length === 0}
-        <p class="empty">אין פרסומות בקטגוריה הזו.</p>
-    {/if}
-
-    <div class="promo-list">
-        {#each shown as ad (ad.id)}
-            <!-- id כעוגן — ההתראה בפרופיל מקשרת ישירות לכרטיס: /admin/ads#ad-{id} -->
-            <div class="promo-card" id="ad-{ad.id}">
-                <div class="ad-card-img">
-                    {#if ad.mainImage}
-                        <!-- אותו מיקום/זום שהמפרסם קבע — המנהל מאשר את מה שבאמת יוצג -->
-                        <img src={ad.mainImage} alt={ad.title} use:adImgFit={parseAdImageFit(ad.mainImageFit)} />
-                    {:else}
-                        <div class="no-img">אין תמונה</div>
-                    {/if}
-                </div>
-                <div class="ad-card-body">
-                    <div class="ad-card-head">
-                        <h2>{ad.title}</h2>
-                        <span class="status-pill {ad.isExpired ? 'rejected' : ad.status}">
-                            {ad.isExpired ? 'פג תוקף' : ad.status === 'pending' ? 'ממתינה' : ad.status === 'approved' ? 'מאושרת' : 'נדחתה'}
-                        </span>
-                        {#if ad.isPaused}
-                            <span class="status-pill pending">⏸ מושהית — {ad.pausedDaysLeft ?? 0} ימים שמורים</span>
-                        {/if}
-                        {#if ad.payment === 'code'}
-                            <span class="status-pill approved">💳 קוד תנועה — כמו שולם</span>
-                        {:else if ad.codeRequested}
-                            <!-- הקוד הוא בקשה בלבד. חייב לומר במפורש שלא שולם,
-                                 אחרת מאשרים פרסומת בהנחה שנכנס כסף. -->
-                            <span class="status-pill pending">🎟️ ביקש חינם עם קוד — לא שולם</span>
-                        {:else}
-                            <span class="status-pill pending">⌛ תשלום לתיאום</span>
-                        {/if}
-                        <!-- המפרסם ערך את התוכן בעצמו מדשבורד הנכס שלו — כדאי לעבור עליו -->
-                        {#if ad.editedAt}
-                            <span class="status-pill pending">✏️ נערכה ע"י המפרסם: {fmtDate(ad.editedAt)}</span>
-                        {/if}
-                        <!-- מפרסם חוזר ששיפר את המודעה שלו: לא בקשה חדשה -->
-                        {#if ad.replacesAdId && ad.status === 'pending'}
-                            <span class="status-pill update">🔄 עדכון למודעה קיימת</span>
-                        {:else if ad.supersededBy}
-                            <span class="status-pill rejected">🔄 גרסה ישנה — הוחלפה בגרסה מעודכנת</span>
-                        {/if}
-                    </div>
-                    {#if ad.replacesAdId && ad.status === 'pending'}
-                        {@const prevLive = shown.some((o) => o.id === ad.replacesAdId && o.status === 'approved' && !o.isExpired)}
-                        <p class="ad-update-note">
-                            גרסה מעודכנת של{ad.replacesTitle ? ` "${ad.replacesTitle}"` : ' מודעה קודמת של אותו מפרסם'}.
-                            {prevLive
-                                ? 'עם האישור היא נכנסת במקום הישנה — אותה משבצת, אותו תאריך סיום, והישנה יורדת מהאתר.'
-                                : 'למפרסם אין כרגע מודעה פעילה על האתר — האישור פשוט יפרסם את הגרסה הזו.'}
-                        </p>
-                    {/if}
-                    <p class="ad-sub">{ad.subtitle}</p>
-                    {#if ad.hoverText}<p class="ad-hover">ריחוף: {ad.hoverText}</p>{/if}
-                    <p class="ad-meta">
-                        {#if ad.submittedBy?.email}👤 {ad.submittedBy.email} · {/if}
-                        📅 נשלחה: {fmtDate(ad.submittedAt)}
-                        {#if ad.status === 'approved' && ad.expiresAt} · ⏳ {ad.isExpired ? `פגה ב-${fmtDate(ad.expiresAt)}` : `${leftLabel(ad)} (עד ${fmtDate(ad.expiresAt)})`}{/if}
-                    </p>
-                    {#if ad.status === 'approved'}
-                        <!-- המדדים — אותם מספרים שהמפרסם רואה בדשבורד שלו -->
-                        <p class="ad-meta">
-                            📊 👁️ {ad.totals.impressions} צפיות · 🖱️ {ad.totals.clicks} הקלקות ({ctr(ad.totals.clicks, ad.totals.impressions)})
-                            · 📄 {ad.totals.landing} דף נחיתה · 🤝 {ad.totals.leads} פניות
-                        </p>
-                    {/if}
-                    {#if ad.landing?.phone || ad.landing?.website}
-                        <p class="ad-meta">
-                            {#if ad.landing.phone}📞 {ad.landing.phone}{/if}
-                            {#if ad.landing.website}
-                                · 🌐 <a href={ad.landing.website} target="_blank" rel="noopener noreferrer">{ad.landing.website}</a>
-                            {/if}
-                        </p>
-                    {/if}
-                    {#if ad.rejectionReason}
-                        <p class="ad-reject-reason">סיבת דחייה: {ad.rejectionReason}</p>
-                    {/if}
-
-                    {#if ad.isActive && ad.slotIndex >= 0}
-                        <!-- מקום מעל 12 (גלישה) מתווסף לבורר כדי שלא ייעלם -->
-                        {@const slotOptions = ad.slot && !SLOT_NUMBERS.includes(ad.slot)
-                            ? [...SLOT_NUMBERS, ad.slot].sort((a: number, b: number) => a - b)
-                            : SLOT_NUMBERS}
-                        <!-- מספר המקום הקבוע של המודעה בלוח + החלפת מקום: החצים
-                             מחליפים מספרים עם השכנה שבאוויר, והבורר מעביר ישירות
-                             למקום שנבחר (מקום תפוס — השתיים מתחלפות). -->
-                        <div class="slot-row">
-                            <span class="slot-badge">{ad.slot ?? ad.slotIndex + 1}</span>
-                            <span class="slot-label">משבצת {ad.slot ?? ad.slotIndex + 1} מתוך {AD_SLOT_COUNT} בטור</span>
-                            <form method="POST" action="?/move" use:enhance>
-                                <input type="hidden" name="id" value={ad.id} />
-                                <input type="hidden" name="dir" value="up" />
-                                <button type="submit" class="a-btn ghost" disabled={ad.slotIndex === 0} title="העלה משבצת אחת">▲ למעלה</button>
-                            </form>
-                            <form method="POST" action="?/move" use:enhance>
-                                <input type="hidden" name="id" value={ad.id} />
-                                <input type="hidden" name="dir" value="down" />
-                                <button type="submit" class="a-btn ghost" disabled={ad.slotIndex === ad.slotTotal - 1} title="הורד משבצת אחת">▼ למטה</button>
-                            </form>
-                            <form method="POST" action="?/setSlot" use:enhance class="slot-jump-form">
-                                <input type="hidden" name="id" value={ad.id} />
-                                <select name="slot" class="duration-select" aria-label="מספר מקום בלוח">
-                                    {#each slotOptions as n (n)}
-                                        <!-- רקע לבן + טקסט כהה חובה: רקע כהה נבלע בהדגשת הבחירה של המערכת -->
-                                        <option value={n} selected={n === ad.slot} style="background:#fff;color:#111">{n}</option>
-                                    {/each}
-                                </select>
-                                <button type="submit" class="a-btn ghost"
-                                        title="העבר למקום שנבחר; אם המקום תפוס — שתי הפרסומות מתחלפות">
-                                    ⇄ העבר
-                                </button>
-                            </form>
-                        </div>
-                    {/if}
-
-                    <div class="ad-actions">
-                        {#if ad.status === 'approved'}
-                            <a href="/ads/{ad.id}" target="_blank" class="a-btn ghost">פתח את דף הנחיתה ↗</a>
-                        {/if}
-                        {#if ad.isActive || ad.isPaused}
-                            <!-- קציבת תקופה: נספרת מיום האישור, ולכן קציבה קצרה
-                                 מהזמן שכבר רץ מורידה את הפרסומת מיד -->
-                            <form method="POST" action="?/setDuration" use:enhance class="approve-form">
-                                <input type="hidden" name="id" value={ad.id} />
-                                <label class="duration-label">
-                                    תקופה:
-                                    <select name="days" class="duration-select">
-                                        {#each DURATION_OPTIONS as d (d)}
-                                            <option value={d} selected={d === ad.totalDays}>{d} ימים</option>
-                                        {/each}
-                                    </select>
-                                </label>
-                                <button type="submit" class="a-btn ghost" title="התקופה נספרת מיום האישור">⏱ קצוב</button>
-                            </form>
-                        {/if}
-                        {#if ad.isPaused}
-                            <form method="POST" action="?/resume" use:enhance>
-                                <input type="hidden" name="id" value={ad.id} />
-                                <button type="submit" class="a-btn approve" title="הימים השמורים נספרים מהיום">▶ המשך</button>
-                            </form>
-                        {:else if ad.isActive}
-                            <!-- השהיה: יורדת מהאתר, הימים שנותרו נשמרים לה -->
-                            <form method="POST" action="?/pause" use:enhance>
-                                <input type="hidden" name="id" value={ad.id} />
-                                <button type="submit" class="a-btn ghost"
-                                        onclick={(e) => { if (!confirm('להשהות את הפרסומת? היא תרד מהאתר והימים שנותרו יישמרו לה.')) e.preventDefault(); }}>
-                                    ⏸ השהה
-                                </button>
-                            </form>
-                        {/if}
-                        {#if ad.isActive}
-                            <!-- הורדה מהאתר בלי מחיקה: הפרסומת חוזרת לממתינות ואפשר
-                                 להחזיר אותה לאוויר באישור מחדש -->
-                            <form method="POST" action="?/unapprove" use:enhance>
-                                <input type="hidden" name="id" value={ad.id} />
-                                <button type="submit" class="a-btn ghost"
-                                        onclick={(e) => { if (!confirm('להוריד את הפרסומת מהאתר ולהחזיר אותה לממתינות?')) e.preventDefault(); }}>
-                                    ⏸ הורד מהאתר
-                                </button>
-                            </form>
-                        {/if}
-                        {#if ad.status !== 'approved' || ad.isExpired}
-                            <form method="POST" action="?/approve" use:enhance class="approve-form">
-                                <input type="hidden" name="id" value={ad.id} />
-                                <label class="duration-label">
-                                    שולם עבור:
-                                    <!-- ברירת המחדל = התקופה שהמפרסם בחר בשליחה -->
-                                    <select name="durationDays" class="duration-select">
-                                        {#each adPlans as plan (plan.days)}
-                                            <option value={plan.days} selected={ad.requestedDurationDays === plan.days}>
-                                                {plan.label} — {plan.price} ₪
-                                            </option>
-                                        {/each}
-                                    </select>
-                                </label>
-                                <button type="submit" class="a-btn approve">
-                                    {ad.isExpired
-                                        ? '🔄 חדש את הפרסום'
-                                        : ad.replacesAdId && shown.some((o) => o.id === ad.replacesAdId && o.status === 'approved' && !o.isExpired)
-                                          ? '✅ אשר והחלף את הישנה'
-                                          : '✅ אשר ופרסם'}
-                                </button>
-                            </form>
-                            <!-- מפרסם שבאמת רוצה שתי מודעות במקביל, ולא שדרג את הקיימת -->
-                            {#if ad.replacesAdId && shown.some((o) => o.id === ad.replacesAdId && o.status === 'approved' && !o.isExpired)}
-                                <form method="POST" action="?/approve" use:enhance class="approve-form">
-                                    <input type="hidden" name="id" value={ad.id} />
-                                    <input type="hidden" name="keepPrevious" value="1" />
-                                    <input type="hidden" name="durationDays" value={ad.requestedDurationDays} />
-                                    <button type="submit" class="a-btn" title="הישנה תישאר על האתר וזו תתווסף לידה">
-                                        ➕ אשר כמודעה נוספת
-                                    </button>
-                                </form>
-                            {/if}
-                        {/if}
-                        {#if ad.status !== 'rejected'}
-                            <form method="POST" action="?/reject" use:enhance class="reject-form">
-                                <input type="hidden" name="id" value={ad.id} />
-                                <input type="text" name="reason" placeholder="סיבת דחייה (לא חובה)" class="reject-input" />
-                                <button type="submit" class="a-btn reject">❌ דחה</button>
-                            </form>
-                        {/if}
-                    </div>
-                </div>
+        {#if data.advertisers.length === 0}
+            <div class="text-center py-8 text-gray-500 text-sm italic border border-dashed border-white/10 rounded-2xl">
+                עוד אין מפרסמים במערכת
             </div>
-        {/each}
-    </div>
+        {:else}
+            <div class="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+                <table class="w-full text-sm" dir="rtl">
+                    <thead class="bg-white/5">
+                        <tr class="text-[11px] md:text-xs text-gray-400 uppercase tracking-wide">
+                            <th class="text-right font-bold px-3 py-2.5">שם</th>
+                            <th class="text-right font-bold px-3 py-2.5 hidden md:table-cell">חברה</th>
+                            <th class="text-right font-bold px-3 py-2.5 hidden md:table-cell">עיר/כתובת</th>
+                            <th class="text-right font-bold px-3 py-2.5 hidden lg:table-cell">טלפון</th>
+                            <th class="text-right font-bold px-3 py-2.5">סך תשלום</th>
+                            <th class="text-right font-bold px-3 py-2.5">פרסומות</th>
+                            <th class="text-right font-bold px-3 py-2.5">פעילות</th>
+                            <th class="text-right font-bold px-3 py-2.5 hidden md:table-cell">סוג</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {#each data.advertisers as a (a.key)}
+                            <tr class="border-t border-white/10 hover:bg-white/5">
+                                <td class="px-3 py-2 font-bold text-white">
+                                    <div class="truncate max-w-[160px]">{a.name || '-'}</div>
+                                    <div class="text-[10px] text-gray-500 truncate max-w-[160px]">{a.email}</div>
+                                </td>
+                                <td class="px-3 py-2 text-gray-300 hidden md:table-cell truncate max-w-[160px]">{a.companyName || '-'}</td>
+                                <td class="px-3 py-2 text-gray-300 hidden md:table-cell truncate max-w-[160px]">{a.address || '-'}</td>
+                                <td class="px-3 py-2 text-gray-300 hidden lg:table-cell whitespace-nowrap">{a.phone || '-'}</td>
+                                <td class="px-3 py-2 font-black text-emerald-300 whitespace-nowrap">
+                                    {a.totalPaid > 0 ? `₪${a.totalPaid.toLocaleString('he-IL')}` : '-'}
+                                </td>
+                                <td class="px-3 py-2 text-gray-300">{a.adsCount}</td>
+                                <td class="px-3 py-2 {a.activeCount > 0 ? 'text-emerald-300 font-black' : 'text-gray-500'}">{a.activeCount}</td>
+                                <td class="px-3 py-2 hidden md:table-cell">
+                                    {#if a.isReturning}
+                                        <span class="text-[11px] font-black bg-purple-500/15 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-full whitespace-nowrap">🔁 חוזר</span>
+                                    {:else}
+                                        <span class="text-[11px] font-black bg-blue-500/15 text-blue-300 border border-blue-500/40 px-2 py-0.5 rounded-full whitespace-nowrap">חדש</span>
+                                    {/if}
+                                </td>
+                            </tr>
+                        {/each}
+                    </tbody>
+                </table>
+            </div>
+        {/if}
+    </section>
 </div>
-
-<style>
-    /* קופסה כהה על הרקע הוורוד — כמו שאר כרטיסי האדמין */
-    .ads-admin {
-        max-width: 56rem;
-        margin: 0 auto;
-        padding: 1.25rem 1rem 2rem;
-        background: #16264d;
-        border: 1px solid #3b5794;
-        border-radius: 1rem;
-    }
-    .ads-admin h1 {
-        font-size: 1.75rem;
-        font-weight: 900;
-        color: #fff;
-        margin: 0 0 1.25rem;
-        text-align: center;
-    }
-
-    .admin-alert {
-        border-radius: 0.75rem;
-        padding: 0.75rem 1rem;
-        font-size: 0.9rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
-        text-align: center;
-    }
-    .admin-alert.ok {
-        background: rgba(34, 197, 94, 0.12);
-        border: 1px solid rgba(34, 197, 94, 0.35);
-        color: #86efac;
-    }
-    .admin-alert.error {
-        background: rgba(239, 68, 68, 0.12);
-        border: 1px solid rgba(239, 68, 68, 0.35);
-        color: #fca5a5;
-    }
-
-    .sec-title {
-        font-size: 1.05rem;
-        font-weight: 900;
-        color: #fff;
-        margin: 1.5rem 0 0.75rem;
-    }
-
-    /* ═══ לוח המלאי ═══ */
-    .inv-tiles {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.6rem;
-    }
-    @media (max-width: 560px) {
-        .inv-tiles { grid-template-columns: repeat(2, 1fr); }
-    }
-    .inv-tile {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.15rem;
-        padding: 0.75rem 0.5rem;
-        border-radius: 0.75rem;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        text-align: center;
-    }
-    .inv-tile.occupied { border-color: rgba(96, 165, 250, 0.4); }
-    .inv-tile.occupied .inv-num { color: #93c5fd; }
-    .inv-tile.free { border-color: rgba(34, 197, 94, 0.4); }
-    .inv-tile.free .inv-num { color: #86efac; }
-    .inv-tile.warn { border-color: rgba(245, 158, 11, 0.5); }
-    .inv-tile.warn .inv-num { color: #fcd34d; }
-    .inv-num {
-        font-size: 1.6rem;
-        font-weight: 900;
-        color: #fff;
-        font-variant-numeric: tabular-nums;
-        line-height: 1;
-    }
-    .inv-label { font-size: 0.7rem; font-weight: 700; color: #9ca3af; }
-
-    .inv-note {
-        margin: 0.75rem 0 0;
-        border-radius: 0.75rem;
-        padding: 0.6rem 0.9rem;
-        font-size: 0.85rem;
-        font-weight: 700;
-    }
-    .inv-note.free {
-        background: rgba(34, 197, 94, 0.1);
-        border: 1px solid rgba(34, 197, 94, 0.3);
-        color: #86efac;
-    }
-    .inv-note.full {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #fca5a5;
-    }
-
-    /* לוח התפוסה */
-    .occ-list { display: flex; flex-direction: column; gap: 0.6rem; }
-    .occ-row {
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 0.75rem;
-        padding: 0.65rem 0.85rem;
-    }
-    .occ-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        margin-bottom: 0.4rem;
-    }
-    .occ-title { font-weight: 900; color: #fff; font-size: 0.9rem; }
-    .occ-who { font-size: 0.72rem; color: #9ca3af; direction: ltr; }
-    .occ-bar {
-        height: 0.45rem;
-        border-radius: 999px;
-        background: rgba(0, 0, 0, 0.35);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        overflow: hidden;
-    }
-    .occ-bar-fill {
-        height: 100%;
-        border-radius: 999px;
-        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-    }
-    /* שבוע אחרון לתקופה — הפס מאדים כדי למשוך את העין לחידוש */
-    .occ-bar-fill.ending { background: linear-gradient(90deg, #f59e0b, #ef4444); }
-    .occ-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.35rem 1rem;
-        margin-top: 0.4rem;
-        font-size: 0.72rem;
-        color: #9ca3af;
-        font-weight: 700;
-    }
-    .occ-meta .soon { color: #fcd34d; }
-
-    /* ═══ המפרסמים ═══ */
-    .advs { margin-bottom: 0.5rem; }
-    .adv-card {
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 0.9rem;
-        padding: 0.85rem 1rem;
-        margin-bottom: 0.75rem;
-    }
-    .adv-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-    .adv-id { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
-    .adv-name { font-weight: 900; color: #fff; font-size: 0.95rem; }
-    .adv-mail { font-size: 0.75rem; color: #93c5fd; text-decoration: none; }
-    .adv-mail:hover { text-decoration: underline; }
-    .adv-flags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-
-    .adv-stats {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 0.5rem;
-        margin-top: 0.7rem;
-    }
-    @media (max-width: 560px) {
-        .adv-stats { grid-template-columns: repeat(3, 1fr); }
-    }
-    .adv-stat {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.1rem;
-        border-radius: 0.6rem;
-        background: rgba(0, 0, 0, 0.25);
-        border: 1px solid rgba(255, 255, 255, 0.07);
-        padding: 0.45rem 0.3rem;
-        text-align: center;
-    }
-    .adv-stat .n {
-        font-size: 1.05rem;
-        font-weight: 900;
-        color: #fff;
-        font-variant-numeric: tabular-nums;
-        line-height: 1.1;
-    }
-    .adv-stat .l { font-size: 0.62rem; font-weight: 700; color: #9ca3af; }
-    .adv-stat.leads .n { color: #86efac; }
-
-    .adv-ads { margin-top: 0.7rem; display: flex; flex-direction: column; gap: 0.4rem; }
-    .promo-adv {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-        font-size: 0.75rem;
-        color: #d1d5db;
-        border-top: 1px dashed rgba(255, 255, 255, 0.08);
-        padding-top: 0.45rem;
-    }
-    .adv-ad-title { font-weight: 800; color: #fff; }
-    .adv-ad-left { font-weight: 700; color: #9ca3af; }
-    .adv-ad-left.soon { color: #fcd34d; }
-    .adv-ad-nums { color: #9ca3af; font-variant-numeric: tabular-nums; }
-    .adv-ad-link { color: #93c5fd; text-decoration: none; margin-inline-start: auto; }
-    .adv-ad-link:hover { text-decoration: underline; }
-
-    .tabs {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1.25rem;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    .tab-btn {
-        padding: 0.5rem 1.1rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        background: rgba(255, 255, 255, 0.05);
-        color: #d1d5db;
-        font-weight: 700;
-        font-size: 0.9rem;
-        cursor: pointer;
-        font-family: inherit;
-        transition: all 0.15s;
-    }
-    .tab-btn:hover { color: #fff; }
-    .tab-btn.active {
-        background: #f59e0b;
-        border-color: #f59e0b;
-        color: #000;
-    }
-
-    .empty {
-        text-align: center;
-        color: #9ca3af;
-        padding: 2rem 0;
-    }
-
-    .promo-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-    .promo-card {
-        display: flex;
-        gap: 1rem;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 1rem;
-        padding: 1rem;
-        scroll-margin-top: 6rem;
-    }
-    /* נחיתה מהעוגן שבהתראת הפרופיל — הכרטיס המבוקש מודגש */
-    .promo-card:target {
-        border-color: rgba(244, 63, 94, 0.6);
-        box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.25);
-    }
-    @media (max-width: 640px) {
-        .promo-card { flex-direction: column; }
-    }
-    .ad-card-img {
-        width: 120px;
-        flex-shrink: 0;
-        border-radius: 0.6rem;
-        overflow: hidden;
-        background: rgba(0, 0, 0, 0.3);
-        /* עוגן לתמונה הממוקמת אבסולוטית ע"י adImgFit + גובה שלא יקרוס */
-        position: relative;
-        min-height: 160px;
-    }
-    @media (max-width: 640px) {
-        .ad-card-img { width: 100%; height: 180px; max-height: 180px; }
-    }
-    .ad-card-img img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-    }
-    .no-img {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        min-height: 100px;
-        color: #9ca3af;
-        font-size: 0.75rem;
-    }
-    .ad-card-body {
-        flex: 1;
-        min-width: 0;
-    }
-    .ad-card-head {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin-bottom: 0.25rem;
-        flex-wrap: wrap;
-    }
-    .ad-card-head h2 {
-        font-size: 1.1rem;
-        font-weight: 900;
-        color: #fff;
-        margin: 0;
-    }
-    .status-pill {
-        font-size: 0.7rem;
-        font-weight: 900;
-        padding: 0.15rem 0.6rem;
-        border-radius: 999px;
-    }
-    .status-pill.pending {
-        background: rgba(245, 158, 11, 0.15);
-        border: 1px solid rgba(245, 158, 11, 0.4);
-        color: #fcd34d;
-    }
-    .status-pill.approved {
-        background: rgba(34, 197, 94, 0.15);
-        border: 1px solid rgba(34, 197, 94, 0.4);
-        color: #86efac;
-    }
-    .status-pill.rejected {
-        background: rgba(239, 68, 68, 0.15);
-        border: 1px solid rgba(239, 68, 68, 0.4);
-        color: #fca5a5;
-    }
-    /* עדכון למודעה קיימת — נבדל מ"ממתינה" רגילה כדי שהמנהל יראה מיד
-       שזו אותה מודעה בגרסה חדשה ולא בקשה שנייה של אותו מפרסם */
-    .status-pill.update {
-        background: rgba(59, 130, 246, 0.15);
-        border: 1px solid rgba(59, 130, 246, 0.45);
-        color: #bfdbfe;
-    }
-    .ad-update-note {
-        margin: 0 0 0.5rem;
-        font-size: 0.78rem;
-        line-height: 1.4;
-        color: #bfdbfe;
-        background: rgba(59, 130, 246, 0.08);
-        border: 1px solid rgba(59, 130, 246, 0.25);
-        border-radius: 0.6rem;
-        padding: 0.4rem 0.6rem;
-    }
-    .ad-sub {
-        color: #d1d5db;
-        font-size: 0.9rem;
-        margin: 0 0 0.35rem;
-    }
-    .ad-hover {
-        color: #9ca3af;
-        font-size: 0.8rem;
-        margin: 0 0 0.35rem;
-    }
-    .ad-meta {
-        color: #9ca3af;
-        font-size: 0.75rem;
-        margin: 0 0 0.25rem;
-    }
-    .ad-meta a { color: #93c5fd; }
-    .ad-reject-reason {
-        color: #fca5a5;
-        font-size: 0.8rem;
-        font-weight: 700;
-        margin: 0.25rem 0;
-    }
-
-    .ad-actions {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem;
-        margin-top: 0.75rem;
-    }
-    /* שורת המשבצת בטור + חצי החלפת מקום */
-    .slot-row {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem;
-        margin-top: 0.75rem;
-        padding-top: 0.6rem;
-        border-top: 1px solid #3b5794;
-    }
-    .slot-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 1.6rem;
-        height: 1.6rem;
-        border-radius: 0.5rem;
-        background: #1e3a8a;
-        border: 1px solid #60a5fa;
-        color: #dbeafe;
-        font-weight: 900;
-        font-size: 0.8rem;
-    }
-    .slot-label {
-        color: #b6c6ea;
-        font-size: 0.75rem;
-        font-weight: 700;
-        margin-inline-end: auto;
-    }
-    /* בורר "⇄ העבר" — מקום מספרי ישיר בלוח, ליד חצי ההחלפה */
-    .slot-jump-form {
-        display: flex;
-        gap: 0.4rem;
-        align-items: center;
-    }
-    .a-btn:disabled {
-        opacity: 0.35;
-        cursor: not-allowed;
-    }
-    .a-btn {
-        padding: 0.45rem 1rem;
-        border-radius: 0.6rem;
-        border: none;
-        font-weight: 800;
-        font-size: 0.8rem;
-        cursor: pointer;
-        font-family: inherit;
-        text-decoration: none;
-        transition: all 0.15s;
-        display: inline-flex;
-        align-items: center;
-    }
-    .a-btn.approve { background: #16a34a; color: #fff; }
-    .a-btn.approve:hover { background: #22c55e; }
-    .a-btn.reject { background: rgba(239, 68, 68, 0.85); color: #fff; }
-    .a-btn.reject:hover { background: #ef4444; }
-    .a-btn.ghost {
-        background: rgba(255, 255, 255, 0.08);
-        color: #d1d5db;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-    }
-    .a-btn.ghost:hover { color: #fff; }
-    .approve-form,
-    .reject-form {
-        display: flex;
-        gap: 0.4rem;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-    .duration-label {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.75rem;
-        color: #9ca3af;
-        font-weight: 700;
-    }
-    .duration-select {
-        padding: 0.4rem 0.5rem;
-        border-radius: 0.5rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        color: #fff;
-        font-size: 0.75rem;
-        font-weight: 700;
-        font-family: inherit;
-        cursor: pointer;
-    }
-    .reject-input {
-        padding: 0.4rem 0.7rem;
-        border-radius: 0.5rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: #fff;
-        font-size: 0.75rem;
-        outline: none;
-        font-family: inherit;
-        width: 170px;
-    }
-    .reject-input:focus { border-color: rgba(239, 68, 68, 0.5); }
-</style>
