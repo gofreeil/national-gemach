@@ -26,12 +26,14 @@ export const load: PageServerLoad = async ({ url }) => {
 			g.tags.some(t => t.toLowerCase().includes(q)))
 		: all;
 
-	// גמ"חים חדשים שממתינים לבדיקה קופצים לראש הרשימה — זה מה שבועת ההתראה
-	// בהאדר סופרת, ובלי זה הם קבורים בסידור הידני אי-שם בין 5 עמודים.
+	// הפריטים שבועת ההתראה בהאדר סופרת — גמ"ח חדש לבדיקה (needs_review)
+	// וטיוטת-אורח שממתינה לפרסום/דחייה (guest_claim) — קופצים לראש הרשימה;
+	// בלעדי זה הם קבורים בסידור הידני אי-שם בין העמודים, בלי דרך למצוא אותם.
 	// המיון יציב, לתצוגה בלבד — order האמיתי (ולכן האתר) לא משתנה.
-	const reviewCount = filtered.filter((g) => g.needsReview).length;
+	const attention = (g: Gemach) => !!g.needsReview || (g.status === 'draft' && !!g.guestClaim);
+	const reviewCount = filtered.filter(attention).length;
 	const sorted = reviewCount
-		? [...filtered.filter((g) => g.needsReview), ...filtered.filter((g) => !g.needsReview)]
+		? [...filtered.filter(attention), ...filtered.filter((g) => !attention(g))]
 		: filtered;
 
 	const total = sorted.length;

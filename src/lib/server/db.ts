@@ -143,6 +143,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         order,
         featured:      extra.featured === true || extra.featured === 'true',
         needsReview:   !!extra.needs_review,
+        guestClaim:    !!extra.guest_claim,
         sourceId:      toStr(extra.source_id),
         managed:       true,
         ownerId:       includeOwner ? (item.user_id ?? undefined) : undefined,
