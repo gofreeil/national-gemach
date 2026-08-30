@@ -232,8 +232,14 @@
         </div>
     {/if}
 
-    <!-- תביעת בעלות: משתמש מחובר שהגמ"ח הזה שלו יכול לבקש בעלות → אישור אדמין → עריכה -->
-    {#if form?.claimed}
+    <!-- תביעת בעלות: משתמש מחובר שהגמ"ח הזה שלו יכול לבקש בעלות.
+         מסלול מהיר (fastClaim, גמ"ח שהועלה כאורח + SMS מוגדר): קוד לטלפון
+         של הגמ"ח → בעלות מיידית. אחרת (גילוי חכם/ייבוא): אישור אדמין. -->
+    {#if form?.verified}
+        <div class="mb-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200">
+            🎉 הבעלות הועברה אליך! כפתור "עריכה" זמין עכשיו למעלה — הגמ"ח שלך גם באתר "קהילה בשכונה".
+        </div>
+    {:else if form?.claimed}
         <div class="mb-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200">
             {form.already ? '✅ כבר יש בקשה שלך על הגמ"ח הזה — היא ממתינה לאישור.' : '✅ הבקשה נשלחה! אדמין יבדוק ויאשר, ואז תוכל לערוך את הגמ"ח.'}
         </div>
@@ -243,9 +249,48 @@
         <div class="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-200">
             ⏳ שלחת בקשת בעלות על הגמ"ח הזה — היא ממתינה לאישור אדמין.
         </div>
+    {:else if data.claimable && data.fastClaim}
+        <div class="mb-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+            {#if form?.codeSent}
+                <p class="text-sm font-bold text-blue-100">📲 נשלח קוד בן 6 ספרות לטלפון שמסתיים ב-{data.fastPhoneTail}</p>
+                {#if form?.fastError}
+                    <p class="mt-1.5 text-xs font-bold text-rose-300">{form.fastError}</p>
+                {/if}
+                <form method="POST" action="?/claimVerify" class="mt-2.5 flex flex-wrap items-center gap-2"
+                    use:enhance={() => { claiming = true; return async ({ update }) => { await update({ reset: false }); claiming = false; }; }}>
+                    <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required
+                        placeholder="הקוד מה-SMS" dir="ltr"
+                        class="w-32 rounded-xl border border-blue-500/30 bg-[#0f1c3d] px-3 py-2 text-center text-sm font-bold tracking-widest text-white placeholder:text-gray-500 focus:border-blue-400 focus:outline-none" />
+                    <button type="submit" disabled={claiming}
+                        class="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60">
+                        {claiming ? 'בודק...' : 'אימות וקבלת בעלות'}
+                    </button>
+                    <button type="submit" formaction="?/claimCode" formnovalidate disabled={claiming}
+                        class="text-xs font-bold text-blue-300 hover:underline disabled:opacity-60">
+                        שליחה חוזרת
+                    </button>
+                </form>
+            {:else}
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <span class="text-sm font-bold text-blue-100">🤝 הגמ"ח הזה שלך? נשלח קוד לטלפון של הגמ"ח — והבעלות עוברת אליך מיד.</span>
+                    {#if form?.fastError}
+                        <span class="w-full text-xs font-bold text-rose-300">{form.fastError}</span>
+                    {/if}
+                    <form method="POST" action="?/claimCode" use:enhance={() => { claiming = true; return async ({ update }) => { await update(); claiming = false; }; }}>
+                        <button type="submit" disabled={claiming}
+                            class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60">
+                            {claiming ? 'שולח...' : `שלחו לי קוד ב-SMS (***${data.fastPhoneTail})`}
+                        </button>
+                    </form>
+                </div>
+            {/if}
+        </div>
     {:else if data.claimable}
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
             <span class="text-sm font-bold text-blue-100">🤝 הגמ"ח הזה שלך? בקש בעלות ותוכל לערוך את הפרטים בעצמך.</span>
+            {#if form?.fastError}
+                <span class="w-full text-xs font-bold text-rose-300">{form.fastError}</span>
+            {/if}
             <form method="POST" action="?/claim" use:enhance={() => { claiming = true; return async ({ update }) => { await update(); claiming = false; }; }}>
                 <button type="submit" disabled={claiming}
                     class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60">

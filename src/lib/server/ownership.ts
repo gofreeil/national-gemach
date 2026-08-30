@@ -44,6 +44,73 @@ export function ownerIdForSession(user: OwnerSessionLike): string {
     return (user.id ?? '').toString().trim();
 }
 
+// ------------------------------------------------------------
+// התאמת פרטי-קשר לבקשת בעלות: הצעת "זה הגמ"ח שלי" מוצגת רק למשתמש
+// שהפרטים שלו (טלפון / מייל / שם) באמת מופיעים בפרטי הגמ"ח — לא לכל מחובר.
+// ------------------------------------------------------------
+
+export interface ClaimMatchUser extends OwnerSessionLike {
+    name?: string | null;
+    phone?: string | null;
+}
+
+export interface ClaimMatchGemach {
+    name?: string;
+    contact?: string;
+    contact2?: string;
+    phone?: string;
+    phone2?: string;
+    link?: string;
+    notes?: string;
+    description?: string;
+}
+
+/** ספרות בלבד, קידומת בינלאומית 972 → 0 מקומי */
+function normalizePhone(s: string): string {
+    let d = s.replace(/\D/g, '');
+    if (d.startsWith('972')) d = '0' + d.slice(3);
+    return d;
+}
+
+/** טקסט להשוואת שמות: בלי גרשיים/פיסוק, רווחים מכווצים, אותיות קטנות */
+function normalizeText(s: string): string {
+    return s.replace(/["'״׳().,\-–—/\\]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * האם פרטי המשתמש המחובר תואמים לפרטי הגמ"ח:
+ *   • הטלפון שלו זהה לאחד מטלפוני הגמ"ח (השוואת ספרות), או
+ *   • המייל שלו מופיע בקישור/הערות/תיאור, או
+ *   • שמו מופיע בשם הגמ"ח או באנשי הקשר (לפחות שתי מילים משמו,
+ *     או המילה היחידה כששמו בן מילה אחת).
+ * ההתאמה היא רק שער לתצוגת ההצעה — הבקשה עצמה עדיין ממתינה לאישור אדמין.
+ */
+export function isClaimMatch(user: ClaimMatchUser, g: ClaimMatchGemach): boolean {
+    const userPhone = normalizePhone(user.phone ?? '');
+    if (userPhone.length >= 9) {
+        for (const p of [g.phone, g.phone2]) {
+            if (p && normalizePhone(p) === userPhone) return true;
+        }
+    }
+
+    const email = (user.email ?? '').trim().toLowerCase();
+    if (email) {
+        const hay = [g.link, g.notes, g.description].filter(Boolean).join(' ').toLowerCase();
+        if (hay.includes(email)) return true;
+    }
+
+    const words = normalizeText(user.name ?? '').split(' ').filter(w => w.length >= 2);
+    if (words.length) {
+        const hayWords = new Set(
+            normalizeText([g.name, g.contact, g.contact2].filter(Boolean).join(' ')).split(' ')
+        );
+        const hits = words.filter(w => hayWords.has(w)).length;
+        if (hits >= Math.min(2, words.length)) return true;
+    }
+
+    return false;
+}
+
 /** האם ה-user_id של הפריט שייך למשתמש הנוכחי. sheet:/ריק → תמיד false. */
 export function isGemachOwner(
     user: OwnerSessionLike | null | undefined,
