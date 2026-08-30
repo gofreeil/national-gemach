@@ -119,8 +119,14 @@
                         <form method="POST" action="?/setStatus" use:enhance>
                             <input type="hidden" name="id" value={g.id} />
                             <input type="hidden" name="status" value={g.status === 'draft' ? 'active' : 'draft'} />
-                            <button class="w-8 h-8 rounded-lg {g.status === 'draft' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-[#16264d] text-gray-400 hover:bg-[#243a6e]'} transition-colors"
-                                title={g.status === 'draft' ? 'פרסם באתר' : 'החזר לטיוטה'}>{g.status === 'draft' ? '🚀' : '📝'}</button>
+                            <!-- מילה מפורשת ולא אייקון — "פרסם" חד-משמעי (🚀 לא הובן) -->
+                            {#if g.status === 'draft'}
+                                <button class="h-8 rounded-lg bg-emerald-500/20 px-2.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/30 transition-colors"
+                                    title="הגמ&quot;ח יעלה לאתר ויוצג לגולשים">פרסם</button>
+                            {:else}
+                                <button class="w-8 h-8 rounded-lg bg-[#16264d] text-gray-400 hover:bg-[#243a6e] transition-colors"
+                                    title="הסר מהאתר והחזר לטיוטה">📝</button>
+                            {/if}
                         </form>
                         <form method="POST" action="?/toggleVerified" use:enhance>
                             <input type="hidden" name="id" value={g.id} />
