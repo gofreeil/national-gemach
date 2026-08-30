@@ -26,14 +26,33 @@
     const DURATION_OPTIONS = [7, 14, 30, 60, 90, 180, 365];
     // 16 המקומות הממוספרים בטור הפרסומות - בורר המקום בטבלת התזמון
     const SLOT_NUMBERS = Array.from({ length: AD_SLOT_COUNT }, (_, i) => i + 1);
-    // צבע קבוע לכל סדרה בסבב, בבורר ובתגי המקום - גם כשהמקום תפוס, כדי
-    // שיהיה ברור לאיזו סדרה שייך כל מספר (רקע בהיר בלבד - כהה נשבר בהדגשת המערכת):
-    // 1,5,9,13 תכלת · 2,6,10,14 ירוק · 3,7,11,15 צהוב · 4,8,12,16 סגול
+    // הטור מציג רביעייה עוקבת אחת בכל רגע (1-4, אחריה 5-8, 9-12, 13-16 - ראו
+    // RightAdBanner). הסימון כאן משקף את זה: צבע לכל רביעייה (= מה שמוצג יחד),
+    // אות לרביעייה ושם-מיקום בתוך הרביעייה (רקע בהיר בלבד - כהה נשבר בהדגשת המערכת)
+    const GROUP_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+    const POS_NAMES = ['עליונה', 'שנייה', 'שלישית', 'תחתונה'];
+    function slotGroup(n: number): number { return Math.ceil(n / 4); }
+    function slotGroupLetter(n: number): string {
+        return GROUP_LETTERS[slotGroup(n) - 1] ?? String(slotGroup(n));
+    }
+    function slotPosName(n: number): string { return POS_NAMES[(n - 1) % 4]; }
     function slotOptionBg(n: number): string {
-        if (n % 4 === 1) return '#dbeafe';
-        if (n % 4 === 2) return '#dcfce7';
-        if (n % 4 === 3) return '#fef9c3';
+        const g = slotGroup(n) % 4;
+        if (g === 1) return '#dbeafe';
+        if (g === 2) return '#dcfce7';
+        if (g === 3) return '#fef9c3';
         return '#f3e8ff';
+    }
+    /** אפשרויות הבורר מקובצות לרביעיות - כל קבוצה מקבלת כותרת optgroup משלה */
+    function groupSlotOptions(options: number[]): { letter: string; nums: number[] }[] {
+        const byGroup = new Map<number, number[]>();
+        for (const n of options) {
+            const g = slotGroup(n);
+            byGroup.set(g, [...(byGroup.get(g) ?? []), n]);
+        }
+        return [...byGroup.entries()]
+            .sort((a, b) => a[0] - b[0])
+            .map(([g, nums]) => ({ letter: GROUP_LETTERS[g - 1] ?? String(g), nums }));
     }
 
     // מי תופסת כל מקום בטור - גם מושהית/פגה שומרת את המקום שלה
@@ -45,12 +64,13 @@
     function shortTitle(t: string): string {
         return t.length > 22 ? t.slice(0, 21) + '…' : t;
     }
-    /** תווית אפשרות בבורר המקום - מקום תפוס מסומן עם שם הפרסומת שיושבת בו */
+    /** תווית אפשרות בבורר המקום: מספר + מיקום ברביעייה; מקום תפוס מסומן עם שם הפרסומת שיושבת בו */
     function slotOptionLabel(n: number, selfId: string): string {
+        const base = `${n} · ${slotPosName(n)}`;
         const occ = slotOccupants.get(n);
-        if (!occ) return `${n}`;
-        if (occ.id === selfId) return `${n} — המקום הנוכחי`;
-        return `${n} ⚠ תפוס: ${shortTitle(occ.title)}`;
+        if (!occ) return `${base} — פנוי`;
+        if (occ.id === selfId) return `${base} — המקום הנוכחי`;
+        return `${base} ⚠ ${shortTitle(occ.title)}`;
     }
     // אזהרה חיה מתחת לבורר ברגע שנבחר מקום תפוס (לפי מזהה השורה)
     let slotWarning = $state<Record<string, string>>({});
@@ -367,9 +387,10 @@
                     {#if activeTab === 'approved'}
                         <!-- מיקום הפרסומת בטור הפרסומות באתר + החלפת מקום -->
                         <div class="flex items-center gap-2 mb-3 pb-3 border-b border-white/10 flex-wrap">
-                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-black/20 font-black text-sm"
-                                  style="background:{slotOptionBg(slotOf(ad, adIndex + 1))};color:#111">
-                                {slotOf(ad, adIndex + 1)}
+                            <span class="inline-flex items-center justify-center min-w-7 h-7 px-1.5 rounded-lg border border-black/20 font-black text-sm whitespace-nowrap"
+                                  style="background:{slotOptionBg(slotOf(ad, adIndex + 1))};color:#111"
+                                  title="רביעייה {slotGroupLetter(slotOf(ad, adIndex + 1))}׳ · הכרטיס ה{slotPosName(slotOf(ad, adIndex + 1))} בה">
+                                {slotOf(ad, adIndex + 1)} · {slotGroupLetter(slotOf(ad, adIndex + 1))}׳
                             </span>
                             <span class="text-[11px] md:text-xs text-gray-400 font-bold">
                                 מקום {slotOf(ad, adIndex + 1)} מתוך {AD_SLOT_COUNT} בטור הפרסומות
@@ -633,13 +654,15 @@
             </div>
         </div>
 
-        <!-- מקרא הסדרות בסבב: כל רביעייה מוצגת יחד בטור, והצבע מסמן לאיזו סדרה שייך כל מקום -->
+        <!-- מקרא הרביעיות: הטור מציג רביעייה עוקבת אחת בכל רגע (כמו ב-RightAdBanner),
+             וכל רביעייה צבועה בצבע שלה. בתוך הרביעייה המספר הנמוך עליון והגבוה תחתון -->
         <div class="flex items-center gap-2 mb-3 flex-wrap text-[10px] md:text-xs font-bold text-gray-300">
-            <span>סדרות הסבב (מוצגות יחד):</span>
-            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#dbeafe;color:#111">1 · 5 · 9 · 13</span>
-            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#dcfce7;color:#111">2 · 6 · 10 · 14</span>
-            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#fef9c3;color:#111">3 · 7 · 11 · 15</span>
-            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#f3e8ff;color:#111">4 · 8 · 12 · 16</span>
+            <span>הטור מציג רביעייה אחת בכל רגע, לפי הסדר:</span>
+            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#dbeafe;color:#111">א׳ · 1-4</span>
+            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#dcfce7;color:#111">ב׳ · 5-8</span>
+            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#fef9c3;color:#111">ג׳ · 9-12</span>
+            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#f3e8ff;color:#111">ד׳ · 13-16</span>
+            <span class="text-gray-500">בתוך כל רביעייה: המספר הנמוך למעלה, הגבוה למטה</span>
         </div>
 
         {#if data.schedules.length === 0}
@@ -689,21 +712,27 @@
                                     <form method="POST" action="?/setSlot" use:enhance class="flex flex-col items-start gap-1">
                                         <input type="hidden" name="id" value={s.id} />
                                         <div class="flex items-center gap-1">
-                                            <span class="inline-flex items-center justify-center min-w-6 h-6 px-1 rounded-lg border border-black/20 font-black text-xs"
-                                                  style="background:{typeof s.slot === 'number' ? slotOptionBg(s.slot) : '#fff'};color:#111">
-                                                {s.slot ?? '-'}
+                                            <span class="inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-lg border border-black/20 font-black text-xs whitespace-nowrap"
+                                                  style="background:{typeof s.slot === 'number' ? slotOptionBg(s.slot) : '#fff'};color:#111"
+                                                  title={typeof s.slot === 'number' ? `רביעייה ${slotGroupLetter(s.slot)}׳ · הכרטיס ה${slotPosName(s.slot)} בה` : ''}>
+                                                {typeof s.slot === 'number' ? `${s.slot} · ${slotGroupLetter(s.slot)}׳` : '-'}
                                             </span>
                                             <select name="slot"
                                                     onchange={(e) => onSlotPick(e, s)}
                                                     class="px-1.5 py-1 rounded-lg bg-black/40 border border-white/15 text-white text-[11px] focus:outline-none focus:border-amber-400/50">
-                                                {#each slotOptions as n (n)}
-                                                    {@const occ = slotOccupants.get(n)}
-                                                    {@const takenByOther = !!occ && occ.id !== s.id}
-                                                    <!-- גם מקום תפוס שומר על צבע הסדרה שלו; התפוס מסומן בטקסט אדום מודגש -->
-                                                    <option value={n} selected={n === s.slot}
-                                                            style="background:{slotOptionBg(n)};color:{takenByOther ? '#b91c1c' : '#111'};font-weight:{takenByOther ? '700' : '400'}">
-                                                        {slotOptionLabel(n, s.id)}
-                                                    </option>
+                                                <!-- כל רביעייה תחת כותרת משלה - הקשר מספר↔רביעייה קריא במילים,
+                                                     לא רק בצבע; מקום תפוס שומר את צבע הרביעייה ומסומן באדום מודגש -->
+                                                {#each groupSlotOptions(slotOptions) as grp (grp.letter)}
+                                                    <optgroup label="— רביעייה {grp.letter}׳ (מוצגות יחד) —">
+                                                        {#each grp.nums as n (n)}
+                                                            {@const occ = slotOccupants.get(n)}
+                                                            {@const takenByOther = !!occ && occ.id !== s.id}
+                                                            <option value={n} selected={n === s.slot}
+                                                                    style="background:{slotOptionBg(n)};color:{takenByOther ? '#b91c1c' : '#111'};font-weight:{takenByOther ? '700' : '400'}">
+                                                                {slotOptionLabel(n, s.id)}
+                                                            </option>
+                                                        {/each}
+                                                    </optgroup>
                                                 {/each}
                                             </select>
                                         </div>
