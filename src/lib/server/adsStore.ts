@@ -941,6 +941,29 @@ export async function setAdDuration(
 }
 
 /**
+ * קובע תאריך תפוגה שרירותי (מחלון הקציבה). המשך (duration_days) נגזר
+ * ממנו ביחס ליום הפרסום, כדי שהטבלה תמשיך להציג "X מתוך Y" עקבי.
+ */
+export async function setAdExpiry(
+    id: string,
+    expiresIso: string,
+): Promise<{ title: string; expiresAt: string; daysLeft: number } | null> {
+    const ad = await getAd(id);
+    if (!ad) return null;
+    const expires = new Date(expiresIso);
+    if (isNaN(expires.getTime())) return null;
+    const from = ad.decidedAt || ad.submittedAt || new Date().toISOString();
+    const days = Math.max(0, Math.ceil((expires.getTime() - Date.parse(from)) / DAY_MS));
+    await mergeExtra(id, { duration_days: days, expires_at: expires.toISOString() });
+    invalidateAdsCache();
+    return {
+        title: ad.title,
+        expiresAt: expires.toISOString(),
+        daysLeft: Math.ceil((expires.getTime() - Date.now()) / DAY_MS),
+    };
+}
+
+/**
  * השהיה: המודעה יורדת מהאתר אבל שומרת את הימים שנותרו לה. בשונה
  * מ"הורד מהאתר" — המפרסם לא מפסיד ימים ששילם עליהם.
  */
@@ -1187,6 +1210,12 @@ export interface AdSchedule {
     paymentAmount: number;
     /** מספר המקום בטור הפרסומות (1..16) — מוזן ב-computeSchedules */
     slot?: number;
+    /** מתי המפרסם הגיש — מוצג בחלון הקציבה */
+    submittedAt: string;
+    /** "code" = סומן כשולם; "pending" = תשלום לתיאום */
+    payment: string;
+    /** המסלול שהמפרסם ביקש בשליחה (ימים) — ממנו נגזר המחיר בחלון הקציבה */
+    requestedDurationDays: number;
 }
 
 export function computeSchedule(ad: SubmittedAd): AdSchedule | null {
@@ -1213,6 +1242,9 @@ export function computeSchedule(ad: SubmittedAd): AdSchedule | null {
         daysLeft,
         state,
         paymentAmount: 0,
+        submittedAt: ad.submittedAt ?? '',
+        payment: ad.payment || 'pending',
+        requestedDurationDays: ad.requestedDurationDays || days,
     };
 }
 

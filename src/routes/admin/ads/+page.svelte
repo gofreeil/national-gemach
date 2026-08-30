@@ -6,6 +6,7 @@
     import { heMatches } from '$lib/search';
     import { adImgFit, parseAdImageFit } from '$lib/adImageFit';
     import { AD_SLOT_COUNT } from '$lib/rightAdsData';
+    import { planFor } from '$lib/adPlans';
     import AdCardPreview from '$lib/components/AdCardPreview.svelte';
 
     let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -226,6 +227,17 @@
     function fmtTime(s?: string) {
         if (!s) return '';
         return new Date(s).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // חלון הקציבה: כל פרטי התקופה והתשלום של הפרסומת + קציבה מהירה
+    // במסלולים או תאריך תפוגה שרירותי. נפתח מכפתור "קצוב" בטבלת התזמון.
+    let durationModal = $state<(typeof data.schedules)[number] | null>(null);
+    /** תאריך ISO → ערך של <input type="date"> */
+    const toDateInput = (iso?: string) => (iso ? iso.slice(0, 10) : '');
+    /** סגירת החלון עם שליחת טופס מתוכו - הנתונים כבר נתפסו ע"י enhance */
+    function closeOnSubmit() {
+        durationModal = null;
+        return async ({ update }: { update: () => Promise<void> }) => update();
     }
 </script>
 
@@ -697,10 +709,6 @@
                                 : s.daysLeft <= 7 ? 'text-amber-300'
                                 : 'text-emerald-300'}
                             {@const progress = Math.min(100, Math.max(0, ((s.durationDays - Math.max(0, s.daysLeft)) / s.durationDays) * 100))}
-                            <!-- תקופה נוכחית שאינה ברשימה (למשל 45 יום) מתווספת לבורר, כדי שלא תיעלם -->
-                            {@const durOptions = DURATION_OPTIONS.includes(s.durationDays)
-                                ? DURATION_OPTIONS
-                                : [...DURATION_OPTIONS, s.durationDays].sort((a, b) => a - b)}
                             <!-- מקום מעל 12 (גלישה) מתווסף לבורר כדי שלא ייעלם -->
                             {@const slotOptions = s.slot && !SLOT_NUMBERS.includes(s.slot)
                                 ? [...SLOT_NUMBERS, s.slot].sort((a, b) => a - b)
@@ -781,20 +789,16 @@
                                      רוחב מוגבל - הכפתורים נערמים בשתי שורות במקום להרחיב את הטבלה -->
                                 <td class="px-2 py-2">
                                     <div class="flex flex-wrap items-center gap-1.5 max-w-[240px]">
-                                        <form method="POST" action="?/setDuration" use:enhance class="flex items-center gap-1">
-                                            <input type="hidden" name="id" value={s.id} />
-                                            <select name="days"
-                                                    class="px-2 py-1 rounded-lg bg-black/40 border border-white/15 text-white text-[11px] focus:outline-none focus:border-amber-400/50">
-                                                {#each durOptions as d (d)}
-                                                    <option value={d} selected={d === s.durationDays} style="background:#fff;color:#111">{d} ימים</option>
-                                                {/each}
-                                            </select>
-                                            <button type="submit"
+                                        <!-- פותח את חלון הקציבה: פרטי תשלום ותאריכים + שינוי תקופה/תפוגה.
+                                             שמור לסופר-אדמין (כמו המחיקה) - אדמין רגיל לא רואה את הכפתור -->
+                                        {#if canDelete}
+                                            <button type="button"
+                                                    onclick={() => durationModal = s}
                                                     class="px-2.5 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-200 text-[11px] font-black hover:bg-blue-500/30 whitespace-nowrap"
-                                                    title="התקופה נספרת מיום הפרסום">
+                                                    title="פרטי התקופה והתשלום + שינוי תקופה או תאריך תפוגה">
                                                 ⏱ קצוב
                                             </button>
-                                        </form>
+                                        {/if}
 
                                         {#if s.state === 'paused'}
                                             <form method="POST" action="?/resume" use:enhance>
@@ -952,4 +956,91 @@
     {/if}
 </div>
 
-<svelte:window onkeydown={(e) => { if (e.key === 'Escape') { modalPreviewId = null; hoverPreview = null; } }} />
+<!-- חלון הקציבה: כל מה שצריך לדעת על התקופה והתשלום של הפרסומת,
+     ושתי דרכי שינוי - מסלול ימים (נספר מיום הפרסום) או תאריך תפוגה שרירותי -->
+{#if durationModal}
+    {@const m = durationModal}
+    {@const plan = planFor(m.requestedDurationDays)}
+    {@const mDurOptions = DURATION_OPTIONS.includes(m.durationDays)
+        ? DURATION_OPTIONS
+        : [...DURATION_OPTIONS, m.durationDays].sort((a, b) => a - b)}
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+         role="presentation"
+         onclick={() => durationModal = null}>
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <div class="w-full max-w-md my-auto rounded-2xl border border-white/15 bg-slate-900 p-5 shadow-2xl"
+             role="dialog" aria-modal="true" aria-label="קציבת תקופת פרסום" tabindex="-1"
+             onclick={(e) => e.stopPropagation()}>
+            <div class="flex items-start justify-between gap-2 mb-3">
+                <h3 class="text-base font-black text-white leading-snug">⏱ קציבת תקופה - {m.title}</h3>
+                <button type="button" onclick={() => durationModal = null}
+                        class="px-2 py-1 rounded-lg bg-white/10 border border-white/20 text-gray-200 text-xs font-black hover:bg-white/20 shrink-0">
+                    ✕
+                </button>
+            </div>
+
+            <!-- מה המפרסם שילם ומתי - כל הנתונים במקום אחד -->
+            <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs mb-4">
+                <dt class="text-gray-500 font-bold">מפרסם</dt>
+                <dd class="text-gray-200 font-bold">{m.advertiserName || '-'}
+                    {#if m.advertiserEmail}<span class="text-gray-500 font-normal">· {m.advertiserEmail}</span>{/if}
+                </dd>
+                <dt class="text-gray-500 font-bold">מסלול שנרכש</dt>
+                <dd class="text-gray-200 font-bold">{plan.label} - {plan.price} ₪</dd>
+                <dt class="text-gray-500 font-bold">סטטוס תשלום</dt>
+                <dd class="font-black {m.payment === 'code' ? 'text-emerald-300' : 'text-amber-300'}">
+                    {m.payment === 'code' ? '✓ שולם (אושר בקוד)' : '⏳ לתיאום מול המפרסם'}
+                </dd>
+                <dt class="text-gray-500 font-bold">הוגש</dt>
+                <dd class="text-gray-200">{fmtDay(m.submittedAt)} <span class="text-gray-500">{fmtTime(m.submittedAt)}</span></dd>
+                <dt class="text-gray-500 font-bold">פורסם</dt>
+                <dd class="text-gray-200">{fmtDay(m.publishedAt)} <span class="text-gray-500">{fmtTime(m.publishedAt)}</span></dd>
+                <dt class="text-gray-500 font-bold">פג בתאריך</dt>
+                <dd class="text-gray-200">{fmtDay(m.expiresAt)} <span class="text-gray-500">{fmtTime(m.expiresAt)}</span></dd>
+                <dt class="text-gray-500 font-bold">נותרו</dt>
+                <dd class="font-black {m.state === 'paused' ? 'text-blue-300' : m.daysLeft < 0 ? 'text-red-300' : m.daysLeft <= 7 ? 'text-amber-300' : 'text-emerald-300'}">
+                    {m.daysLeft < 0 ? `${-m.daysLeft}- ימים` : `${m.daysLeft} ימים`}
+                    <span class="text-gray-500 font-bold">מתוך {m.durationDays}</span>
+                    {#if m.state === 'paused'}<span class="text-blue-300">(מושהית)</span>{/if}
+                </dd>
+            </dl>
+
+            <!-- דרך 1: קציבה במסלול ימים, נספרת מיום הפרסום -->
+            <form method="POST" action="?/setDuration" use:enhance={closeOnSubmit}
+                  class="flex items-center gap-2 mb-2">
+                <input type="hidden" name="id" value={m.id} />
+                <label class="text-xs font-bold text-gray-400 shrink-0" for="dur-days">תקופה מיום הפרסום</label>
+                <select id="dur-days" name="days"
+                        class="flex-1 px-2 py-1.5 rounded-lg bg-black/40 border border-white/15 text-white text-xs focus:outline-none focus:border-amber-400/50">
+                    {#each mDurOptions as d (d)}
+                        <option value={d} selected={d === m.durationDays} style="background:#fff;color:#111">{d} ימים</option>
+                    {/each}
+                </select>
+                <button type="submit"
+                        class="px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-200 text-xs font-black hover:bg-blue-500/30 whitespace-nowrap">
+                    קצוב
+                </button>
+            </form>
+
+            <!-- דרך 2: תאריך תפוגה שרירותי - הפרסומת יורדת בסוף היום שנבחר -->
+            <form method="POST" action="?/setExpiry" use:enhance={closeOnSubmit}
+                  class="flex items-center gap-2">
+                <input type="hidden" name="id" value={m.id} />
+                <label class="text-xs font-bold text-gray-400 shrink-0" for="dur-date">או תאריך תפוגה</label>
+                <input id="dur-date" type="date" name="expires" required value={toDateInput(m.expiresAt)}
+                       class="flex-1 px-2 py-1 rounded-lg bg-black/40 border border-white/15 text-white text-xs focus:outline-none focus:border-amber-400/50" />
+                <button type="submit"
+                        class="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-200 text-xs font-black hover:bg-purple-500/30 whitespace-nowrap">
+                    קבע תאריך
+                </button>
+            </form>
+            <p class="mt-3 text-[10px] text-gray-500 leading-snug">
+                קציבה במסלול נספרת מיום הפרסום, ולכן מסלול קצר מהזמן שכבר עבר מוריד את הפרסומת מיד.
+                תאריך ידני קובע את התפוגה לסוף היום שנבחר - גם אחורה (הורדה מיידית) וגם קדימה.
+            </p>
+        </div>
+    </div>
+{/if}
+
+<svelte:window onkeydown={(e) => { if (e.key === 'Escape') { modalPreviewId = null; hoverPreview = null; durationModal = null; } }} />
