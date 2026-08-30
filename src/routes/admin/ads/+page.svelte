@@ -26,12 +26,14 @@
     const DURATION_OPTIONS = [7, 14, 30, 60, 90, 180, 365];
     // 16 המקומות הממוספרים בטור הפרסומות - בורר המקום בטבלת התזמון
     const SLOT_NUMBERS = Array.from({ length: AD_SLOT_COUNT }, (_, i) => i + 1);
-    // רקע לאפשרויות בורר המקום: הראשון בכל רביעייה (1,5,9,13) בתכלת והשני
-    // (2,6,10,14) בירוק בהיר (רקע בהיר בלבד - כהה נשבר בהדגשת המערכת)
+    // צבע קבוע לכל סדרה בסבב, בבורר ובתגי המקום - גם כשהמקום תפוס, כדי
+    // שיהיה ברור לאיזו סדרה שייך כל מספר (רקע בהיר בלבד - כהה נשבר בהדגשת המערכת):
+    // 1,5,9,13 תכלת · 2,6,10,14 ירוק · 3,7,11,15 צהוב · 4,8,12,16 סגול
     function slotOptionBg(n: number): string {
         if (n % 4 === 1) return '#dbeafe';
         if (n % 4 === 2) return '#dcfce7';
-        return '#fff';
+        if (n % 4 === 3) return '#fef9c3';
+        return '#f3e8ff';
     }
 
     // מי תופסת כל מקום בטור - גם מושהית/פגה שומרת את המקום שלה
@@ -365,7 +367,8 @@
                     {#if activeTab === 'approved'}
                         <!-- מיקום הפרסומת בטור הפרסומות באתר + החלפת מקום -->
                         <div class="flex items-center gap-2 mb-3 pb-3 border-b border-white/10 flex-wrap">
-                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-black text-sm">
+                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-black/20 font-black text-sm"
+                                  style="background:{slotOptionBg(slotOf(ad, adIndex + 1))};color:#111">
                                 {slotOf(ad, adIndex + 1)}
                             </span>
                             <span class="text-[11px] md:text-xs text-gray-400 font-bold">
@@ -630,6 +633,15 @@
             </div>
         </div>
 
+        <!-- מקרא הסדרות בסבב: כל רביעייה מוצגת יחד בטור, והצבע מסמן לאיזו סדרה שייך כל מקום -->
+        <div class="flex items-center gap-2 mb-3 flex-wrap text-[10px] md:text-xs font-bold text-gray-300">
+            <span>סדרות הסבב (מוצגות יחד):</span>
+            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#dbeafe;color:#111">1 · 5 · 9 · 13</span>
+            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#dcfce7;color:#111">2 · 6 · 10 · 14</span>
+            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#fef9c3;color:#111">3 · 7 · 11 · 15</span>
+            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#f3e8ff;color:#111">4 · 8 · 12 · 16</span>
+        </div>
+
         {#if data.schedules.length === 0}
             <div class="text-center py-8 text-gray-500 text-sm italic border border-dashed border-white/10 rounded-2xl">
                 אין כרגע פרסומות פעילות באתר
@@ -680,7 +692,8 @@
                                     <form method="POST" action="?/setSlot" use:enhance class="flex flex-col items-start gap-1">
                                         <input type="hidden" name="id" value={s.id} />
                                         <div class="flex items-center gap-1">
-                                            <span class="inline-flex items-center justify-center min-w-6 h-6 px-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-black text-xs">
+                                            <span class="inline-flex items-center justify-center min-w-6 h-6 px-1 rounded-lg border border-black/20 font-black text-xs"
+                                                  style="background:{typeof s.slot === 'number' ? slotOptionBg(s.slot) : '#fff'};color:#111">
                                                 {s.slot ?? '-'}
                                             </span>
                                             <select name="slot"
@@ -689,8 +702,9 @@
                                                 {#each slotOptions as n (n)}
                                                     {@const occ = slotOccupants.get(n)}
                                                     {@const takenByOther = !!occ && occ.id !== s.id}
+                                                    <!-- גם מקום תפוס שומר על צבע הסדרה שלו; התפוס מסומן בטקסט אדום מודגש -->
                                                     <option value={n} selected={n === s.slot}
-                                                            style="background:{takenByOther ? '#fee2e2' : slotOptionBg(n)};color:{takenByOther ? '#991b1b' : '#111'}">
+                                                            style="background:{slotOptionBg(n)};color:{takenByOther ? '#b91c1c' : '#111'};font-weight:{takenByOther ? '700' : '400'}">
                                                         {slotOptionLabel(n, s.id)}
                                                     </option>
                                                 {/each}
