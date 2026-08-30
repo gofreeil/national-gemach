@@ -36,6 +36,13 @@
         <div class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-200">{flashText[flash]}</div>
     {/if}
 
+    {#if data.reviewCount > 0}
+        <div class="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-200">
+            🔔 {data.reviewCount === 1 ? 'גמ"ח חדש אחד ממתין לבדיקה — מוצג' : `${data.reviewCount} גמ"חים חדשים ממתינים לבדיקה — מוצגים`} בראש הרשימה{data.page > 1 ? ' (בעמוד הראשון)' : ''}.
+            כל טיפול (✓ נבדק / תו תקן / עריכה / מחיקה) מכבה את ההתראה.
+        </div>
+    {/if}
+
     <!-- חיפוש -->
     <form method="GET" class="flex gap-2">
         <input name="q" value={data.q} placeholder="חיפוש לפי שם, עיר, טלפון או תג..."

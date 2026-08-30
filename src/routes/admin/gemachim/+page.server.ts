@@ -26,13 +26,22 @@ export const load: PageServerLoad = async ({ url }) => {
 			g.tags.some(t => t.toLowerCase().includes(q)))
 		: all;
 
-	const total = filtered.length;
+	// גמ"חים חדשים שממתינים לבדיקה קופצים לראש הרשימה — זה מה שבועת ההתראה
+	// בהאדר סופרת, ובלי זה הם קבורים בסידור הידני אי-שם בין 5 עמודים.
+	// המיון יציב, לתצוגה בלבד — order האמיתי (ולכן האתר) לא משתנה.
+	const reviewCount = filtered.filter((g) => g.needsReview).length;
+	const sorted = reviewCount
+		? [...filtered.filter((g) => g.needsReview), ...filtered.filter((g) => !g.needsReview)]
+		: filtered;
+
+	const total = sorted.length;
 	const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 	const safePage = Math.min(page, pages);
 	// תמונות ככתובות endpoint ולא כ-data URI מוטמע — הרשימה נטענת מהר
-	const items = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE).map(withImageUrls);
+	const items = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE).map(withImageUrls);
 
 	return {
+		reviewCount,
 		items,
 		categories,
 		pinnedIds,
