@@ -5,7 +5,7 @@ import { getOwnerAssets } from '$lib/server/ownerAssets';
 import { listApproved, listPendingAdsPreview } from '$lib/server/adsStore';
 import { findClaimableByPhone, countPendingClaims } from '$lib/server/claimsStore';
 import { getMonthlyVisitorStats } from '$lib/server/visitorStats';
-import { getAllGemachimWithDrafts } from '$lib/server/db';
+import { getAllGemachimWithDrafts, countGemachAttention } from '$lib/server/db';
 import { getMergedGemachim } from '$lib/server/gemachSource';
 import { getPinnedGemachim } from '$lib/server/pinned';
 import { getAdmins, getPublicCategories } from '$lib/server/adminStore';
@@ -64,9 +64,13 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	// שממתינות לאישור, להתראה לאדמינים (בדומה ל-pendingAds).
 	// סטטיסטיקת הכניסות (GA) נטענת רק לאדמינים — מוצגת פרוסה בפאנל הניהול שבדף.
 	// tileStats — מוני האריחים; כשל בשליפה לא מפיל את הדף (null = בלי מונים).
-	const [claimable, pendingClaims, gaMonthly, tileStats] = await Promise.all([
+	// pendingDrafts — גמ"חים חדשים מהטופס הציבורי (needs_review) + טיוטות-אורח
+	// ישנות שממתינות לפרסום, לבועה האדומה על אריח "ניהול גמ"חים" (אותו מונה
+	// שנספר בבועת ההאדר).
+	const [claimable, pendingClaims, pendingDrafts, gaMonthly, tileStats] = await Promise.all([
 		findClaimableByPhone(session.user),
 		adminRole ? countPendingClaims() : Promise.resolve(0),
+		adminRole ? countGemachAttention().catch(() => 0) : Promise.resolve(0),
 		adminRole ? getMonthlyVisitorStats().catch(() => null) : Promise.resolve(null),
 		adminRole ? loadTileStats().catch(() => null) : Promise.resolve(null)
 	]);
@@ -80,6 +84,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		pendingAds,
 		claimable,
 		pendingClaims,
+		pendingDrafts,
 		tileStats,
 		gaMonths: gaMonthly?.rows ?? null,
 		gaUpdatedAt: gaMonthly?.updatedAt ?? null

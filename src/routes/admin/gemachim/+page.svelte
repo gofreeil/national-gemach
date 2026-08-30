@@ -89,6 +89,9 @@
                             {#if g.status === 'draft'}
                                 <span class="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">טיוטה</span>
                             {/if}
+                            {#if g.needsReview}
+                                <span class="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[11px] font-bold text-rose-300" title="גמ&quot;ח חדש מהטופס הציבורי — עברו עליו: תו תקן, עריכה או מחיקה">חדש — לבדיקה</span>
+                            {/if}
                             {#if g.verified}<VerifiedStamp />{/if}
                         </div>
                         <div class="flex items-center gap-2 mt-1 flex-wrap text-xs text-gray-400">
@@ -106,6 +109,13 @@
 
                     <!-- פעולות -->
                     <div class="flex flex-col sm:flex-row items-center gap-1.5 flex-shrink-0">
+                        {#if g.needsReview}
+                            <form method="POST" action="?/markReviewed" use:enhance>
+                                <input type="hidden" name="id" value={g.id} />
+                                <button class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 transition-colors"
+                                    title="נבדק — כבה את ההתראה (בלי תו תקן)">✓</button>
+                            </form>
+                        {/if}
                         <form method="POST" action="?/setStatus" use:enhance>
                             <input type="hidden" name="id" value={g.id} />
                             <input type="hidden" name="status" value={g.status === 'draft' ? 'active' : 'draft'} />

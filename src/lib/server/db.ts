@@ -142,6 +142,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         imageFit:      parseImageFitMap(extra.image_fit),
         order,
         featured:      extra.featured === true || extra.featured === 'true',
+        needsReview:   !!extra.needs_review,
         sourceId:      toStr(extra.source_id),
         managed:       true,
         ownerId:       includeOwner ? (item.user_id ?? undefined) : undefined,
@@ -195,6 +196,55 @@ const LIST_TTL_MS = 60_000;
 export function invalidateGemachCache(): void {
     listCache = null;
     listInflight = null;
+    draftCountCache = null;
+}
+
+// ---------- מונה "ממתינים לעין אדמין" ----------
+// שני סוגים שמדליקים את בועת ההתראות של האדמינים (ראה +layout.server):
+//   1. גמ"ח חדש מטופס ההוספה שכבר עלה לאוויר (extra_fields.needs_review) —
+//      האדמין מוזמן לעבור עליו: לערוך, להעניק תו תקן או למחוק. ההתראה
+//      נמחקת בכפתור "נבדק" (clearGemachReview) או עם הענקת תו תקן.
+//   2. טיוטת-אורח ישנה (extra_fields.guest_claim במצב pending) — מהתקופה
+//      שבה אורחים נשמרו כטיוטה; עדיין דורשת פרסום/דחייה ידניים.
+// טיוטות הגילוי החכם (extra_fields.discovery, מהאוטומציה) מוחרגות —
+// הן לא דחופות, והמונה שלהן מוצג באריח הגילוי בלבד.
+let draftCountCache: { at: number; n: number } | null = null;
+
+export async function countGemachAttention(): Promise<number> {
+    if (draftCountCache && Date.now() - draftCountCache.at < LIST_TTL_MS) return draftCountCache.n;
+    try {
+        const [withDrafts, pendingRows] = await Promise.all([
+            getAllGemachimWithDrafts(),
+            strapiGetAll<StrapiItem>('/api/items', {
+                'filters[category][$eq]': CATEGORY,
+                'filters[status1][$eq]':  DRAFT_ITEM_STATUS,
+            }),
+        ]);
+        const fresh = withDrafts.filter((g) => g.needsReview).length;
+        const guestDrafts = pendingRows.filter((r) => {
+            const extra = (r.extra_fields ?? {}) as Record<string, unknown>;
+            return !!extra.guest_claim;
+        }).length;
+        const n = fresh + guestDrafts;
+        draftCountCache = { at: Date.now(), n };
+        return n;
+    } catch (e) {
+        if (!(e instanceof StrapiContentTypeError)) {
+            console.error('[national-gemach] countGemachAttention failed:', e);
+        }
+        return draftCountCache?.n ?? 0;
+    }
+}
+
+/** "נבדק" — מסיר את דגל needs_review של גמ"ח חדש (קריאה-מיזוג-כתיבה,
+ *  כמו setGemachVerified, כדי לא לדרוס שדות משותפים עם "קהילה בשכונה"). */
+export async function clearGemachReview(documentId: string): Promise<void> {
+    const cur = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
+    if (!cur.data) throw new Error(`clearGemachReview: הפריט ${documentId} לא נמצא`);
+    const extra = { ...((cur.data.extra_fields ?? {}) as Record<string, unknown>) };
+    delete extra.needs_review;
+    await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: extra } });
+    invalidateGemachCache();
 }
 
 /** כמו getAllGemachim אבל כולל גם טיוטות ('draft') — לרשימת הניהול בפאנל,
@@ -312,6 +362,8 @@ export async function setGemachVerified(documentId: string, verified: boolean): 
     if (verified) {
         extra.verified = true;
         extra.verified_at = new Date().toISOString();
+        // תו תקן = האדמין בדק את הגמ"ח — ההתראה "חדש לבדיקה" מיותרת מעתה
+        delete extra.needs_review;
     } else {
         delete extra.verified;
         delete extra.verified_at;
@@ -400,7 +452,7 @@ const SHEET_PREFIX = 'sheet:';
  *  Nominatim — ההשלמה נעשית במסך "השלמת פרטים" באצוות מבוקרות). */
 export async function createGemach(
     input: CreateGemachInput,
-    opts: { geocode?: boolean; ownerId?: string; guestToken?: string } = {},
+    opts: { geocode?: boolean; ownerId?: string; guestToken?: string; needsReview?: boolean } = {},
 ): Promise<{ id: string }> {
     let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
     let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
@@ -420,6 +472,11 @@ export async function createGemach(
     const extra = buildExtra(input);
     if (opts.guestToken) {
         extra[GUEST_CLAIM_KEY] = { token: opts.guestToken, at: new Date().toISOString() };
+    }
+    // גמ"ח חדש מהטופס הציבורי — מסומן "לבדיקת אדמין" ומדליק את בועת ההתראות
+    // עד שאדמין יסמן "נבדק" / יעניק תו תקן (ראה countGemachAttention).
+    if (opts.needsReview) {
+        extra.needs_review = new Date().toISOString();
     }
 
     const res = await strapiPost<{ data: StrapiItem }>('/api/items', {
@@ -525,7 +582,7 @@ export async function claimGuestDraft(
 export async function updateGemach(
     documentId: string,
     input: CreateGemachInput,
-    opts: { geocode?: boolean } = {},
+    opts: { geocode?: boolean; clearReview?: boolean } = {},
 ): Promise<void> {
     // שולפים את הקיים כדי לשמר extra_fields לא-מנוהלים (logo/images וכו')
     let existingExtra: Record<string, unknown> = {};
@@ -553,6 +610,9 @@ export async function updateGemach(
     if (input.images && input.images.length === 0) delete mergedExtra.images;
     // מיקומי-תמונה שאופסו לברירת המחדל נמחקים — הטופס שולח תמיד את המפה המלאה
     if (!input.imageFit || Object.keys(input.imageFit).length === 0) delete mergedExtra.image_fit;
+    // עריכה ע"י אדמין = הגמ"ח החדש נבדק — מכבים את התראת needs_review.
+    // עריכת בעלים אינה מעבירה את הדגל (clearReview נשלח רק ממסכי האדמין).
+    if (opts.clearReview) delete mergedExtra.needs_review;
 
     const data: Record<string, unknown> = {
         label:        input.name,

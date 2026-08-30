@@ -19,7 +19,8 @@ export const actions: Actions = {
 		if (err) return fail(400, { error: err, values: input });
 
 		try {
-			await updateGemach(params.id, input);
+			// clearReview — עריכת אדמין נחשבת "נבדק": מכבה את התראת "חדש לבדיקה"
+			await updateGemach(params.id, input, { clearReview: true });
 		} catch (e) {
 			console.error('[admin] updateGemach failed:', e);
 			return fail(500, { error: saveErrorMessage(e, 'עדכון'), values: input });

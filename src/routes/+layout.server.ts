@@ -5,6 +5,7 @@ import { getPinnedIds } from '$lib/server/adminStore';
 import { getVisitorCount, refreshVisitorStatsIfStale } from '$lib/server/visitorStats';
 import { listPendingAds } from '$lib/server/adsStore';
 import { countPendingClaims } from '$lib/server/claimsStore';
+import { countGemachAttention } from '$lib/server/db';
 
 // חושף את הסשן (אם יש) לכל הדפים — כדי שההאדר יציג מצב מחובר/כפתור התחברות,
 // את תפקיד הניהול (adminRole) לפאנל שבאזור האישי ולתפריט האדמין שעל הכרטיסים,
@@ -33,7 +34,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	// null = הרשימה מעולם לא נשמרה; אז התפריט נופל חזרה לדגל featured, בדיוק
 	// כמו getPinnedIdsResolved בשרת.
 	// pendingCount — הפריטים שממתינים לטיפול אדמין (פרסומות לאישור + תביעות
-	// בעלות), לבועה האדומה על כפתור האזור האישי בהאדר ועל תמונת הפרופיל.
+	// בעלות + גמ"חים חדשים מהטופס הציבורי שממתינים לעין אדמין), לבועה
+	// האדומה על כפתור האזור האישי בהאדר ועל תמונת הפרופיל.
 	// טיוטות הגילוי החכם הוחרגו בכוונה — הן לא דחופות; המונה שלהן מוצג רק
 	// בשורת התיאור של אריח הגילוי בפאנל.
 	// רק לאדמין, וכולו ממטמונים קצרים (דקה) — בלי סבבים כבדים ל-Strapi.
@@ -42,8 +44,9 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				getPinnedIds().then((ids) => ids ?? null),
 				Promise.all([
 					listPendingAds().then((list) => list.length).catch(() => 0),
-					countPendingClaims().catch(() => 0)
-				]).then(([ads, claims]) => ads + claims)
+					countPendingClaims().catch(() => 0),
+					countGemachAttention().catch(() => 0)
+				]).then(([ads, claims, gemachim]) => ads + claims + gemachim)
 			])
 		: [null, 0];
 

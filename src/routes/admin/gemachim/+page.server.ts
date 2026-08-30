@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getAllGemachimWithDrafts, deleteGemach, patchGemachOrder, setGemachStatus, setGemachVerified } from '$lib/server/db';
+import { getAllGemachimWithDrafts, deleteGemach, patchGemachOrder, setGemachStatus, setGemachVerified, clearGemachReview } from '$lib/server/db';
 import { getPublicCategories } from '$lib/server/adminStore';
 import { getPinnedIdsResolved, pinGemach, unpinGemach } from '$lib/server/pinned';
 import { withImageUrls } from '$lib/server/gemachSource';
@@ -111,6 +111,13 @@ export const actions: Actions = {
 				? { approved_at: new Date().toISOString(), approved_by: actor, rejection_reason: '' }
 				: { drafted_at: new Date().toISOString(), drafted_by: actor });
 		} catch (e) { console.error(e); return fail(500, { error: 'עדכון הסטטוס נכשל' }); }
+		return { success: true };
+	},
+	/** "נבדק" — מכבה את התראת "חדש לבדיקה" של גמ"ח שהגיע מהטופס הציבורי */
+	markReviewed: async ({ request }) => {
+		const id = (await request.formData()).get('id') as string;
+		if (!id) return fail(400, { error: 'חסר מזהה' });
+		try { await clearGemachReview(id); } catch (e) { console.error(e); return fail(500, { error: 'העדכון נכשל' }); }
 		return { success: true };
 	},
 	/** הענקה/הסרה של חותמת "מאושר" (בדיקת מערכת) */

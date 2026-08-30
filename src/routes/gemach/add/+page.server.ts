@@ -9,8 +9,8 @@ import { cities } from '$lib/gemachData';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// הטופס פתוח גם למי שאינו מחובר — לא לחסום מתנדב שרוצה לתרום גמ"ח בגלל
-	// מסך התחברות. אורח שישלח יקבל טיוטה שמורה, וההתחברות בסוף (/gemach/claim)
-	// היא זו שרושמת את הגמ"ח על שמו ומפרסמת אותו.
+	// מסך התחברות. גם גמ"ח של אורח עולה לאוויר מיד; ההתחברות בסוף
+	// (/gemach/claim) רק רושמת אותו על שמו — לעריכה, ניהול והתראות.
 	const session = await locals.auth();
 	const categories = await getPublicCategories();
 
@@ -30,14 +30,15 @@ export const actions: Actions = {
 		const { input, error } = parseGemachForm(form);
 		if (error) return fail(400, { error, values: input });
 
-		// ----- אורח: שומרים כטיוטה מוסתרת ושולחים להתחברות -----
+		// ----- אורח: הגמ"ח עולה לאוויר מיד, בלי בעלים -----
+		// אסימון האימוץ נשמר בעוגייה — ההתחברות ב-/gemach/claim תרשום את הגמ"ח
+		// על שמו (לעריכה, ניהול והתראות). needsReview מדליק את בועת ההתראות
+		// של האדמינים, שיעברו על הפריט החדש (תו תקן / עריכה / מחיקה).
 		if (!session?.user) {
 			const token = newDraftToken();
-			input.status = 'draft';   // מוסתר מהאתר עד שיאומץ ויפורסם
 			let draftId: string;
 			try {
-				// בלי ownerId — הטיוטה עדיין לא שייכת לאיש; רק מחזיק האסימון יאמץ אותה
-				({ id: draftId } = await createGemach(input, { guestToken: token }));
+				({ id: draftId } = await createGemach(input, { guestToken: token, needsReview: true }));
 			} catch (e) {
 				console.error('[guest-create] createGemach failed:', e);
 				return fail(500, { error: saveErrorMessage(e, 'יצירת'), values: input });
@@ -51,7 +52,7 @@ export const actions: Actions = {
 
 		let id: string;
 		try {
-			({ id } = await createGemach(input, { ownerId: ownerId || undefined }));
+			({ id } = await createGemach(input, { ownerId: ownerId || undefined, needsReview: true }));
 		} catch (e) {
 			console.error('[owner-create] createGemach failed:', e);
 			return fail(500, { error: saveErrorMessage(e, 'יצירת'), values: input });
