@@ -650,15 +650,12 @@
             <div class="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
                 <table class="w-full text-sm" dir="rtl">
                     <thead class="bg-white/5">
+                        <!-- 4 עמודות בלבד - המידע מוערם בכמה שורות בכל תא, כדי שבדסקטופ
+                             הכל ייכנס למסך אחד בלי גלילה אופקית -->
                         <tr class="text-[11px] md:text-xs text-gray-400 uppercase tracking-wide">
                             <th class="text-right font-bold px-2 py-2.5">מקום</th>
-                            <th class="text-right font-bold px-2 py-2.5">פרסומת</th>
-                            <th class="text-right font-bold px-2 py-2.5 hidden md:table-cell">מפרסם</th>
-                            <th class="text-right font-bold px-2 py-2.5">פורסם</th>
-                            <th class="text-right font-bold px-2 py-2.5">פג בתאריך</th>
-                            <th class="text-right font-bold px-2 py-2.5">משך</th>
-                            <th class="text-right font-bold px-2 py-2.5">ימים שנותרו</th>
-                            <th class="text-right font-bold px-2 py-2.5">סטטוס</th>
+                            <th class="text-right font-bold px-2 py-2.5">פרסומת ומפרסם</th>
+                            <th class="text-right font-bold px-2 py-2.5">תקופה</th>
                             <th class="text-right font-bold px-2 py-2.5">ניהול</th>
                         </tr>
                     </thead>
@@ -723,45 +720,38 @@
                                         {/if}
                                     </form>
                                 </td>
-                                <!-- הכותרת בשתי שורות במקום שורה אחת חתוכה - רואים יותר וחוסכים רוחב.
-                                     ריחוף = תצוגה מקדימה צפה של הכרטיס; הקשה = מודאל עם הכרטיס עצמו -->
-                                <td class="px-2 py-2 font-bold text-white">
+                                <!-- פרסומת + מפרסם + סטטוס בתא אחד, מוערמים.
+                                     ריחוף על הכותרת = תצוגה מקדימה צפה; הקשה = מודאל עם הכרטיס עצמו -->
+                                <td class="px-2 py-2">
                                     <button type="button"
                                             onmouseenter={(e) => openHoverPreview(e, s.id)}
                                             onmouseleave={() => hoverPreview = null}
                                             onclick={() => { hoverPreview = null; modalPreviewId = s.id; }}
                                             title="תצוגה מקדימה של הפרסומת כפי שהיא מוצגת באתר"
-                                            class="line-clamp-2 break-words max-w-[130px] leading-snug text-right cursor-pointer underline decoration-dotted decoration-white/30 underline-offset-2 hover:text-amber-300">
+                                            class="font-bold text-white line-clamp-2 break-words max-w-[160px] leading-snug text-right cursor-pointer underline decoration-dotted decoration-white/30 underline-offset-2 hover:text-amber-300">
                                         {s.title}
                                     </button>
+                                    <div class="text-xs text-gray-300 truncate max-w-[160px] mt-0.5">{s.advertiserName || '-'}</div>
+                                    <div class="text-[10px] text-gray-500 truncate max-w-[160px]">{s.advertiserEmail}</div>
+                                    <span class="inline-block mt-1 text-[11px] font-black border px-2 py-0.5 rounded-full whitespace-nowrap {stateColor}">{stateLabel}</span>
                                 </td>
-                                <td class="px-2 py-2 text-gray-300 hidden md:table-cell">
-                                    <div class="truncate max-w-[120px]">{s.advertiserName || '-'}</div>
-                                    <div class="text-[10px] text-gray-500 truncate max-w-[120px]">{s.advertiserEmail}</div>
-                                </td>
-                                <!-- תאריך ושעה בשתי שורות - העמודה צרה בחצי -->
-                                <td class="px-2 py-2 text-gray-300 text-xs leading-snug whitespace-nowrap">
-                                    <div>{fmtDay(s.publishedAt)}</div>
-                                    <div class="text-[10px] text-gray-500">{fmtTime(s.publishedAt)}</div>
-                                </td>
-                                <td class="px-2 py-2 text-gray-300 text-xs leading-snug whitespace-nowrap">
-                                    <div>{fmtDay(s.expiresAt)}</div>
-                                    <div class="text-[10px] text-gray-500">{fmtTime(s.expiresAt)}</div>
-                                </td>
-                                <td class="px-2 py-2 text-gray-300 text-xs">{s.durationDays} ימים</td>
-                                <td class="px-2 py-2 font-black {daysColor} text-xs whitespace-nowrap">
-                                    {s.daysLeft < 0 ? `${-s.daysLeft}- ימים` : `${s.daysLeft} ימים`}
-                                    <div class="mt-1 h-1.5 w-16 rounded-full bg-white/10 overflow-hidden">
+                                <!-- כל נתוני הזמן בתא אחד: פורסם, פג, וכמה נותר מתוך המשך -->
+                                <td class="px-2 py-2 text-xs leading-relaxed whitespace-nowrap">
+                                    <div class="text-gray-300">פורסם: {fmtDay(s.publishedAt)} <span class="text-[10px] text-gray-500">{fmtTime(s.publishedAt)}</span></div>
+                                    <div class="text-gray-300">פג: {fmtDay(s.expiresAt)} <span class="text-[10px] text-gray-500">{fmtTime(s.expiresAt)}</span></div>
+                                    <div class="font-black {daysColor} mt-0.5">
+                                        {s.daysLeft < 0 ? `${-s.daysLeft}- ימים` : `${s.daysLeft} ימים`}
+                                        <span class="font-bold text-gray-500 text-[10px]">מתוך {s.durationDays}</span>
+                                    </div>
+                                    <div class="mt-1 h-1.5 w-24 rounded-full bg-white/10 overflow-hidden">
                                         <div class="h-full {s.state === 'expired' ? 'bg-red-400' : s.state === 'ending' ? 'bg-amber-400' : 'bg-emerald-400'}"
                                              style="width: {progress}%"></div>
                                     </div>
                                 </td>
+                                <!-- ניהול הפרסומת ישירות מהשורה: קציבת תקופה, השהיה, הורדה, מחיקה.
+                                     רוחב מוגבל - הכפתורים נערמים בשתי שורות במקום להרחיב את הטבלה -->
                                 <td class="px-2 py-2">
-                                    <span class="text-[11px] font-black border px-2 py-0.5 rounded-full whitespace-nowrap {stateColor}">{stateLabel}</span>
-                                </td>
-                                <!-- ניהול הפרסומת ישירות מהשורה: קציבת תקופה, השהיה, הורדה, מחיקה -->
-                                <td class="px-2 py-2">
-                                    <div class="flex flex-wrap items-center gap-1.5">
+                                    <div class="flex flex-wrap items-center gap-1.5 max-w-[240px]">
                                         <form method="POST" action="?/setDuration" use:enhance class="flex items-center gap-1">
                                             <input type="hidden" name="id" value={s.id} />
                                             <select name="days"
