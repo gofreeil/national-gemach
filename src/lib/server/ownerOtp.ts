@@ -1,10 +1,10 @@
 // ============================================================
 // ownerOtp.ts — העברת בעלות מיידית בקוד לטלפון של הגמ"ח
 //
-// למי זה מגיע: רק גמ"ח שהועלה בטופס הציבורי ע"י אורח וטרם אומץ
-// (extra_fields.guest_claim) — "העליתי לפני שנרשמתי, נרשמתי אחר-כך".
-// גמ"ח מהגילוי החכם / ייבוא / אדמין אינו זכאי — שם נשארת תביעת
-// הבעלות הרגילה עם אישור אדמין (claimsStore).
+// למי זה מגיע: כל גמ"ח פעיל בלי בעלים (כולל ייבוא/גילוי חכם) שיש בו
+// נייד תקין — הקוד נשלח לטלפון שבכרטיס, ומי שמחזיק את הטלפון הזה הוא
+// הבעלים. גמ"ח בלי נייד (או כש-SMS לא מוגדר) נשאר בתביעת הבעלות
+// הרגילה עם אישור אדמין (claimsStore).
 //
 // ההוכחה: הקוד נשלח לטלפון ששמור על הגמ"ח עצמו — רק מי שמחזיק את
 // הטלפון הזה יכול לאמת. הקוד נשמר מגובב (sha256 + AUTH_SECRET) בתוך
@@ -40,13 +40,13 @@ async function fetchItem(gemachId: string): Promise<RawItem | null> {
     return res.data ?? null;
 }
 
-/** האם הפריט זכאי למסלול המהיר: הועלה כאורח, בלי בעלים, פעיל, עם נייד תקין */
+/** האם הפריט זכאי למסלול המהיר: בלי בעלים אמיתי, פעיל, עם נייד תקין.
+ *  "sheet:" של פריט מיובא אינו בעלים — הטלפון שבכרטיס הוא ההוכחה. */
 function eligibility(item: RawItem | null): { ok: boolean; e164?: string } {
     if (!item) return { ok: false };
-    if ((item.user_id ?? '').trim() !== '') return { ok: false };
+    const oid = (item.user_id ?? '').trim();
+    if (oid !== '' && !oid.startsWith('sheet:')) return { ok: false };
     if (item.status1 !== 'active') return { ok: false };
-    const extra = (item.extra_fields ?? {}) as Record<string, unknown>;
-    if (!extra.guest_claim) return { ok: false };
     const e164 = toMobileE164(item.phone ?? '');
     if (!e164) return { ok: false };
     return { ok: true, e164 };

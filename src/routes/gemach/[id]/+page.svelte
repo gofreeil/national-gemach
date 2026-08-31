@@ -233,8 +233,8 @@
     {/if}
 
     <!-- תביעת בעלות: משתמש מחובר שהגמ"ח הזה שלו יכול לבקש בעלות.
-         מסלול מהיר (fastClaim, גמ"ח שהועלה כאורח + SMS מוגדר): קוד לטלפון
-         של הגמ"ח → בעלות מיידית. אחרת (גילוי חכם/ייבוא): אישור אדמין. -->
+         מסלול מהיר (fastClaim, גמ"ח עם נייד תקין + SMS מוגדר): קוד לטלפון
+         של הגמ"ח → בעלות מיידית. אחרת (או בלי גישה למספר): אישור אדמין. -->
     {#if form?.verified}
         <div class="mb-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200">
             🎉 הבעלות הועברה אליך! כפתור "עריכה" זמין עכשיו למעלה — הגמ"ח שלך גם באתר "קהילה בשכונה".
@@ -272,14 +272,20 @@
                 </form>
             {:else}
                 <div class="flex flex-wrap items-center justify-between gap-3">
-                    <span class="text-sm font-bold text-blue-100">🤝 הגמ"ח הזה שלך? נשלח קוד לטלפון של הגמ"ח — והבעלות עוברת אליך מיד.</span>
+                    <span class="text-sm font-bold text-blue-100">🤝 הגמ"ח הזה שלך? אם המספר שבכרטיס הוא הנייד שלך — אמת אותו בקוד SMS וקבל את הניהול מיד.</span>
                     {#if form?.fastError}
                         <span class="w-full text-xs font-bold text-rose-300">{form.fastError}</span>
                     {/if}
-                    <form method="POST" action="?/claimCode" use:enhance={() => { claiming = true; return async ({ update }) => { await update(); claiming = false; }; }}>
+                    <form method="POST" action="?/claimCode" class="flex flex-wrap items-center gap-3"
+                        use:enhance={() => { claiming = true; return async ({ update }) => { await update(); claiming = false; }; }}>
                         <button type="submit" disabled={claiming}
                             class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60">
                             {claiming ? 'שולח...' : `שלחו לי קוד ב-SMS (***${data.fastPhoneTail})`}
+                        </button>
+                        <!-- אין גישה למספר שבכרטיס (מספר ישן/של מתנדב)? הזרימה הרגילה -->
+                        <button type="submit" formaction="?/claim" formnovalidate disabled={claiming}
+                            class="text-xs font-bold text-blue-300 hover:underline disabled:opacity-60">
+                            אין גישה למספר הזה? שלחו בקשה ואדמין יאשר ידנית
                         </button>
                     </form>
                 </div>

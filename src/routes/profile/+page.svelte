@@ -1,10 +1,15 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { signOut } from '@auth/sveltekit/client';
 	import { adminTiles, type AdminNavRole } from '$lib/adminNav';
 	import VisitorStatsCard from '$lib/components/VisitorStatsCard.svelte';
 	import { statusView, needsRenewal, type AdStatusKind } from '$lib/adOwner';
 
-	let { data } = $props();
+	let { data, form } = $props();
+
+	// באנר "הוסיפו נייד" — מוצג כל עוד אין למשתמש נייד מאומת, ונעלם לתמיד
+	// אחרי אימות (needPhone מה-load). phoneBusy מונע לחיצה כפולה בשליחה.
+	let phoneBusy = $state(false);
 
 	// התפקיד מגיע מ-+layout.server (זמין בכל דף); null = משתמש רגיל
 	const role = $derived(data.adminRole as AdminNavRole | null);
@@ -74,6 +79,57 @@
 <svelte:head><title>האזור האישי</title></svelte:head>
 
 <div class="min-h-[80vh] px-4 py-8" dir="rtl">
+	<!-- באנר "הוסיפו נייד": משתמשי Google מגיעים בלי טלפון, ובלעדיו הזיהוי
+	     האוטומטי של "אולי הגמ"ח הזה שלך?" לא עובד. באנר שקט (לא חלון קופץ),
+	     שני צעדים באותו מקום: נייד → קוד SMS. נעלם לתמיד אחרי אימות. -->
+	{#if form?.phoneVerified}
+		<div class="mx-auto mb-4 w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200 {hasSide ? 'max-w-5xl' : 'max-w-sm'}">
+			✅ הנייד אומת ונשמר! אם קיים במאגר גמ"ח עם המספר הזה — הוא יופיע כאן תחת "אולי אחד מאלה שלך?".
+		</div>
+	{:else if data.needPhone}
+		<section class="mx-auto mb-4 w-full rounded-3xl border border-amber-500/40 bg-[#16264d] p-4 shadow-2xl sm:p-5 {hasSide ? 'max-w-5xl' : 'max-w-sm'}">
+			<h2 class="flex items-center gap-2 text-base font-black text-white">
+				מנהלים גמ"ח? נזהה אותו בשבילכם <span aria-hidden="true">📱</span>
+			</h2>
+			<p class="mt-1 text-xs text-gray-300">
+				הוסיפו את מספר הנייד שלכם — אם קיים במאגר כרטיס גמ"ח עם המספר הזה, נציע לכם לנהל אותו מיד, בלי טפסים ובלי המתנה לאישור.
+			</p>
+			{#if form?.phoneError}
+				<p class="mt-2 text-xs font-bold text-rose-300">{form.phoneError}</p>
+			{/if}
+			{#if form?.phoneCodeSent}
+				<p class="mt-2.5 text-sm font-bold text-amber-200">📲 נשלח קוד בן 6 ספרות ל-{form.phoneValue}</p>
+				<form method="POST" action="?/verifyPhone" class="mt-2 flex flex-wrap items-center gap-2"
+					use:enhance={() => { phoneBusy = true; return async ({ update }) => { await update({ reset: false }); phoneBusy = false; }; }}>
+					<input type="hidden" name="phone" value={form.phoneValue ?? ''} />
+					<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required
+						placeholder="הקוד מה-SMS" dir="ltr"
+						class="w-32 rounded-xl border border-amber-500/30 bg-[#0f1c3d] px-3 py-2 text-center text-sm font-bold tracking-widest text-white placeholder:text-gray-500 focus:border-amber-400 focus:outline-none" />
+					<button type="submit" disabled={phoneBusy}
+						class="rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60">
+						{phoneBusy ? 'בודק...' : 'אימות'}
+					</button>
+					<button type="submit" formaction="?/sendPhoneCode" formnovalidate disabled={phoneBusy}
+						class="text-xs font-bold text-amber-300 hover:underline disabled:opacity-60">
+						שליחה חוזרת
+					</button>
+				</form>
+			{:else}
+				<form method="POST" action="?/sendPhoneCode" class="mt-2.5 flex flex-wrap items-center gap-2"
+					use:enhance={() => { phoneBusy = true; return async ({ update }) => { await update({ reset: false }); phoneBusy = false; }; }}>
+					<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required
+						defaultValue={form?.phoneValue ?? ''}
+						placeholder="050-1234567" dir="ltr"
+						class="w-44 rounded-xl border border-amber-500/30 bg-[#0f1c3d] px-3 py-2 text-center text-sm font-bold text-white placeholder:text-gray-500 focus:border-amber-400 focus:outline-none" />
+					<button type="submit" disabled={phoneBusy}
+						class="rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60">
+						{phoneBusy ? 'שולח...' : 'הוספת נייד'}
+					</button>
+				</form>
+			{/if}
+		</section>
+	{/if}
+
 	<!-- עמודה ימנית: הכרטיס האישי והנכסים שלי זה מתחת לזה — בלי חלל ריק.
 	     עמודה שמאלית (כשיש): פאנל הניהול ו"אולי שלך". -->
 	<div class="mx-auto grid w-full items-start gap-4 {hasSide ? 'max-w-5xl lg:grid-cols-[20rem_minmax(0,1fr)]' : 'max-w-sm'}">
@@ -198,7 +254,7 @@
 							<span aria-hidden="true">🤝</span> אולי אחד מאלה שלך?
 						</h2>
 						<p class="mt-1 text-xs text-gray-300">
-							מצאנו גמ"חים עם מספר טלפון שתואם לשלך. אם הגמ"ח שלך — פתח אותו ובקש בעלות: גמ"ח שהעלית בטופס מאומת מיד בקוד לטלפון, ובשאר המקרים אדמין מאשר.
+							מצאנו גמ"חים עם מספר טלפון שתואם לשלך. אם הגמ"ח שלך — פתח אותו, אמת בקוד SMS לטלפון שבכרטיס וקבל את הניהול מיד.
 						</p>
 						<ul class="mt-2.5 flex flex-col gap-1.5">
 							{#each data.claimable as g (g.id)}

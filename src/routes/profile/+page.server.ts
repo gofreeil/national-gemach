@@ -1,6 +1,8 @@
-import { redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { fail, redirect } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
 import { isOwner } from '$lib/server/admin';
+import { getVerifiedPhone, requestPhoneCode, verifyPhoneCode } from '$lib/server/userPhone';
+import { smsEnabled } from '$lib/server/sms';
 import { getOwnerAssets } from '$lib/server/ownerAssets';
 import { listApproved, listPendingAdsPreview } from '$lib/server/adsStore';
 import { findClaimableByPhone, countPendingClaims } from '$lib/server/claimsStore';
@@ -59,8 +61,14 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	// שמישהו אישר או דחה. הגרסה המלאה (עם תמונה) — הבאנר מציג את הפרסומת עצמה.
 	const pendingAds = adminRole ? await listPendingAdsPreview() : [];
 
+	// הנייד של המשתמש: מהסשן (credentials/SSO) או זה שאומת כאן בקוד SMS.
+	// משתמשי Google מגיעים בלי — ואז מוצג באנר "הוסיפו נייד" (needPhone),
+	// כי בלעדיו הזיהוי האוטומטי שלמטה לא יכול לעבוד עבורם.
+	const phone = await getVerifiedPhone(session.user);
+	const userWithPhone = { ...session.user, phone };
+
 	// זיהוי אוטומטי: גמ"חים שהטלפון שלהם תואם לטלפון של המשתמש — "האם זה שלך?".
-	// ריק כשאין למשתמש טלפון בסשן (נפוץ). pendingClaims — מונה בקשות הבעלות
+	// ריק כשאין למשתמש טלפון (נפוץ). pendingClaims — מונה בקשות הבעלות
 	// שממתינות לאישור, להתראה לאדמינים (בדומה ל-pendingAds).
 	// סטטיסטיקת הכניסות (GA) נטענת רק לאדמינים — מוצגת פרוסה בפאנל הניהול שבדף.
 	// tileStats — מוני האריחים; כשל בשליפה לא מפיל את הדף (null = בלי מונים).
@@ -68,7 +76,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	// ישנות שממתינות לפרסום, לבועה האדומה על אריח "ניהול גמ"חים" (אותו מונה
 	// שנספר בבועת ההאדר).
 	const [claimable, pendingClaims, pendingDrafts, gaMonthly, tileStats] = await Promise.all([
-		findClaimableByPhone(session.user),
+		findClaimableByPhone(userWithPhone),
 		adminRole ? countPendingClaims() : Promise.resolve(0),
 		adminRole ? countGemachAttention().catch(() => 0) : Promise.resolve(0),
 		adminRole ? getMonthlyVisitorStats().catch(() => null) : Promise.resolve(null),
@@ -77,6 +85,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 
 	return {
 		user: { name: session.user.name ?? '', email: session.user.email ?? '' },
+		needPhone: !phone && smsEnabled(),
 		isOwner: adminRole ? isOwner(session.user) : false,
 		loadFailed: assets.loadFailed,
 		ads: assets.ads,
@@ -89,4 +98,38 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		gaMonths: gaMonthly?.rows ?? null,
 		gaUpdatedAt: gaMonthly?.updatedAt ?? null
 	};
+};
+
+// באנר "הוסיפו נייד" — שני צעדים: שליחת קוד לנייד שהוקלד, ואימותו.
+// אחרי אימות ה-load רץ מחדש והזיהוי האוטומטי ("אולי שלך?") נדלק מעצמו.
+export const actions: Actions = {
+	sendPhoneCode: async ({ request, locals }) => {
+		const session = await locals.auth();
+		if (!session?.user) return fail(401, { phoneError: 'צריך להתחבר' });
+		const phone = String((await request.formData()).get('phone') ?? '').trim();
+		try {
+			const r = await requestPhoneCode(session.user, phone);
+			if (!r.ok) return fail(400, { phoneError: r.error, phoneValue: phone });
+			return { phoneCodeSent: true, phoneValue: phone };
+		} catch (e) {
+			console.error('[profile] sendPhoneCode failed:', e);
+			return fail(502, { phoneError: 'שליחת הקוד נכשלה — נסו שוב', phoneValue: phone });
+		}
+	},
+
+	verifyPhone: async ({ request, locals }) => {
+		const session = await locals.auth();
+		if (!session?.user) return fail(401, { phoneError: 'צריך להתחבר' });
+		const form = await request.formData();
+		const code = String(form.get('code') ?? '');
+		const phoneValue = String(form.get('phone') ?? '');
+		try {
+			const r = await verifyPhoneCode(session.user, code);
+			if (!r.ok) return fail(400, { phoneError: r.error, phoneCodeSent: true, phoneValue });
+			return { phoneVerified: true };
+		} catch (e) {
+			console.error('[profile] verifyPhone failed:', e);
+			return fail(502, { phoneError: 'האימות נכשל — נסו שוב', phoneCodeSent: true, phoneValue });
+		}
+	}
 };
