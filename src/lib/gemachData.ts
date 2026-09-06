@@ -1,5 +1,44 @@
 import type { ImageFit } from '$lib/imageFit';
 
+// ---------- דרכי תרומה ----------
+
+export type DonateKind = 'bit' | 'paybox' | 'bank' | 'standing_order' | 'link' | 'other';
+
+export interface DonateOption {
+    kind: DonateKind;
+    /** מספר טלפון (ביט/פייבוקס), כתובת https, או טקסט חופשי (פרטי חשבון) */
+    value: string;
+}
+
+/** סוגי התרומה שהטופס מציע, עם התווית לכרטיס והרמז לשדה. */
+export const DONATE_KINDS: { key: DonateKind; label: string; icon: string; placeholder: string; multiline: boolean }[] = [
+    { key: 'bit',            label: 'ביט',           icon: '📱', placeholder: 'מספר הטלפון של ביט, לדוגמה 050-1234567', multiline: false },
+    { key: 'paybox',         label: 'פייבוקס',       icon: '📱', placeholder: 'קישור לדף/קבוצת פייבוקס, או מספר טלפון', multiline: false },
+    { key: 'bank',           label: 'העברה בנקאית',  icon: '🏦', placeholder: 'בנק, סניף, מספר חשבון, שם המוטב', multiline: true },
+    { key: 'standing_order', label: 'הוראת קבע',     icon: '🔁', placeholder: 'איך מצטרפים — קישור לטופס, טלפון או פרטי חשבון', multiline: true },
+    { key: 'link',           label: 'תרומה מקוונת',  icon: '🔗', placeholder: 'https://... (דף תרומות של העמותה, JGive, Charidy...)', multiline: false },
+    { key: 'other',          label: 'אחר',           icon: '💝', placeholder: 'לדוגמה: מזומן במקום, צ\'ק לפקודת...', multiline: true },
+];
+
+export function donateKindDef(kind: string) {
+    return DONATE_KINDS.find((k) => k.key === kind) ?? DONATE_KINDS[DONATE_KINDS.length - 1];
+}
+
+/** מנקה ערך גולמי (מ-Strapi או מטיוטה) לרשימת דרכי תרומה תקינה. סוג לא מוכר → 'אחר'. */
+export function parseDonateOptions(raw: unknown): DonateOption[] {
+    if (!Array.isArray(raw)) return [];
+    const out: DonateOption[] = [];
+    for (const r of raw) {
+        if (!r || typeof r !== 'object') continue;
+        const o = r as { kind?: unknown; value?: unknown };
+        const value = typeof o.value === 'string' ? o.value.trim() : '';
+        if (!value) continue;
+        const kind = DONATE_KINDS.some((k) => k.key === o.kind) ? (o.kind as DonateKind) : 'other';
+        out.push({ kind, value });
+    }
+    return out;
+}
+
 export interface Gemach {
     id: string;
     name: string;
@@ -20,12 +59,11 @@ export interface Gemach {
     contact2?: string;
     phone2?: string;
     link?: string;
-    /** תרומה לפעילות הגמ"ח — אופציונלי, ממולא ע"י הבעלים בטופס
-     *  (extra_fields.donate_link / donate_details). קישור לדף תרומה
-     *  (ביט/פייבוקס/עמותה) ו/או פרטי חשבון בטקסט חופשי. די באחד מהם כדי
-     *  שכפתור "תרום לפעילות זו" יופיע בכרטיס. */
-    donateLink?: string;
-    donateDetails?: string;
+    /** דרכי תרומה לפעילות הגמ"ח — אופציונלי, ממולא ע"י הבעלים בטופס
+     *  (extra_fields.donate_options). כמה דרכים במקביל: ביט, פייבוקס, העברה
+     *  בנקאית, הוראת קבע, קישור, אחר. די באחת כדי שכפתור "תרום לפעילות זו"
+     *  יופיע בכרטיס. ראו DONATE_KINDS. */
+    donateOptions?: DonateOption[];
     notes?: string;
     address?: string;
     /** שעות פעילות. JSON מובנה (ראו $lib/openingHours) או טקסט חופשי ברשומות ישנות */

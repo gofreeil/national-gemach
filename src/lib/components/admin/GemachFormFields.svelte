@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Gemach, CategoryDef } from '$lib/gemachData';
+    import { DONATE_KINDS, donateKindDef, type Gemach, type CategoryDef, type DonateOption } from '$lib/gemachData';
     import TagEditor from './TagEditor.svelte';
     import OpeningHoursEditor from './OpeningHoursEditor.svelte';
     import { imageDrop } from '$lib/imageDrop';
@@ -29,11 +29,21 @@
     let showSecondContact = $state(false);
     const hasSecondContact = $derived(Boolean(gemach?.phone2 || gemach?.contact2));
 
-    // ---- תרומה לפעילות ----
+    // ---- דרכי תרומה ----
     // רוב הגמ"חים לא מגייסים כסף דרך האתר, ולכן הסעיף מקופל כמו איש הקשר הנוסף.
-    // מי שממלא קישור ו/או פרטי חשבון מקבל בכרטיס כפתור "תרום לפעילות זו".
-    let showDonate = $state(false);
-    const hasDonate = $derived(Boolean(gemach?.donateLink || gemach?.donateDetails));
+    // גמ"ח יכול להציע כמה דרכים במקביל (ביט + הוראת קבע + העברה) — כל שורה היא
+    // סוג + פרטים, ונשלחת כזוג donate_kind/donate_value. מי שממלא לפחות אחת
+    // מקבל בכרטיס כפתור "תרום לפעילות זו".
+    let donateRows = $state<DonateOption[]>((gemach?.donateOptions ?? []).map((o) => ({ ...o })));
+    function addDonateRow() {
+        // ברירת המחדל: הסוג הראשון שעוד לא נבחר, כדי שלחיצות חוזרות יציעו דרכים שונות
+        const used = new Set(donateRows.map((r) => r.kind));
+        const next = DONATE_KINDS.find((k) => !used.has(k.key)) ?? DONATE_KINDS[0];
+        donateRows = [...donateRows, { kind: next.key, value: '' }];
+    }
+    function removeDonateRow(i: number) {
+        donateRows = donateRows.filter((_, j) => j !== i);
+    }
 
     // ---- נושאים ----
     // גמ"ח אחד משרת לא פעם כמה נושאים (ציוד רפואי + ריהוט, ביגוד + תינוקות),
@@ -571,29 +581,44 @@
             placeholder="https://..." />
     </div>
 
-    <!-- תרומה לפעילות — אופציונלי, מקופל עד שמבקשים -->
-    {#if showDonate || hasDonate}
-        <div class="md:col-span-2 rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="md:col-span-2">
-                <span class="block text-sm font-black text-emerald-200">💝 תרומה לפעילות הגמ"ח (אופציונלי)</span>
-                <span class="block text-xs text-emerald-100/80 mt-0.5">מלאו קישור לתרומה ו/או פרטי חשבון — ובכרטיס הגמ"ח יופיע כפתור "תרום לפעילות זו". די באחד מהשניים.</span>
-            </div>
+    <!-- דרכי תרומה — אופציונלי, מקופל עד שמבקשים; כמה שורות במקביל -->
+    {#if donateRows.length > 0}
+        <div class="md:col-span-2 rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-4 space-y-3">
             <div>
-                <label for="f-donate-link" class="block text-sm font-bold text-gray-300 mb-1">קישור לתרומה</label>
-                <input id="f-donate-link" name="donate_link" type="url" defaultValue={gemach?.donateLink ?? ''} dir="ltr"
-                    class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
-                    placeholder="https://... (ביט / פייבוקס / דף תרומות)" />
+                <span class="block text-sm font-black text-emerald-200">💝 דרכי תרומה לפעילות הגמ"ח (אופציונלי)</span>
+                <span class="block text-xs text-emerald-100/80 mt-0.5">אפשר כמה דרכים במקביל — ביט, הוראת קבע, העברה בנקאית... בכרטיס הגמ"ח יופיע כפתור "תרום לפעילות זו" עם כולן.</span>
             </div>
-            <div>
-                <label for="f-donate-details" class="block text-sm font-bold text-gray-300 mb-1">פרטי חשבון להעברה</label>
-                <textarea id="f-donate-details" name="donate_details" rows="3"
-                    class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none resize-y"
-                    placeholder="בנק, סניף, מספר חשבון, שם המוטב — או מספר ביט/פייבוקס">{gemach?.donateDetails ?? ''}</textarea>
-            </div>
+            {#each donateRows as row, i (i)}
+                {@const def = donateKindDef(row.kind)}
+                <div class="grid grid-cols-1 sm:grid-cols-[10rem_1fr_auto] gap-2 items-start">
+                    <select name="donate_kind" bind:value={row.kind} aria-label="סוג דרך התרומה"
+                        class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-3 text-white focus:border-purple-500 focus:outline-none">
+                        {#each DONATE_KINDS as k (k.key)}
+                            <option value={k.key}>{k.icon} {k.label}</option>
+                        {/each}
+                    </select>
+                    {#if def.multiline}
+                        <textarea name="donate_value" bind:value={row.value} rows="2" aria-label="פרטי {def.label}"
+                            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none resize-y"
+                            placeholder={def.placeholder}></textarea>
+                    {:else}
+                        <input name="donate_value" bind:value={row.value} aria-label="פרטי {def.label}"
+                            type={row.kind === 'link' ? 'url' : 'text'} inputmode={row.kind === 'bit' ? 'tel' : undefined} dir="ltr"
+                            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
+                            placeholder={def.placeholder} />
+                    {/if}
+                    <button type="button" onclick={() => removeDonateRow(i)} aria-label="הסר דרך תרומה"
+                        class="rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-3 text-gray-300 hover:text-red-300 hover:border-red-400/50 transition-colors">✕</button>
+                </div>
+            {/each}
+            <button type="button" onclick={addDonateRow}
+                class="text-sm font-bold text-emerald-300 hover:text-emerald-200 transition-colors">
+                ＋ הוסף דרך תרומה נוספת
+            </button>
         </div>
     {:else}
         <div class="md:col-span-2 -mt-1">
-            <button type="button" onclick={() => (showDonate = true)}
+            <button type="button" onclick={addDonateRow}
                 class="text-sm font-bold text-emerald-300 hover:text-emerald-200 transition-colors">
                 ＋ הוסף אפשרות לתרום לפעילות הגמ"ח
             </button>

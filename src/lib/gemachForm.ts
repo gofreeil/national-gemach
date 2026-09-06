@@ -4,6 +4,7 @@
 // את אותם שדות בדיוק, כך ששדה חדש בטופס נשמר בטיוטה בלי עבודה נוספת.
 
 import { parseImageFitMap, type ImageFit } from '$lib/imageFit';
+import { parseDonateOptions, type DonateOption } from '$lib/gemachData';
 
 export interface CreateGemachInput {
     name: string;
@@ -25,9 +26,8 @@ export interface CreateGemachInput {
     icon?: string;
     image?: string;         // כתובת https או data URI — נשמר ב-extra_fields.logo
     link?: string;
-    /** תרומה לפעילות — קישור ו/או פרטי חשבון (extra_fields.donate_link / donate_details) */
-    donateLink?: string;
-    donateDetails?: string;
+    /** דרכי תרומה לפעילות (extra_fields.donate_options) — ראו DONATE_KINDS ב-$lib/gemachData */
+    donateOptions?: DonateOption[];
     notes?: string;
     logoBase64?: string;
     images?: string[];
@@ -105,6 +105,12 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		.filter(Boolean);
 	const categoriesList = [...new Set([...picked, ...(str('category') ? [str('category')!] : [])])];
 
+	// דרכי תרומה: הטופס שולח זוג donate_kind/donate_value לכל שורה, באותו סדר
+	// (ה-select וה-textarea של כל שורה סמוכים ב-DOM). שורה בלי ערך נשמטת.
+	const kinds  = form.getAll('donate_kind').map(String);
+	const values = form.getAll('donate_value').map(String);
+	const donateOptions = parseDonateOptions(values.map((value, i) => ({ kind: kinds[i], value })));
+
 	const input: CreateGemachInput = {
 		name:         str('name') ?? '',
 		category:     categoriesList[0] ?? '',
@@ -121,8 +127,7 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		apartment:    str('apartment'),
 		arrivalNotes: str('arrival_notes'),
 		link:         str('link'),
-		donateLink:    str('donate_link'),
-		donateDetails: ((form.get('donate_details') as string) ?? '').trim() || undefined,
+		donateOptions,
 		notes:        str('notes'),
 		icon:         str('icon'),
 		image:        str('image'),
@@ -142,8 +147,10 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		error = 'כתובת התמונה אינה תקינה — נדרשת כתובת https:// או data:image';
 	else if (input.link && !isSafeHttpUrl(input.link))
 		error = 'הקישור אינו תקין — נדרשת כתובת מלאה שמתחילה ב-https://';
-	else if (input.donateLink && !isSafeHttpUrl(input.donateLink))
+	else if (input.donateOptions?.some((o) => o.kind === 'link' && !isSafeHttpUrl(o.value)))
 		error = 'קישור התרומה אינו תקין — נדרשת כתובת מלאה שמתחילה ב-https://';
+	else if (input.donateOptions?.some((o) => /^https?:/i.test(o.value) && !isSafeHttpUrl(o.value)))
+		error = 'אחת מדרכי התרומה מכילה קישור לא תקין — נדרשת כתובת מלאה שמתחילה ב-https://';
 
 	return { input, error };
 }
@@ -154,7 +161,7 @@ export function hasContent(input: CreateGemachInput | null | undefined): boolean
 	return !!(
 		input.name || input.city || input.description || input.phone || input.address ||
 		input.contact || input.contact2 || input.phone2 || input.neighborhood ||
-		input.hours || input.link || input.notes || input.donateLink || input.donateDetails ||
+		input.hours || input.link || input.notes || (input.donateOptions?.length ?? 0) > 0 ||
 		input.icon || input.image || input.floor || input.apartment || input.arrivalNotes ||
 		(input.tags?.length ?? 0) > 0 ||
 		(input.images?.length ?? 0) > 0 ||

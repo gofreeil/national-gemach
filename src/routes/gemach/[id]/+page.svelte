@@ -10,7 +10,7 @@
     import { formatOpeningHoursLines, isOpenNow, toSchemaOpeningHours } from '$lib/openingHours';
     import Seo from '$lib/components/Seo.svelte';
     import { SITE_NAME, SITE_URL, SITE_LOGO, DEFAULT_OG_IMAGE, breadcrumbSchema } from '$lib/seo';
-    import { categoryKeys } from '$lib/gemachData';
+    import { categoryKeys, donateKindDef } from '$lib/gemachData';
     import { isExtremeAspect, displayedImageFit, fitStyle } from '$lib/imageFit';
     import { enhance } from '$app/forms';
     import type { PageData, ActionData } from './$types';
@@ -37,10 +37,14 @@
 
     const gemach = $derived(data.gemach);
 
-    /** "תרום לפעילות זו": קישור בלבד → פותח את דף התרומה; פרטי חשבון →
-     *  פותח קופסה עם הפרטים (וגם הקישור, אם יש). מוצג רק כשהבעלים מילא. */
+    /** "תרום לפעילות זו": דרך אחת שהיא קישור → פותח אותו ישירות; אחרת פותח
+     *  קופסה עם כל הדרכים (ביט, הוראת קבע, העברה...). מוצג רק כשהבעלים מילא. */
     let donateOpen = $state(false);
-    const hasDonate = $derived(Boolean(gemach.donateLink || gemach.donateDetails));
+    const donateOptions = $derived(gemach.donateOptions ?? []);
+    const isHttp = (v: string) => /^https?:\/\//i.test(v);
+    const donateDirectLink = $derived(
+        donateOptions.length === 1 && isHttp(donateOptions[0].value) ? donateOptions[0].value : ''
+    );
     const categoryLabel = $derived(
         data.categories.find(c => c.key === gemach.category)?.label ?? gemach.category
     );
@@ -410,12 +414,12 @@
                             🔗 לאתר הגמ"ח
                         </a>
                     {/if}
-                    {#if gemach.donateLink && !gemach.donateDetails}
-                        <a href={gemach.donateLink} target="_blank" rel="noopener noreferrer"
+                    {#if donateDirectLink}
+                        <a href={donateDirectLink} target="_blank" rel="noopener noreferrer"
                             class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-bold text-white transition-colors">
                             💝 תרום לפעילות זו
                         </a>
-                    {:else if hasDonate}
+                    {:else if donateOptions.length > 0}
                         <button type="button" onclick={() => (donateOpen = !donateOpen)} aria-expanded={donateOpen}
                             class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-bold text-white transition-colors">
                             💝 תרום לפעילות זו
@@ -424,16 +428,25 @@
                     <ShareGemach {gemach} {categoryLabel} place={placeName} />
                 </div>
 
-                {#if donateOpen && gemach.donateDetails}
+                {#if donateOpen && donateOptions.length > 0}
                     <div class="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-950/50 p-4 text-sm">
-                        <div class="font-black text-emerald-200 mb-1.5">💝 תרומה לפעילות הגמ"ח</div>
-                        <p class="text-white whitespace-pre-line leading-relaxed" dir="auto">{gemach.donateDetails}</p>
-                        {#if gemach.donateLink}
-                            <a href={gemach.donateLink} target="_blank" rel="noopener noreferrer"
-                                class="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-bold text-white transition-colors">
-                                🔗 לתרומה מקוונת
-                            </a>
-                        {/if}
+                        <div class="font-black text-emerald-200 mb-2">💝 תרומה לפעילות הגמ"ח — בחרו דרך</div>
+                        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {#each donateOptions as o, i (i)}
+                                {@const def = donateKindDef(o.kind)}
+                                <li class="rounded-xl bg-[#16264d] border border-[#3b5794] px-3.5 py-2.5">
+                                    <div class="text-xs font-bold text-emerald-200 mb-0.5">{def.icon} {def.label}</div>
+                                    {#if isHttp(o.value)}
+                                        <a href={o.value} target="_blank" rel="noopener noreferrer" dir="ltr"
+                                            class="block text-right text-white font-bold underline decoration-emerald-400/60 hover:text-emerald-200 break-all">{o.value.replace(/^https?:\/\/(www\.)?/i, '')}</a>
+                                    {:else if o.kind === 'bit' || o.kind === 'paybox'}
+                                        <span class="block text-right text-white font-bold" dir="ltr">{o.value}</span>
+                                    {:else}
+                                        <p class="text-white font-bold whitespace-pre-line leading-relaxed" dir="auto">{o.value}</p>
+                                    {/if}
+                                </li>
+                            {/each}
+                        </ul>
                     </div>
                 {/if}
 

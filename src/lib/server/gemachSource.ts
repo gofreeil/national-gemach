@@ -52,14 +52,14 @@ export function withImageUrls<T extends { id: string; image?: string; gallery?: 
  * של העמוד ועוקף את השער.
  */
 export function toListItem(g: Gemach): ListGemach {
-    const { phone, phone2, ...rest } = g;
+    // דרכי התרומה (מספרי ביט וכו') מוצגות רק בעמוד הגמ"ח — לא ברשימות
+    const { phone, phone2, donateOptions: _donate, ...rest } = g;
     return withImageUrls({
         ...rest,
         description: withoutPhones(g.description) ?? '',
         contact: withoutPhones(g.contact),
         contact2: withoutPhones(g.contact2),
         notes: withoutPhones(g.notes),
-        donateDetails: withoutPhones(g.donateDetails),
         arrivalNotes: withoutPhones(g.arrivalNotes),
         hasPhone: Boolean(phone || phone2),
     });

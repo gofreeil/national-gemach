@@ -4,9 +4,9 @@
 // ============================================================
 
 import { strapiGet, strapiGetAll, strapiPost, strapiPut, strapiDelete, StrapiContentTypeError } from './strapiClient.js';
-import type { Gemach } from '$lib/gemachData';
+import type { Gemach, DonateOption } from '$lib/gemachData';
 import type { CreateGemachInput } from '$lib/gemachForm';
-import { categories } from '$lib/gemachData';
+import { categories, parseDonateOptions } from '$lib/gemachData';
 import { parseImageFitMap } from '$lib/imageFit';
 import { resolveGemachCoords, hasValidCoords } from './geocode';
 
@@ -128,8 +128,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         contact2:      toStr(extra.contact2),
         phone2:        toStr(extra.phone2),
         link:          toStr(extra.link),
-        donateLink:    toStr(extra.donate_link),
-        donateDetails: toStr(extra.donate_details),
+        donateOptions: readDonateOptions(extra),
         notes:         toStr(extra.notes),
         address:       item.address ?? undefined,
         hours:         toStr(extra.hours),
@@ -415,6 +414,19 @@ export async function getGemachOwnerId(documentId: string): Promise<string | nul
 // אותה; נשמרת כאן היצוא-מחדש כדי שכל מי שמייבא מ-'$lib/server/db' ימשיך לעבוד.
 export type { CreateGemachInput } from '$lib/gemachForm';
 
+/** דרכי תרומה מה-extra. תומך גם במבנה הישן (donate_link / donate_details)
+ *  שהיה בשימוש זמן קצר — מומר לרשימה, ונמחק בעדכון הבא. */
+function readDonateOptions(extra: Record<string, unknown>): DonateOption[] | undefined {
+    const list = parseDonateOptions(extra.donate_options);
+    if (list.length === 0) {
+        const link = toStr(extra.donate_link);
+        const details = toStr(extra.donate_details);
+        if (link)    list.push({ kind: 'link', value: link });
+        if (details) list.push({ kind: 'bank', value: details });
+    }
+    return list.length > 0 ? list : undefined;
+}
+
 /** בונה את גוף ה-extra_fields מקלט (משותף ליצירה/עדכון) */
 function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     const extra: Record<string, unknown> = { gmach_type: input.category };
@@ -428,8 +440,7 @@ function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     if (input.link)       extra.link    = input.link;
     if (input.notes)      extra.notes   = input.notes;
     // תרומה לפעילות — קישור ו/או פרטי חשבון; שניהם אופציונליים
-    if (input.donateLink)    extra.donate_link    = input.donateLink;
-    if (input.donateDetails) extra.donate_details = input.donateDetails;
+    if (input.donateOptions && input.donateOptions.length > 0) extra.donate_options = input.donateOptions;
     // איש קשר/טלפון נוספים — אין להם עמודה משלהם ב-items, ולכן הם יושבים ב-extra
     if (input.contact2)   extra.contact2 = input.contact2;
     if (input.phone2)     extra.phone2   = input.phone2;
@@ -602,8 +613,10 @@ export async function updateGemach(
     if (!input.hours)        delete mergedExtra.hours;
     if (!input.link)         delete mergedExtra.link;
     if (!input.notes)        delete mergedExtra.notes;
-    if (!input.donateLink)    delete mergedExtra.donate_link;
-    if (!input.donateDetails) delete mergedExtra.donate_details;
+    if (!input.donateOptions || input.donateOptions.length === 0) delete mergedExtra.donate_options;
+    // המבנה הישן (קישור + פרטים כשני מפתחות) הומר לרשימה בקריאה — המפתחות נמחקים
+    delete mergedExtra.donate_link;
+    delete mergedExtra.donate_details;
     if (!input.contact2)     delete mergedExtra.contact2;
     if (!input.phone2)       delete mergedExtra.phone2;
     if (!input.floor)        delete mergedExtra.floor;
