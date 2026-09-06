@@ -537,7 +537,7 @@
                     {/if}
                     {#if gemach.hideAddress}
                         <!-- הבעלים ביקש להסתיר את הכתובת — הרחוב/קומה/דירה כבר נמחקו בשרת (withoutHiddenAddress) -->
-                        <div class="flex gap-1.5 sm:col-span-2"><dt class="text-gray-400 flex-shrink-0">🔒</dt><dd class="text-gray-300">הכתובת המדויקת נמסרת בטלפון בלבד, לבקשת הגמ"ח</dd></div>
+                        <div class="flex gap-1.5 sm:col-span-2"><dt class="text-gray-400 flex-shrink-0">כתובת:</dt><dd class="text-gray-300">נמסרת בפנייה לגמ"ח</dd></div>
                     {/if}
                     {#if floorLine}
                         <div class="flex gap-1.5"><dt class="text-gray-400 flex-shrink-0">קומה ודירה:</dt><dd class="text-white font-bold">{floorLine}</dd></div>

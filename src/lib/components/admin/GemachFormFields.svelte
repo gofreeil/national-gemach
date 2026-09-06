@@ -504,11 +504,18 @@
             placeholder="רחוב ומספר" />
         <!-- רוב הגמ"חים פועלים מדירה פרטית — יש בעלים שלא רוצים את הכתובת באינטרנט.
              הכתובת נשמרת (לעריכה ולניווט בטלפון) אבל לא מתפרסמת; ראו hideAddress. -->
-        <label class="mt-2 flex items-center gap-2 cursor-pointer select-none text-sm text-gray-300">
-            <input name="hide_address" type="checkbox" value="true" checked={gemach?.hideAddress ?? false}
-                class="h-4 w-4 rounded accent-purple-500" />
-            <span>🔒 לא לפרסם את הכתובת המדויקת — באתר יוצגו רק שכונה ועיר, והפונים יקבלו את הכתובת בטלפון</span>
-        </label>
+        <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-300">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input name="hide_address" type="radio" value="false" checked={!(gemach?.hideAddress ?? false)}
+                    class="h-4 w-4 accent-purple-500" />
+                <span>חשוף לעיני כל</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input name="hide_address" type="radio" value="true" checked={gemach?.hideAddress ?? false}
+                    class="h-4 w-4 accent-purple-500" />
+                <span>שמור במערכת בלבד (לצורך סינון עיר ושכונה)</span>
+            </label>
+        </div>
     </div>
 
     <!-- קומה ודירה — רוב הגמ"חים פועלים מדירה פרטית, ובלי זה המבקר עומד בלובי -->
