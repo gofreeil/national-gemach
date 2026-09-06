@@ -14,3 +14,6 @@ dist/
 # אחסון תפעולי מקומי של אוטומציית הגילוי (כשאין DATABASE_URL)
 automation/state/
 .env*
+
+# לוג הנמענים של הודעת ה-SMS החד-פעמית (scripts/notify-donate-feature.mjs)
+scripts/*.sent.log
