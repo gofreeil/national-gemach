@@ -12,6 +12,7 @@ import { getMergedGemachim } from '$lib/server/gemachSource';
 import { getPinnedGemachim } from '$lib/server/pinned';
 import { getAdmins, getPublicCategories } from '$lib/server/adminStore';
 import { hasValidCoords } from '$lib/server/geocode';
+import { listSmsCampaigns } from '$lib/server/smsCampaigns';
 
 /**
  * מוני האריחים בפאנל הניהול — "כמה נתונים יש" בכל מסך. המספר מוצג בתוך
@@ -75,12 +76,15 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	// pendingDrafts — גמ"חים חדשים מהטופס הציבורי (needs_review) + טיוטות-אורח
 	// ישנות שממתינות לפרסום, לבועה האדומה על אריח "ניהול גמ"חים" (אותו מונה
 	// שנספר בבועת ההאדר).
-	const [claimable, pendingClaims, pendingDrafts, gaMonthly, tileStats] = await Promise.all([
+	// smsCampaigns — תוצאות הפצות ה-SMS (scripts/notify-*.mjs). סופר-אדמין בלבד:
+	// הרשימה מכילה את כל הטלפונים באתר.
+	const [claimable, pendingClaims, pendingDrafts, gaMonthly, tileStats, smsCampaigns] = await Promise.all([
 		findClaimableByPhone(userWithPhone),
 		adminRole ? countPendingClaims() : Promise.resolve(0),
 		adminRole ? countGemachAttention().catch(() => 0) : Promise.resolve(0),
 		adminRole ? getMonthlyVisitorStats().catch(() => null) : Promise.resolve(null),
-		adminRole ? loadTileStats().catch(() => null) : Promise.resolve(null)
+		adminRole ? loadTileStats().catch(() => null) : Promise.resolve(null),
+		adminRole === 'super_admin' ? listSmsCampaigns() : Promise.resolve([])
 	]);
 
 	return {
@@ -95,6 +99,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		pendingClaims,
 		pendingDrafts,
 		tileStats,
+		smsCampaigns,
 		gaMonths: gaMonthly?.rows ?? null,
 		gaUpdatedAt: gaMonthly?.updatedAt ?? null
 	};

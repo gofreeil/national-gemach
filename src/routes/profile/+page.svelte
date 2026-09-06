@@ -5,6 +5,15 @@
 	import VisitorStatsCard from '$lib/components/VisitorStatsCard.svelte';
 	import { statusView, needsRenewal, type AdStatusKind } from '$lib/adOwner';
 
+	/** תאריך+שעה של הפצת SMS, בשעון ישראל */
+	const DATE_FMT = new Intl.DateTimeFormat('he-IL', {
+		timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+	});
+	function fmtDate(iso: string): string {
+		const d = new Date(iso);
+		return isNaN(d.getTime()) ? '' : DATE_FMT.format(d);
+	}
+
 	let { data, form } = $props();
 
 	// באנר "הוסיפו נייד" — מוצג כל עוד אין למשתמש נייד מאומת, ונעלם לתמיד
@@ -366,6 +375,66 @@
 						<div class="mt-3">
 							<VisitorStatsCard months={data.gaMonths} updatedAt={data.gaUpdatedAt} nested href="/admin/stats" />
 						</div>
+
+						<!-- הפצות SMS (scripts/notify-*.mjs) — סופר-אדמין בלבד; מקופל, כי
+						     הרשימה ארוכה ומכילה את כל הטלפונים באתר -->
+						{#if role === 'super_admin' && data.smsCampaigns?.length}
+							<div class="mt-3 space-y-2">
+								{#each data.smsCampaigns as c (c.id)}
+									<details class="group rounded-xl border border-[#3b5794] bg-[#1c2f5a]">
+										<summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm">
+											<span class="text-xl" aria-hidden="true">📨</span>
+											<span class="font-bold text-white">{c.title}</span>
+											<span class="text-[11px] text-gray-400">{fmtDate(c.ranAt)}</span>
+											<span class="ms-auto flex flex-wrap gap-1.5 text-[11px] font-bold">
+												<span class="rounded-full bg-emerald-900/60 border border-emerald-500/40 px-2 py-0.5 text-emerald-200">✓ {c.totals.sent} נשלחו</span>
+												{#if c.totals.failed > 0}
+													<span class="rounded-full bg-rose-900/60 border border-rose-500/40 px-2 py-0.5 text-rose-200">✗ {c.totals.failed} נכשלו</span>
+												{/if}
+												{#if c.totals.pending > 0}
+													<span class="rounded-full bg-amber-900/60 border border-amber-500/40 px-2 py-0.5 text-amber-200">⏳ {c.totals.pending} טרם</span>
+												{/if}
+												<span class="rounded-full bg-[#16264d] border border-[#3b5794] px-2 py-0.5 text-gray-300">{c.totals.mobiles} ניידים · {c.totals.landlines} נייחים דולגו · {c.totals.gemachim} גמ"חים</span>
+											</span>
+										</summary>
+										<div class="border-t border-[#3b5794] px-3 py-3 space-y-3">
+											{#if c.message}
+												<details class="rounded-lg bg-[#16264d] border border-[#3b5794]">
+													<summary class="cursor-pointer px-3 py-1.5 text-xs font-bold text-gray-300">הנוסח שנשלח{c.provider ? ` · דרך ${c.provider}` : ''}</summary>
+													<pre class="whitespace-pre-wrap px-3 pb-3 text-xs leading-relaxed text-gray-200 font-sans" dir="rtl">{c.message}</pre>
+												</details>
+											{/if}
+											<div class="max-h-80 overflow-auto rounded-lg border border-[#3b5794]">
+												<table class="w-full text-xs">
+													<thead class="sticky top-0 bg-[#16264d] text-gray-400">
+														<tr>
+															<th class="px-2 py-1.5 text-right font-bold">גמ"ח</th>
+															<th class="px-2 py-1.5 text-right font-bold">נייד</th>
+															<th class="px-2 py-1.5 text-right font-bold">סטטוס</th>
+														</tr>
+													</thead>
+													<tbody>
+														{#each c.recipients as r (r.to)}
+															<tr class="border-t border-[#3b5794]/60">
+																<td class="px-2 py-1.5 text-white">
+																	{#if r.gemachId}<a href="/gemach/{r.gemachId}" class="hover:text-emerald-300">{r.name}</a>{:else}{r.name}{/if}
+																</td>
+																<td class="px-2 py-1.5 text-gray-300" dir="ltr">{r.to}</td>
+																<td class="px-2 py-1.5">
+																	{#if r.status === 'sent'}<span class="font-bold text-emerald-300">✓ נשלח</span>
+																	{:else if r.status === 'failed'}<span class="font-bold text-rose-300" title={r.error ?? ''}>✗ נכשל</span>
+																	{:else}<span class="font-bold text-amber-300">⏳ טרם</span>{/if}
+																</td>
+															</tr>
+														{/each}
+													</tbody>
+												</table>
+											</div>
+										</div>
+									</details>
+								{/each}
+							</div>
+						{/if}
 
 						<div class="mt-3 grid gap-2 sm:grid-cols-2">
 							{#each tiles as tile (tile.href)}

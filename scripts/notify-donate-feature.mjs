@@ -26,9 +26,15 @@
 //   --limit N      עוצר אחרי N נמענים (לשליחה בגלים).
 //   --delay ms     השהיה בין הודעות (ברירת מחדל 1500 — לא להציף את הטלפון/הספק).
 //   --managed-only רק גמ"חים מ-Strapi (בלי הרשימה הסטטית).
+//   --report       לא שולח — רק מעלה ל-Strapi את תוצאות ההפצה מהלוג המקומי
+//                  (לפאנל הסופר-אדמין באזור האישי). דורש STRAPI_TOKEN ב-env.
 //
 // בטוח להריץ שוב: כל מספר שנשלח נרשם ב-scripts/notify-donate-feature.sent.log
 // (מוחרג מ-git) ומדולג בהרצה הבאה — נפילה באמצע לא גורמת להודעות כפולות.
+//
+// תוצאות: בסוף כל הרצת --apply (וגם ב---report) הסקריפט כותב/מעדכן פריט
+// __ng_sms_campaign ב-Strapi עם כל הנמענים והסטטוס שלהם — זה מה שמוצג
+// לסופר-אדמין ב-/profile (ראו src/lib/server/smsCampaigns.ts).
 // ============================================================
 
 import fs from 'node:fs';
@@ -43,6 +49,13 @@ const SITE = 'https://gemach.gofreeil.com';
 const args = process.argv.slice(2);
 const APPLY = args.includes('--apply');
 const MANAGED_ONLY = args.includes('--managed-only');
+const REPORT = args.includes('--report');
+const STRAPI_TOKEN = process.env.STRAPI_TOKEN || '';
+
+// מזהה ההפצה — פריט אחד ב-Strapi לכל מפתח; הרצות חוזרות מעדכנות אותו
+const CAMPAIGN_KEY = 'donate-feature-2026-09';
+const CAMPAIGN_TITLE = 'הודעה לגמ"חים: דרכי תרומה בכרטיס';
+const CAMPAIGN_CATEGORY = '__ng_sms_campaign';
 const flag = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 const TEST = flag('--test');
 const LIMIT = Number(flag('--limit') ?? 0) || 0;
@@ -161,18 +174,83 @@ async function buildRecipients() {
             if (!to) { landlines++; continue; }
             if (seen.has(to)) continue;
             seen.add(to);
-            recipients.push({ to, name: s.name, url: `${SITE}/gemach/${s.id}`, source: s.source });
+            recipients.push({ to, id: s.id, name: s.name, url: `${SITE}/gemach/${s.id}`, source: s.source });
         }
     }
     return { recipients, gemachim: sources.length, managed: items.length, landlines };
 }
 
-function loadSent() {
-    try { return new Set(fs.readFileSync(SENT_LOG, 'utf8').split('\n').map((l) => l.split('\t')[0]).filter(Boolean)); }
-    catch { return new Set(); }
+/** הלוג: שורה לכל ניסיון — to, זמן, שם, sent|failed, שגיאה. הניסיון האחרון לכל מספר קובע. */
+function loadLog() {
+    const map = new Map();
+    try {
+        for (const line of fs.readFileSync(SENT_LOG, 'utf8').split('\n')) {
+            const [to, at, name, status = 'sent', error = ''] = line.split('\t');
+            if (!to) continue;
+            // שורות ישנות (לפני שנרשמו כשלים) הן הצלחות; כישלון לא דורס הצלחה קודמת
+            if (map.get(to)?.status === 'sent') continue;
+            map.set(to, { at, name, status, error });
+        }
+    } catch { /* אין לוג עדיין */ }
+    return map;
 }
-function markSent(to, name) {
-    fs.appendFileSync(SENT_LOG, `${to}\t${new Date().toISOString()}\t${name}\n`);
+function loadSent() {
+    return new Set([...loadLog().entries()].filter(([, v]) => v.status === 'sent').map(([to]) => to));
+}
+function markAttempt(to, name, status, error = '') {
+    fs.appendFileSync(SENT_LOG, `${to}\t${new Date().toISOString()}\t${name}\t${status}\t${error.replace(/\s+/g, ' ').slice(0, 200)}\n`);
+}
+
+// ---------- דיווח ל-Strapi ----------
+function strapiHeaders() {
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${STRAPI_TOKEN}` };
+}
+/** מעלה/מעדכן את פריט ההפצה ב-Strapi מתוך רשימת הנמענים המלאה + הלוג */
+async function reportCampaign(allRecipients, stats, provider) {
+    if (!STRAPI_TOKEN) {
+        console.log('[notify] STRAPI_TOKEN חסר — התוצאות לא הועלו לפאנל. הריצו שוב עם --report אחרי vercel env pull.');
+        return;
+    }
+    const log = loadLog();
+    const recipients = allRecipients.map((r) => {
+        const l = log.get(r.to);
+        return {
+            to: r.to, name: r.name, gemachId: r.id, source: r.source,
+            status: l ? l.status : 'pending',
+            ...(l?.at ? { at: l.at } : {}),
+            ...(l?.error ? { error: l.error } : {}),
+        };
+    });
+    const sent = recipients.filter((r) => r.status === 'sent').length;
+    const failed = recipients.filter((r) => r.status === 'failed').length;
+    const pending = recipients.length - sent - failed;
+    const extra_fields = {
+        key: CAMPAIGN_KEY,
+        title: CAMPAIGN_TITLE,
+        message: messageFor('<שם הגמ"ח>', `${SITE}/gemach/<מזהה>`),
+        provider: provider ?? '',
+        ranAt: new Date().toISOString(),
+        totals: { gemachim: stats.gemachim, mobiles: allRecipients.length, landlines: stats.landlines, sent, failed, pending },
+        recipients,
+    };
+
+    const q = `${STRAPI}/api/items?filters[category][$eq]=${CAMPAIGN_CATEGORY}&filters[label][$eq]=${encodeURIComponent(CAMPAIGN_KEY)}&pagination[limit]=1`;
+    const found = await fetch(q, { headers: strapiHeaders() });
+    if (!found.ok) throw new Error(`GET campaign → ${found.status}: ${await found.text()}`);
+    const existing = ((await found.json()).data ?? [])[0];
+
+    const body = existing
+        ? { data: { extra_fields } }
+        : { data: {
+            label: CAMPAIGN_KEY, category: CAMPAIGN_CATEGORY, icon: '📨',
+            description: `[SYSTEM] ${CAMPAIGN_TITLE}`,
+            extra_fields, status1: 'active', publishedAt: new Date().toISOString(),
+        } };
+    const res = await fetch(existing ? `${STRAPI}/api/items/${existing.documentId}` : `${STRAPI}/api/items`, {
+        method: existing ? 'PUT' : 'POST', headers: strapiHeaders(), body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`${existing ? 'PUT' : 'POST'} campaign → ${res.status}: ${await res.text()}`);
+    console.log(`[notify] report ${existing ? 'updated' : 'created'} in Strapi: sent=${sent} failed=${failed} pending=${pending} → /profile (סופר-אדמין)`);
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -186,6 +264,13 @@ async function main() {
 
     let { recipients, gemachim, managed, landlines } = await buildRecipients();
     console.log(`[notify] gemachim=${gemachim} (strapi ${managed}, static ${gemachim - managed})  mobiles=${recipients.length}  landlines/invalid skipped=${landlines}`);
+    const allRecipients = recipients;
+    const stats = { gemachim, landlines };
+
+    if (REPORT) {
+        await reportCampaign(allRecipients, stats, provider);
+        return;
+    }
 
     if (TEST) {
         const to = toMobileE164(TEST);
@@ -214,16 +299,23 @@ async function main() {
     for (const [i, r] of recipients.entries()) {
         try {
             await sendSms(r.to, messageFor(r.name, r.url));
-            if (r.source !== 'test') markSent(r.to, r.name);
+            if (r.source !== 'test') markAttempt(r.to, r.name, 'sent');
             ok++;
             console.log(`  ✓ ${i + 1}/${recipients.length}  ${r.to}  ${r.name}`);
         } catch (e) {
             failed++;
+            if (r.source !== 'test') markAttempt(r.to, r.name, 'failed', e.message);
             console.log(`  ✗ ${i + 1}/${recipients.length}  ${r.to}  ${r.name}  — ${e.message}`);
         }
         if (DELAY && i < recipients.length - 1) await sleep(DELAY);
     }
     console.log(`\n[notify] done: sent=${ok} failed=${failed}${failed ? '  (הרצה חוזרת תשלח רק למי שנכשל)' : ''}`);
+
+    // התוצאות לפאנל — גם כשחלק נכשל; בדיקה (--test) לא נרשמת
+    if (!TEST) {
+        try { await reportCampaign(allRecipients, stats, provider); }
+        catch (e) { console.log(`[notify] report failed: ${e.message} — הריצו --report מאוחר יותר`); }
+    }
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
