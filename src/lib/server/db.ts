@@ -135,6 +135,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         floor:         toStr(extra.floor),
         apartment:     toStr(extra.apartment),
         arrivalNotes:  toStr(extra.arrival_notes),
+        hideAddress:   extra.hide_address === true || extra.hide_address === 'true',
         lat:           typeof item.lat === 'number' ? item.lat : null,
         lng:           typeof item.lng === 'number' ? item.lng : null,
         icon:          item.icon ?? undefined,
@@ -427,6 +428,21 @@ function readDonateOptions(extra: Record<string, unknown>): DonateOption[] | und
     return list.length > 0 ? list : undefined;
 }
 
+/** הקלט לגזירת קואורדינטות. גמ"ח שהבעלים ביקש להסתיר את כתובתו מקבל פין
+ *  ברמת שכונה/עיר בלבד — פין מדויק על המפה היה חושף את הכתובת מהדלת האחורית. */
+function coordsInput(g: {
+    lat?: number | null; lng?: number | null;
+    address?: string | null; neighborhood?: string | null; city?: string | null;
+    hideAddress?: boolean;
+}): { lat?: number | null; lng?: number | null; address?: string | null; neighborhood?: string | null; city?: string | null } {
+    return {
+        lat: g.lat, lng: g.lng,
+        address: g.hideAddress ? '' : g.address,
+        neighborhood: g.neighborhood,
+        city: g.city,
+    };
+}
+
 /** בונה את גוף ה-extra_fields מקלט (משותף ליצירה/עדכון) */
 function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     const extra: Record<string, unknown> = { gmach_type: input.category };
@@ -448,6 +464,7 @@ function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     if (input.floor)        extra.floor         = input.floor;
     if (input.apartment)    extra.apartment     = input.apartment;
     if (input.arrivalNotes) extra.arrival_notes = input.arrivalNotes;
+    if (input.hideAddress)  extra.hide_address  = true;
     const logo = input.image || input.logoBase64;
     if (logo)             extra.logo    = logo;
     if (input.images && input.images.length > 0) extra.images = input.images;
@@ -474,7 +491,7 @@ export async function createGemach(
     let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
     let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
     if ((opts.geocode ?? true) && (lat === null || lng === null)) {
-        const c = await resolveGemachCoords(input);
+        const c = await resolveGemachCoords(coordsInput(input));
         lat = c.lat;
         lng = c.lng;
     }
@@ -622,6 +639,7 @@ export async function updateGemach(
     if (!input.floor)        delete mergedExtra.floor;
     if (!input.apartment)    delete mergedExtra.apartment;
     if (!input.arrivalNotes) delete mergedExtra.arrival_notes;
+    if (!input.hideAddress)  delete mergedExtra.hide_address;
     if (!input.featured) delete mergedExtra.featured;
     // תמונה שרוקנה: מסמנים במחרוזת ריקה (ולא במחיקה) כדי שגם גלריית `images`
     // של "קהילה בשכונה" לא תחזיר את התמונה מהדלת האחורית.
@@ -654,7 +672,7 @@ export async function updateGemach(
     let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
     let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
     if ((opts.geocode ?? true) && (lat === null || lng === null)) {
-        const c = await resolveGemachCoords(input);
+        const c = await resolveGemachCoords(coordsInput(input));
         lat = c.lat;
         lng = c.lng;
     }
@@ -698,11 +716,14 @@ export async function patchGemachLocation(
     documentId: string,
     loc: { city?: string; neighborhood?: string; address?: string },
 ): Promise<{ lat: number | null; lng: number | null }> {
-    const coords = await resolveGemachCoords({
+    // מכבדים "הסתר כתובת" גם כאן — אחרת מסך ההשלמה היה מציב פין מדויק
+    const hideAddress = (await getGemachById(documentId))?.hideAddress ?? false;
+    const coords = await resolveGemachCoords(coordsInput({
         address: loc.address,
         neighborhood: loc.neighborhood,
         city: loc.city,
-    });
+        hideAddress,
+    }));
     const data: Record<string, unknown> = {};
     if (loc.city !== undefined)         data.city         = loc.city;
     if (loc.neighborhood !== undefined) data.neighborhood = loc.neighborhood;
@@ -726,11 +747,7 @@ export async function geocodeGemachById(
 ): Promise<{ lat: number | null; lng: number | null } | null> {
     const g = await getGemachById(documentId);
     if (!g) return null;
-    const coords = await resolveGemachCoords({
-        address: g.address,
-        neighborhood: g.neighborhood,
-        city: g.city,
-    });
+    const coords = await resolveGemachCoords(coordsInput({ ...g, lat: null, lng: null }));
     if (coords.lat === null || coords.lng === null) return coords;
     await strapiPut(`/api/items/${documentId}`, { data: { lat: coords.lat, lng: coords.lng } });
     invalidateGemachCache();

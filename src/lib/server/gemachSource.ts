@@ -76,7 +76,16 @@ export async function getMergedGemachim(): Promise<Gemach[]> {
     const importedIds = new Set(strapiGemachim.map(g => g.sourceId).filter(Boolean));
     const activeStrapi = strapiGemachim.filter(g => g.status !== 'draft');
     const remainingStatic = staticGemachim.filter(g => !importedIds.has(g.id));
-    return [...activeStrapi, ...remainingStatic];
+    return [...activeStrapi, ...remainingStatic].map(withoutHiddenAddress);
+}
+
+/** גמ"ח שהבעלים ביקש להסתיר את כתובתו: הרחוב, הקומה, הדירה והוראות ההגעה
+ *  נמחקים כאן — בשרת, לפני שהנתונים נשלחים לדפדפן — כך שהם לא יושבים בקוד
+ *  המקור של העמוד. שכונה ועיר נשארות. מסכי העריכה (בעלים/אדמין) שולפים
+ *  ישירות מ-db.getGemachById ולכן ממשיכים לראות את הכתובת המלאה. */
+export function withoutHiddenAddress(g: Gemach): Gemach {
+    if (!g.hideAddress) return g;
+    return { ...g, address: undefined, floor: undefined, apartment: undefined, arrivalNotes: undefined };
 }
 
 /**
@@ -89,5 +98,6 @@ export async function findGemachById(id: string): Promise<Gemach | null> {
     const strapiAll = await getAllGemachimWithDrafts();
     const importedIds = new Set(strapiAll.map(g => g.sourceId).filter(Boolean));
     const all = [...strapiAll, ...staticGemachim.filter(g => !importedIds.has(g.id))];
-    return all.find(g => g.id === id) ?? all.find(g => g.sourceId === id) ?? null;
+    const hit = all.find(g => g.id === id) ?? all.find(g => g.sourceId === id) ?? null;
+    return hit ? withoutHiddenAddress(hit) : null;
 }

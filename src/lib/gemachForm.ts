@@ -23,6 +23,8 @@ export interface CreateGemachInput {
     floor?: string;
     apartment?: string;
     arrivalNotes?: string;
+    /** לא לפרסם את הכתובת המדויקת (extra_fields.hide_address) */
+    hideAddress?: boolean;
     icon?: string;
     image?: string;         // כתובת https או data URI — נשמר ב-extra_fields.logo
     link?: string;
@@ -126,6 +128,7 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		floor:        str('floor'),
 		apartment:    str('apartment'),
 		arrivalNotes: str('arrival_notes'),
+		hideAddress:  form.get('hide_address') === 'true',
 		link:         str('link'),
 		donateOptions,
 		notes:        str('notes'),

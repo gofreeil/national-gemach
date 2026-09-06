@@ -73,6 +73,10 @@ export interface Gemach {
     floor?: string;
     apartment?: string;
     arrivalNotes?: string;
+    /** הבעלים ביקש לא לפרסם את הכתובת המדויקת (extra_fields.hide_address).
+     *  בציבור מוצגים רק שכונה/עיר; רחוב, קומה, דירה והוראות הגעה נשארים
+     *  ב-DB (לעריכה) אבל לא נשלחים לדפדפן, והפין במפה יורד לרמת שכונה/עיר. */
+    hideAddress?: boolean;
     /** קואורדינטות למפה של "קהילה בשכונה". נגזרות אוטומטית מהכתובת/עיר בעת שמירה. */
     lat?: number | null;
     lng?: number | null;

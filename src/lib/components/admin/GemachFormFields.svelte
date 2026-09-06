@@ -502,6 +502,13 @@
         <input id="f-address" name="address" defaultValue={gemach?.address ?? ''}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="רחוב ומספר" />
+        <!-- רוב הגמ"חים פועלים מדירה פרטית — יש בעלים שלא רוצים את הכתובת באינטרנט.
+             הכתובת נשמרת (לעריכה ולניווט בטלפון) אבל לא מתפרסמת; ראו hideAddress. -->
+        <label class="mt-2 flex items-center gap-2 cursor-pointer select-none text-sm text-gray-300">
+            <input name="hide_address" type="checkbox" value="true" checked={gemach?.hideAddress ?? false}
+                class="h-4 w-4 rounded accent-purple-500" />
+            <span>🔒 לא לפרסם את הכתובת המדויקת — באתר יוצגו רק שכונה ועיר, והפונים יקבלו את הכתובת בטלפון</span>
+        </label>
     </div>
 
     <!-- קומה ודירה — רוב הגמ"חים פועלים מדירה פרטית, ובלי זה המבקר עומד בלובי -->
