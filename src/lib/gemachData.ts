@@ -20,6 +20,12 @@ export interface Gemach {
     contact2?: string;
     phone2?: string;
     link?: string;
+    /** תרומה לפעילות הגמ"ח — אופציונלי, ממולא ע"י הבעלים בטופס
+     *  (extra_fields.donate_link / donate_details). קישור לדף תרומה
+     *  (ביט/פייבוקס/עמותה) ו/או פרטי חשבון בטקסט חופשי. די באחד מהם כדי
+     *  שכפתור "תרום לפעילות זו" יופיע בכרטיס. */
+    donateLink?: string;
+    donateDetails?: string;
     notes?: string;
     address?: string;
     /** שעות פעילות. JSON מובנה (ראו $lib/openingHours) או טקסט חופשי ברשומות ישנות */

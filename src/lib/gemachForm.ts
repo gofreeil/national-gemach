@@ -25,6 +25,9 @@ export interface CreateGemachInput {
     icon?: string;
     image?: string;         // כתובת https או data URI — נשמר ב-extra_fields.logo
     link?: string;
+    /** תרומה לפעילות — קישור ו/או פרטי חשבון (extra_fields.donate_link / donate_details) */
+    donateLink?: string;
+    donateDetails?: string;
     notes?: string;
     logoBase64?: string;
     images?: string[];
@@ -48,6 +51,15 @@ export function isSafeImageSrc(src: string): boolean {
 	if (/^data:image\/(png|jpe?g|gif|webp|avif|svg\+xml);base64,/i.test(src)) return true;
 	try {
 		return ['https:', 'http:'].includes(new URL(src).protocol);
+	} catch {
+		return false;
+	}
+}
+
+/** קישור יוצא מותר: http/https בלבד — הערך נכתב היישר ל-href בכרטיס. */
+export function isSafeHttpUrl(url: string): boolean {
+	try {
+		return ['https:', 'http:'].includes(new URL(url).protocol);
 	} catch {
 		return false;
 	}
@@ -109,6 +121,8 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		apartment:    str('apartment'),
 		arrivalNotes: str('arrival_notes'),
 		link:         str('link'),
+		donateLink:    str('donate_link'),
+		donateDetails: ((form.get('donate_details') as string) ?? '').trim() || undefined,
 		notes:        str('notes'),
 		icon:         str('icon'),
 		image:        str('image'),
@@ -126,6 +140,10 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 	else if (!input.city)     error = 'יש להזין עיר';
 	else if (input.image && !isSafeImageSrc(input.image))
 		error = 'כתובת התמונה אינה תקינה — נדרשת כתובת https:// או data:image';
+	else if (input.link && !isSafeHttpUrl(input.link))
+		error = 'הקישור אינו תקין — נדרשת כתובת מלאה שמתחילה ב-https://';
+	else if (input.donateLink && !isSafeHttpUrl(input.donateLink))
+		error = 'קישור התרומה אינו תקין — נדרשת כתובת מלאה שמתחילה ב-https://';
 
 	return { input, error };
 }
@@ -136,7 +154,7 @@ export function hasContent(input: CreateGemachInput | null | undefined): boolean
 	return !!(
 		input.name || input.city || input.description || input.phone || input.address ||
 		input.contact || input.contact2 || input.phone2 || input.neighborhood ||
-		input.hours || input.link || input.notes ||
+		input.hours || input.link || input.notes || input.donateLink || input.donateDetails ||
 		input.icon || input.image || input.floor || input.apartment || input.arrivalNotes ||
 		(input.tags?.length ?? 0) > 0 ||
 		(input.images?.length ?? 0) > 0 ||

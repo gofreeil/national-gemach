@@ -29,6 +29,12 @@
     let showSecondContact = $state(false);
     const hasSecondContact = $derived(Boolean(gemach?.phone2 || gemach?.contact2));
 
+    // ---- תרומה לפעילות ----
+    // רוב הגמ"חים לא מגייסים כסף דרך האתר, ולכן הסעיף מקופל כמו איש הקשר הנוסף.
+    // מי שממלא קישור ו/או פרטי חשבון מקבל בכרטיס כפתור "תרום לפעילות זו".
+    let showDonate = $state(false);
+    const hasDonate = $derived(Boolean(gemach?.donateLink || gemach?.donateDetails));
+
     // ---- נושאים ----
     // גמ"ח אחד משרת לא פעם כמה נושאים (ציוד רפואי + ריהוט, ביגוד + תינוקות),
     // ולכן הבחירה מרובה. הסדר הוא סדר הסימון, והראשון הוא הנושא הראשי —
@@ -564,6 +570,35 @@
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
             placeholder="https://..." />
     </div>
+
+    <!-- תרומה לפעילות — אופציונלי, מקופל עד שמבקשים -->
+    {#if showDonate || hasDonate}
+        <div class="md:col-span-2 rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+                <span class="block text-sm font-black text-emerald-200">💝 תרומה לפעילות הגמ"ח (אופציונלי)</span>
+                <span class="block text-xs text-emerald-100/80 mt-0.5">מלאו קישור לתרומה ו/או פרטי חשבון — ובכרטיס הגמ"ח יופיע כפתור "תרום לפעילות זו". די באחד מהשניים.</span>
+            </div>
+            <div>
+                <label for="f-donate-link" class="block text-sm font-bold text-gray-300 mb-1">קישור לתרומה</label>
+                <input id="f-donate-link" name="donate_link" type="url" defaultValue={gemach?.donateLink ?? ''} dir="ltr"
+                    class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
+                    placeholder="https://... (ביט / פייבוקס / דף תרומות)" />
+            </div>
+            <div>
+                <label for="f-donate-details" class="block text-sm font-bold text-gray-300 mb-1">פרטי חשבון להעברה</label>
+                <textarea id="f-donate-details" name="donate_details" rows="3"
+                    class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none resize-y"
+                    placeholder="בנק, סניף, מספר חשבון, שם המוטב — או מספר ביט/פייבוקס">{gemach?.donateDetails ?? ''}</textarea>
+            </div>
+        </div>
+    {:else}
+        <div class="md:col-span-2 -mt-1">
+            <button type="button" onclick={() => (showDonate = true)}
+                class="text-sm font-bold text-emerald-300 hover:text-emerald-200 transition-colors">
+                ＋ הוסף אפשרות לתרום לפעילות הגמ"ח
+            </button>
+        </div>
+    {/if}
 
     <!-- תיאור -->
     <div class="md:col-span-2">

@@ -36,6 +36,11 @@
     const justCreated = $derived($page.url.searchParams.get('flash') === 'created');
 
     const gemach = $derived(data.gemach);
+
+    /** "תרום לפעילות זו": קישור בלבד → פותח את דף התרומה; פרטי חשבון →
+     *  פותח קופסה עם הפרטים (וגם הקישור, אם יש). מוצג רק כשהבעלים מילא. */
+    let donateOpen = $state(false);
+    const hasDonate = $derived(Boolean(gemach.donateLink || gemach.donateDetails));
     const categoryLabel = $derived(
         data.categories.find(c => c.key === gemach.category)?.label ?? gemach.category
     );
@@ -405,8 +410,32 @@
                             🔗 לאתר הגמ"ח
                         </a>
                     {/if}
+                    {#if gemach.donateLink && !gemach.donateDetails}
+                        <a href={gemach.donateLink} target="_blank" rel="noopener noreferrer"
+                            class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-bold text-white transition-colors">
+                            💝 תרום לפעילות זו
+                        </a>
+                    {:else if hasDonate}
+                        <button type="button" onclick={() => (donateOpen = !donateOpen)} aria-expanded={donateOpen}
+                            class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-bold text-white transition-colors">
+                            💝 תרום לפעילות זו
+                        </button>
+                    {/if}
                     <ShareGemach {gemach} {categoryLabel} place={placeName} />
                 </div>
+
+                {#if donateOpen && gemach.donateDetails}
+                    <div class="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-950/50 p-4 text-sm">
+                        <div class="font-black text-emerald-200 mb-1.5">💝 תרומה לפעילות הגמ"ח</div>
+                        <p class="text-white whitespace-pre-line leading-relaxed" dir="auto">{gemach.donateDetails}</p>
+                        {#if gemach.donateLink}
+                            <a href={gemach.donateLink} target="_blank" rel="noopener noreferrer"
+                                class="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-bold text-white transition-colors">
+                                🔗 לתרומה מקוונת
+                            </a>
+                        {/if}
+                    </div>
+                {/if}
 
                 <!-- פרטים — שורות קומפקטיות במקום כרטיס נפרד -->
                 <dl class="mt-3.5 pt-3.5 border-t border-[#3b5794] grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">

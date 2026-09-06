@@ -59,6 +59,7 @@ export function toListItem(g: Gemach): ListGemach {
         contact: withoutPhones(g.contact),
         contact2: withoutPhones(g.contact2),
         notes: withoutPhones(g.notes),
+        donateDetails: withoutPhones(g.donateDetails),
         arrivalNotes: withoutPhones(g.arrivalNotes),
         hasPhone: Boolean(phone || phone2),
     });
