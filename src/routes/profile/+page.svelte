@@ -141,8 +141,8 @@
 
 	<!-- עמודה ימנית: הכרטיס האישי והנכסים שלי זה מתחת לזה — בלי חלל ריק.
 	     עמודה שמאלית (כשיש): פאנל הניהול ו"אולי שלך". -->
-	<div class="mx-auto grid w-full items-start gap-4 {hasSide ? 'max-w-5xl lg:grid-cols-[20rem_minmax(0,1fr)]' : 'max-w-sm'}">
-		<div class="flex flex-col gap-4">
+	<div class="mx-auto grid w-full grid-cols-1 items-start gap-4 {hasSide ? 'max-w-5xl lg:grid-cols-[20rem_minmax(0,1fr)]' : 'max-w-sm'}">
+		<div class="flex min-w-0 flex-col gap-4">
 			<!-- כרטיס אישי -->
 			<section class="rounded-3xl border border-[#3b5794] bg-[#16264d] p-5 text-center shadow-2xl">
 				<!-- תמונת הפרופיל. כשיש פריטים שממתינים לטיפול (אדמין) — בועה אדומה
@@ -254,7 +254,7 @@
 		</div>
 
 		{#if hasSide}
-			<div class="flex flex-col gap-4">
+			<div class="flex min-w-0 flex-col gap-4">
 				<!-- זיהוי אוטומטי: גמ"חים שהטלפון שלהם תואם לשל המשתמש — "אולי שלך?".
 				     מוצג רק כשנמצאה התאמה. הבקשה עצמה נשלחת מדף הגמ"ח (כפתור "זה שלי"). -->
 				{#if data.claimable && data.claimable.length > 0}
@@ -436,7 +436,7 @@
 							</div>
 						{/if}
 
-						<div class="mt-3 grid gap-2 sm:grid-cols-2">
+						<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
 							{#each tiles as tile (tile.href)}
 								{@const count = tileCount(tile.href)}
 								{@const alert = tileAlerts[tile.href] ?? 0}
