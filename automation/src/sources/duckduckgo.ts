@@ -21,6 +21,11 @@ const ATTEMPTS = 3;
 /** אחרי "עומס חריג" ממתינים פעם אחת ומנסים שוב — חסימת DuckDuckGo היא
  *  לרוב קצרה (דקה-שתיים) ובלי ההמתנה כל סריקה שנייה נגמרת עם 0 תוצאות */
 const BLOCK_BACKOFF_MS = 90_000;
+/** כמה פעמים בריצה מותר להמתין ולנסות שוב לפני שמוותרים */
+const MAX_BACKOFFS = 3;
+/** השהיה נוספת אחרי כל שאילתה, מעבר ל-limiter המשותף (4–9 שניות) — DuckDuckGo
+ *  מגביל לפי קצב, וגם ה-IP של GitHub Actions נחסם אחרי כמה שאילתות צפופות */
+const EXTRA_QUERY_GAP_MS: [number, number] = [8_000, 14_000];
 
 /** דומיינים שאינם רשומת גמ"ח (מנועים, רשתות חברתיות, האתרים שלנו) */
 const SKIP_HOSTS = ['duckduckgo.com', 'google.', 'gofreeil.com', 'youtube.com', 'wikipedia.org', 'facebook.com'];
@@ -31,7 +36,7 @@ export class DuckDuckGoSource extends DiscoverySource {
 
 	async *discover(queries: string[], ctx: SourceContext): AsyncGenerator<RawResult> {
 		const log = ctx.logger.child(this.name);
-		let backedOff = false;
+		let backoffs = 0;
 		for (const query of queries) {
 			if (await ctx.shouldAbort()) {
 				log.warn('ה-job בוטל — עוצר את המקור');
@@ -42,9 +47,9 @@ export class DuckDuckGoSource extends DiscoverySource {
 			let html = await this.fetchResults(query, log);
 			if (html === null) continue;
 			if (isBlocked(html)) {
-				if (!backedOff) {
-					backedOff = true;
-					log.warn(`DuckDuckGo מדווח על עומס חריג — ממתין ${Math.round(BLOCK_BACKOFF_MS / 1000)} שניות ומנסה שוב`);
+				if (backoffs < MAX_BACKOFFS) {
+					backoffs++;
+					log.warn(`DuckDuckGo מדווח על עומס חריג — ממתין ${Math.round(BLOCK_BACKOFF_MS / 1000)} שניות ומנסה שוב (${backoffs}/${MAX_BACKOFFS})`);
 					await sleep(BLOCK_BACKOFF_MS);
 					if (await ctx.shouldAbort()) return;
 					html = await this.fetchResults(query, log);
@@ -60,6 +65,7 @@ export class DuckDuckGoSource extends DiscoverySource {
 			const items = parseResults(html);
 			log.info(`"${query}" → ${items.length} תוצאות`);
 			ctx.onQueryDone?.(query, items.length);
+			await sleep(EXTRA_QUERY_GAP_MS[0] + Math.random() * (EXTRA_QUERY_GAP_MS[1] - EXTRA_QUERY_GAP_MS[0]));
 			for (const item of items) {
 				if (!item.url || SKIP_HOSTS.some((h) => item.url.includes(h))) continue;
 				yield {
