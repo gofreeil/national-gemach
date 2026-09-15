@@ -7,6 +7,8 @@
 //
 //   node scripts/delete-phoneless-drafts.mjs            ← תצוגה מקדימה (dry-run)
 //   STRAPI_TOKEN=xxxxx node scripts/delete-phoneless-drafts.mjs --apply
+//   node --env-file=.env scripts/delete-phoneless-drafts.mjs --all --apply   ← כל טיוטות הגילוי
+//                                          (--all: גם עם טלפון — ניקוי טיוטות מהסורק הישן)
 //
 // לא נוגע בטיוטות עם טלפון, בפריטים פעילים, בנדחים או בטיוטות-אורח מהטופס
 // (guest_claim) — אלה של אנשים אמיתיים שממתינים לפרסום; הן מודפסות לידיעה בלבד.
@@ -17,6 +19,8 @@
 const STRAPI = 'https://api.gofreeil.com';
 const TOKEN = process.env.STRAPI_TOKEN || '';
 const APPLY = process.argv.includes('--apply');
+/** --all: כל טיוטות הגילוי (user_id discovery:*), לא רק בלי טלפון */
+const ALL = process.argv.includes('--all');
 
 const hasText = (v) => typeof v === 'string' && v.trim() !== '';
 
@@ -47,7 +51,8 @@ const guests = [];
 let withPhone = 0;
 for (const it of drafts) {
     const extra = it.extra_fields ?? {};
-    if (hasText(it.phone) || hasText(extra.phone2)) { withPhone++; continue; }
+    const fromDiscovery = typeof it.user_id === 'string' && it.user_id.startsWith('discovery:');
+    if ((hasText(it.phone) || hasText(extra.phone2)) && !(ALL && fromDiscovery)) { withPhone++; continue; }
     (extra.guest_claim ? guests : targets).push(it);
 }
 
