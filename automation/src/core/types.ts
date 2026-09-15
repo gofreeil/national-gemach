@@ -97,6 +97,10 @@ export interface RunStats {
 	duplicates: number;
 	lowQuality: number;
 	errors: number;
+	/** תוצאות שדולגו כי הכתובת כבר טופלה בריצה קודמת (זיכרון הסריקות) */
+	skippedSeen?: number;
+	/** שאילתות שדולגו כי הן בהשהיה (לא הניבו חדש פעמיים ברצף) */
+	skippedQueries?: number;
 	/** הריצה נקטעה לפני שסיימה את השאילתות (אימות Google וכו') */
 	blocked?: boolean;
 	/** ההסבר שיוצג לאדמין בפאנל */

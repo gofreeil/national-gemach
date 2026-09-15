@@ -25,6 +25,9 @@ export interface SourceContext {
 	/** דיווח שהמקור נקטע לפני שסיים (אימות/חסימה) — מגיע לסטטיסטיקות הריצה
 	 *  ומוצג לאדמין בפאנל, כדי ש"הסתיימה" לא ייראה כמו סריקה מלאה */
 	markBlocked: (reason: string) => void;
+	/** דיווח שסיימנו שאילתה (וכמה תוצאות היו) — לזיכרון השאילתות ולקידום ה-cursor
+	 *  רק על מה שבאמת רץ. מקור שלא מדווח נחשב כמי שהריץ את כולן. */
+	onQueryDone?: (query: string, results: number) => void;
 }
 
 export abstract class DiscoverySource {

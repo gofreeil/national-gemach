@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { StateStore, type FingerprintOrigin, type StoreSummary } from '../core/stateStore.ts';
 import type { CandidateRecord, RawResult, RunStats, ScanSpec } from '../core/types.ts';
 import type { Logger } from '../core/logger.ts';
+import { ScanMemory } from '../core/scanMemory.ts';
 
 const MAX_RUNS = 100;
 const MAX_CANDIDATES = 1000;
@@ -33,6 +34,8 @@ interface FileState {
 	candidates: Array<Record<string, unknown>>;
 	fingerprints: Record<string, { origin: FingerprintOrigin; docId?: string; firstSeen: string }>;
 	cursors: Record<string, number>;
+	/** זיכרון הסריקות, דחוס (gzip+base64) — ראו scanMemory.ts */
+	memory?: string;
 }
 
 const DEFAULT_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'state', 'discovery-state.json');
@@ -158,6 +161,15 @@ export class FileStateStore extends StateStore {
 			fingerprints: Object.keys(s.fingerprints).length,
 			candidatesByDecision: byDecision,
 		};
+	}
+
+	async loadScanMemory(): Promise<ScanMemory> {
+		return ScanMemory.unpack(this.load().memory);
+	}
+
+	async saveScanMemory(memory: ScanMemory): Promise<void> {
+		this.load().memory = memory.pack();
+		this.save();
 	}
 
 	async close(): Promise<void> {

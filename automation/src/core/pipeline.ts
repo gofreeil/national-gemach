@@ -87,17 +87,29 @@ export class DiscoveryPipeline {
 					link: g.link,
 				})),
 			);
-			const memory = await store.knownFingerprints();
-			deduper.addFingerprints(memory, 'memory', 'memory');
-			logger.info(`אינדקס כפילויות: ${existing.length} מ-Strapi, ${staticGemachim.length} סטטיים, ${memory.size} מהזיכרון (${deduper.size} טביעות)`);
+			const known = await store.knownFingerprints();
+			deduper.addFingerprints(known, 'memory', 'memory');
+			logger.info(`אינדקס כפילויות: ${existing.length} מ-Strapi, ${staticGemachim.length} סטטיים, ${known.size} מהזיכרון (${deduper.size} טביעות)`);
 
-			// --- שלב 2: תכנון שאילתות (סבב מתגלגל) ---
+			// זיכרון הסריקות: כתובות שכבר טופלו (לא מעבדים שוב) ושאילתות עקרות (לא רצות שוב)
+			const memory = await store.loadScanMemory();
+
+			// --- שלב 2: תכנון שאילתות (סבב מתגלגל, בלי שאילתות בהשהיה) ---
 			const planner = new QueryPlanner(defaultCategories);
 			const universe = planner.buildUniverse(spec);
 			const cursor = await store.getCursor(CURSOR_KEY);
-			const { queries, nextCursor } = planner.select(universe, cursor, spec.maxQueries);
+			const { queries, nextCursor, cursorAfter, skipped } = planner.select(
+				universe, cursor, spec.maxQueries, (q) => memory.isStaleQuery(q),
+			);
 			stats.queries = queries.length;
-			logger.info(`נבחרו ${queries.length} שאילתות מתוך מרחב של ${universe.length} (cursor ${cursor} → ${nextCursor})`);
+			if (skipped > 0) stats.skippedQueries = skipped;
+			logger.info(`נבחרו ${queries.length} שאילתות מתוך מרחב של ${universe.length} (cursor ${cursor} → ${nextCursor}${skipped ? `, ${skipped} בהשהיה דולגו` : ''})`);
+
+			// מעקב לפי שאילתה: מה באמת רץ (לקידום ה-cursor) וכמה חדש כל אחת הניבה
+			const executed = new Set<string>();
+			const newByQuery = new Map<string, number>();
+			let sourceReportsQueries = false;
+			let capReached = false;
 
 			// --- שלב 3: הקשר משותף למקורות. הדפדפן עולה רק אם מישהו מבקש
 			// אותו (מקור מבוסס-דפדפן או העשרה) — ריצת DuckDuckGo טהורה לא
@@ -125,6 +137,7 @@ export class DiscoveryPipeline {
 
 			const ctx: SourceContext = {
 				getBrowser, logger, limiter, shouldAbort, headful: spec.headful, markBlocked,
+				onQueryDone: (query) => { sourceReportsQueries = true; executed.add(query); },
 			};
 
 			const catIcons = new Map((spec.categories?.length ? spec.categories : defaultCategories).map((c) => [c.key, c.icon ?? '🤝']));
@@ -135,10 +148,20 @@ export class DiscoveryPipeline {
 
 			// --- שלב 4: איסוף → נירמול → השוואה → ייבוא ---
 			for (const source of activeSources) {
+				if (capReached) break;
 				logger.info(`מקור: ${source.label}`);
 				for await (const raw of source.discover(queries, ctx)) {
 					stats.rawResults++;
 					await store.recordRaw(runId, raw);
+
+					// עמוד שכבר טופל בריצה קודמת (יובא / נדחה / בלי טלפון / זבל) —
+					// לא מנרמלים, לא מורידים ולא מגאוקדים אותו שוב
+					if (raw.url && memory.seenUrl(raw.url)) {
+						stats.skippedSeen = (stats.skippedSeen ?? 0) + 1;
+						continue;
+					}
+					// ריצה יבשה לא כותבת לזיכרון — אחרת ריצת apply אחריה הייתה מדלגת על הכול
+					if (raw.url && spec.apply) memory.rememberUrl(raw.url);
 
 					const outcome = normalizer.normalize(raw);
 					if (!outcome.ok) {
@@ -201,6 +224,7 @@ export class DiscoveryPipeline {
 							record.decision = 'imported';
 							record.strapiDocumentId = docId;
 							stats.imported++;
+							newByQuery.set(raw.query, (newByQuery.get(raw.query) ?? 0) + 1);
 							await store.rememberFingerprints(candidate.fingerprints, 'imported', docId);
 							logger.info(`✔ יובא כטיוטה: ${candidate.name} (${docId})`);
 						} catch (e) {
@@ -213,6 +237,14 @@ export class DiscoveryPipeline {
 					await store.recordCandidate(runId, record);
 					deduper.register(candidate, record.strapiDocumentId ?? 'run');
 
+					// המנה לסריקה הזו מלאה — עוצרים. השאילתות שלא רצו יחזרו בסריקה
+					// הבאה (ה-cursor מתקדם רק על מה שרץ), במקום להמשיך לחפש בלי לייבא.
+					if (spec.apply && stats.imported >= spec.maxImports) {
+						capReached = true;
+						logger.info(`הגענו ל-${spec.maxImports} טיוטות חדשות — הסריקה מסתיימת כאן.`);
+						break;
+					}
+
 					// עדכון התקדמות ל-job בפאנל (לא בכל תוצאה — חוסך כתיבות)
 					if (spec.triggerJobId && stats.rawResults % 25 === 0) {
 						await gateway.updateJobProgress(spec.triggerJobId, stats);
@@ -220,13 +252,21 @@ export class DiscoveryPipeline {
 				}
 			}
 
-			// ריצה שנקטעה לא כיסתה את כל הפרוסה — משאירים את ה-cursor במקומו
-			// כדי שהשאילתות שלא רצו ייבדקו בריצה הבאה ולא ידולגו לתמיד.
-			// (ייבוא כפול לא מסוכן: אינדקס הכפילויות חוסם אותו.)
-			if (stats.blocked) {
-				logger.warn('הריצה נקטעה — ה-cursor נשאר במקומו והשאילתות שלא רצו יחזרו בריצה הבאה.');
-			} else {
-				await store.setCursor(CURSOR_KEY, nextCursor);
+			// ה-cursor מתקדם רק על השאילתות שבאמת רצו (חסימה / תקרת ייבוא עוצרות
+			// באמצע) — השאר יחזרו בריצה הבאה ולא ידולגו לתמיד. מקור שלא מדווח על
+			// שאילתות (Google) נחשב כמי שהריץ את כולן, אלא אם נחסם.
+			const ranAll = !sourceReportsQueries && !stats.blocked && !capReached;
+			const executedCount = ranAll ? queries.length : Math.min(queries.length, executed.size);
+			await store.setCursor(CURSOR_KEY, cursorAfter[executedCount] ?? nextCursor);
+			if (executedCount < queries.length) {
+				logger.warn(`הריצה כיסתה ${executedCount} מתוך ${queries.length} שאילתות — השאר יחזרו בריצה הבאה.`);
+			}
+
+			// זיכרון השאילתות: שאילתה שרצה ולא הניבה חדש נספרת כעקרה
+			if (spec.apply) {
+				const ranQueries = ranAll ? queries : queries.filter((q) => executed.has(q));
+				for (const q of ranQueries) memory.recordQuery(q, newByQuery.get(q) ?? 0);
+				await store.saveScanMemory(memory);
 			}
 			await store.finishRun(runId, 'done', stats);
 			logger.info(

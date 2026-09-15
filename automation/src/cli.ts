@@ -66,7 +66,8 @@ function buildSpec(flags: CliArgs['flags'], overrides: Partial<ScanSpec> = {}): 
 			: undefined,
 		cities: flagStr(flags, 'cities')?.split(',').map((s) => s.trim()).filter(Boolean),
 		maxQueries: flagNum(flags, 'queries', 20),
-		maxImports: flagNum(flags, 'imports', 40),
+		// 5 טיוטות לסריקה: מנה שאדמין עובר עליה בדקה, ולא הצפה של מסך הגילוי
+		maxImports: flagNum(flags, 'imports', 5),
 		// העשרה מעמוד המקור (fetch, בלי דפדפן) פועלת כברירת מחדל — בלעדיה רוב
 		// המועמדים נשארים בלי טלפון ונופלים; --no-enrich לכיבוי
 		enrich: !flags.has('no-enrich'),
@@ -142,6 +143,7 @@ async function cmdWorker(flags: CliArgs['flags']): Promise<void> {
 						triggerJobId: job.documentId,
 						requestedBy: typeof x.requested_by === 'string' ? x.requested_by : undefined,
 						maxQueries: typeof x.max_queries === 'number' ? x.max_queries : flagNum(flags, 'queries', 20),
+						maxImports: typeof x.max_imports === 'number' ? x.max_imports : flagNum(flags, 'imports', 5),
 						categories: Array.isArray(x.categories) ? (x.categories as CategoryRef[]) : undefined,
 						sources: Array.isArray(x.sources) ? (x.sources as string[]) : [],
 					});

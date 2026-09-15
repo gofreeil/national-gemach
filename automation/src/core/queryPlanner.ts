@@ -42,13 +42,32 @@ export class QueryPlanner {
 		return [...new Set(queries)];
 	}
 
-	/** פרוסת השאילתות לריצה הנוכחית + ה-cursor לריצה הבאה (סבב מעגלי) */
-	select(universe: string[], cursor: number, count: number): { queries: string[]; nextCursor: number } {
-		if (universe.length === 0) return { queries: [], nextCursor: 0 };
-		const start = ((cursor % universe.length) + universe.length) % universe.length;
-		const n = Math.min(count, universe.length);
+	/** פרוסת השאילתות לריצה הנוכחית (סבב מעגלי). שאילתות שה-skip פוסל
+	 *  (בהשהיה בזיכרון הסריקות) נצרכות מהסבב בלי לרוץ.
+	 *  cursorAfter[k] = ה-cursor לריצה הבאה אם רק k השאילתות הראשונות רצו —
+	 *  ריצה שנקטעה (חסימה / תקרת ייבוא) מקדמת את הסבב רק על מה שבאמת רץ. */
+	select(
+		universe: string[],
+		cursor: number,
+		count: number,
+		skip?: (query: string) => boolean,
+	): { queries: string[]; nextCursor: number; cursorAfter: number[]; skipped: number } {
+		if (universe.length === 0) return { queries: [], nextCursor: 0, cursorAfter: [0], skipped: 0 };
+		const len = universe.length;
+		const start = ((cursor % len) + len) % len;
 		const queries: string[] = [];
-		for (let i = 0; i < n; i++) queries.push(universe[(start + i) % universe.length]);
-		return { queries, nextCursor: (start + n) % universe.length };
+		const cursorAfter: number[] = [start];
+		let skipped = 0;
+		for (let i = 0; i < len && queries.length < count; i++) {
+			const q = universe[(start + i) % len];
+			if (skip?.(q)) { skipped++; continue; }
+			queries.push(q);
+			cursorAfter.push((start + i + 1) % len);
+		}
+		// שאילתות מדולגות בסוף הפרוסה נצרכות גם הן
+		const consumed = queries.length + skipped;
+		const nextCursor = (start + consumed) % len;
+		cursorAfter[cursorAfter.length - 1] = nextCursor;
+		return { queries, nextCursor, cursorAfter, skipped };
 	}
 }

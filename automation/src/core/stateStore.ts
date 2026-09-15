@@ -13,6 +13,7 @@
 import type { CandidateRecord, RawResult, RunStats, ScanSpec } from './types.ts';
 import type { Logger } from './logger.ts';
 import { readEnv } from './env.ts';
+import { ScanMemory } from './scanMemory.ts';
 
 /** no_phone — מועמד שנפסל כי גם אחרי ההעשרה אין לו טלפון; נזכר כדי לא להוריד את העמוד שלו שוב בכל שאילתה */
 export type FingerprintOrigin = 'imported' | 'rejected' | 'manual' | 'no_phone';
@@ -45,6 +46,11 @@ export abstract class StateStore {
 
 	abstract summary(): Promise<StoreSummary>;
 	abstract close(): Promise<void>;
+
+	/** זיכרון הסריקות (כתובות שכבר טופלו, שאילתות עקרות) — נשמר דחוס.
+	 *  ברירת המחדל לא שומרת בין ריצות; Strapi/קובץ דורסים. */
+	async loadScanMemory(): Promise<ScanMemory> { return new ScanMemory(); }
+	async saveScanMemory(_memory: ScanMemory): Promise<void> {}
 }
 
 /** בחירת מימוש: DATABASE_URL → Postgres · CI/בקשה מפורשת → Strapi · אחרת קובץ.

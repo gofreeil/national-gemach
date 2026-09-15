@@ -18,6 +18,8 @@ import { CityDetector, cleanTitle, extractPhone, guessCategory, normalizePhone }
 import { cleanDescription, extractDetails, guessCategories, isWeakDescription } from './core/details.ts';
 import { PageEnricher, parseHtml } from './core/enricher.ts';
 import { RateLimiter } from './core/rateLimiter.ts';
+import { ScanMemory } from './core/scanMemory.ts';
+import { QueryPlanner } from './core/queryPlanner.ts';
 import { DiscoverySource, type SourceContext } from './core/source.ts';
 import { DiscoveryPipeline } from './core/pipeline.ts';
 import { FileStateStore } from './db/fileStateStore.ts';
@@ -69,8 +71,9 @@ class FixtureSource extends DiscoverySource {
 		super();
 	}
 
-	async *discover(_queries: string[], _ctx: SourceContext): AsyncGenerator<RawResult> {
+	async *discover(queries: string[], ctx: SourceContext): AsyncGenerator<RawResult> {
 		for (const row of this.rows) yield row;
+		for (const q of queries) ctx.onQueryDone?.(q, this.rows.length);
 	}
 }
 
@@ -191,8 +194,12 @@ async function pipelineIntegrationTest(): Promise<void> {
 		check('טלפון הטיוטה חולץ', draft.candidate.phone === '046971234', draft.candidate.phone);
 	}
 
+	// ריצה שנייה על אותו מקור: כל הכתובות כבר בזיכרון — לא מעובדות שוב
+	const again = await pipeline.run({ sources: ['fixture'], maxQueries: 2, maxImports: 10, enrich: false, headful: false, apply: true });
+	check('ריצה חוזרת מדלגת על כתובות שכבר טופלו', again.skippedSeen === 3 && again.imported === 0 && again.candidates === 0, again);
+
 	const summary = await store.summary();
-	check('הריצה תועדה באחסון', summary.runs === 1, summary);
+	check('שתי הריצות תועדו באחסון', summary.runs === 2, summary);
 	check('הטביעות נשמרו לזיכרון (מניעת ייבוא חוזר)', summary.fingerprints > 0, summary);
 	check(
 		'ההחלטות תועדו (יובא + כפול)',
@@ -261,10 +268,39 @@ function detailsTests(): void {
 	check('ערכים קיימים לא נדרסים', merged2.phone === '0501111111' && merged2.address === 'רחוב אחר 1' && merged2.description === keep.description, merged2);
 }
 
+// ---------- זיכרון הסריקות + מתכנן השאילתות ----------
+
+function memoryTests(): void {
+	console.log('\nזיכרון הסריקות (scanMemory):');
+	const m = new ScanMemory();
+	check('כתובת חדשה לא "נראתה"', !m.seenUrl('https://example.org/a'));
+	m.rememberUrl('https://www.example.org/a/');
+	check('כתובת שקולה (www, / סוגר) נחשבת נראתה', m.seenUrl('https://example.org/a'));
+	m.recordQuery('גמ"ח צפת', 0);
+	check('ריצה עקרה אחת — עדיין לא בהשהיה', !m.isStaleQuery('גמ"ח צפת'));
+	m.recordQuery('גמ"ח צפת', 0);
+	check('שתי ריצות עקרות ברצף — בהשהיה', m.isStaleQuery('גמ"ח צפת'));
+	m.recordQuery('גמ"ח צפת', 2);
+	check('ריצה מניבה מאפסת את ההשהיה', !m.isStaleQuery('גמ"ח צפת'));
+	m.recordQuery('גמ"ח חיפה', 0); m.recordQuery('גמ"ח חיפה', 0);
+	const packed = m.pack();
+	const back = ScanMemory.unpack(packed);
+	check('אריזה/פריקה משמרת כתובות ושאילתות', back.seenUrl('https://example.org/a') && back.isStaleQuery('גמ"ח חיפה') && !back.isStaleQuery('גמ"ח צפת'), back.size);
+	check('האריזה דחוסה (base64 של gzip)', /^H4sI/.test(packed), packed.slice(0, 8));
+	check('מחרוזת פגומה → זיכרון ריק', ScanMemory.unpack('not-base64!').size.urls === 0);
+
+	const planner = new QueryPlanner([{ key: 'medical', label: 'רפואי' }]);
+	const universe = ['q0', 'q1', 'q2', 'q3', 'q4'];
+	const sel = planner.select(universe, 1, 2, (q) => q === 'q2');
+	check('שאילתה בהשהיה מדולגת ונצרכת מהסבב', JSON.stringify(sel.queries) === '["q1","q3"]' && sel.nextCursor === 4 && sel.skipped === 1, sel);
+	check('cursorAfter: 0 שאילתות → נשאר; 1 → אחרי q1; 2 → אחרי q3', sel.cursorAfter[0] === 1 && sel.cursorAfter[1] === 2 && sel.cursorAfter[2] === 4, sel.cursorAfter);
+}
+
 export async function runSelftest(): Promise<void> {
 	failed = 0;
 	unitTests();
 	detailsTests();
+	memoryTests();
 	await pipelineIntegrationTest();
 	console.log(failed === 0 ? '\nכל הבדיקות עברו ✔' : `\n${failed} בדיקות נכשלו ✗`);
 	process.exitCode = failed === 0 ? 0 : 1;

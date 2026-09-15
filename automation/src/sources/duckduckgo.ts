@@ -59,6 +59,7 @@ export class DuckDuckGoSource extends DiscoverySource {
 
 			const items = parseResults(html);
 			log.info(`"${query}" → ${items.length} תוצאות`);
+			ctx.onQueryDone?.(query, items.length);
 			for (const item of items) {
 				if (!item.url || SKIP_HOSTS.some((h) => item.url.includes(h))) continue;
 				yield {

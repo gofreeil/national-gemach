@@ -191,6 +191,9 @@ export function hasActiveJob(jobs: DiscoveryJobView[]): boolean {
 
 /** יצירת משימת סריקה בתור. הקטגוריות החיות מהפאנל מוטמעות במשימה כדי
  *  שה-worker יחפש לפי הרשימה העדכנית (כולל קטגוריות שנוספו בפאנל). */
+/** תקרת טיוטות חדשות לסריקה אחת */
+const MAX_IMPORTS_PER_SCAN = 5;
+
 export async function enqueueScan(opts: {
 	requestedBy: string;
 	note?: string;
@@ -210,6 +213,8 @@ export async function enqueueScan(opts: {
 				requested_at: new Date().toISOString(),
 				sources: ['duckduckgo'],
 				...(opts.maxQueries ? { max_queries: opts.maxQueries } : {}),
+				// מנה קטנה לסריקה — האדמין עובר על 5 טיוטות מלאות, לא על 40 חצי-ריקות
+				max_imports: MAX_IMPORTS_PER_SCAN,
 				...(categories.length > 0
 					? { categories: categories.map((c) => ({ key: c.key, label: c.label, icon: c.icon })) }
 					: {}),

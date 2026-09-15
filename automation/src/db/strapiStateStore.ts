@@ -14,6 +14,8 @@ import { StateStore, type FingerprintOrigin, type StoreSummary } from '../core/s
 import type { CandidateRecord, RawResult, RunStats, ScanSpec } from '../core/types.ts';
 import type { Logger } from '../core/logger.ts';
 import type { StrapiGateway } from '../strapi/gateway.ts';
+import { gzipSync, gunzipSync } from 'node:zlib';
+import { ScanMemory } from '../core/scanMemory.ts';
 
 /** תקרת טביעות שנשמרות. הן רק שכבת-הגנה נוספת: הגמ"חים עצמם (כולל
  *  טיוטות ונדחים) ממילא באינדקס הכפילויות, ולכן אין צורך בהיסטוריה
@@ -22,13 +24,33 @@ const MAX_FINGERPRINTS = 5000;
 
 interface StateShape {
 	cursors: Record<string, number>;
-	fingerprints: string[];
+	/** גרסה ישנה: רשימה גלויה. נקראת פעם אחת ומומרת ל-fp הדחוס */
+	fingerprints?: string[];
+	/** טביעות האצבע, דחוסות (gzip+base64) — פי ~8 קטן מהרשימה הגלויה */
+	fp?: string;
+	/** זיכרון הסריקות (כתובות שטופלו, שאילתות עקרות), דחוס — ראו scanMemory.ts */
+	memory?: string;
 	runs: number;
 	lastRunAt?: string;
 }
 
+function packList(list: string[]): string {
+	return gzipSync(Buffer.from(JSON.stringify(list), 'utf8')).toString('base64');
+}
+
+function unpackList(packed: string | undefined): string[] | null {
+	if (!packed) return null;
+	try {
+		const arr = JSON.parse(gunzipSync(Buffer.from(packed, 'base64')).toString('utf8'));
+		return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : null;
+	} catch {
+		return null;
+	}
+}
+
 export class StrapiStateStore extends StateStore {
 	private state: StateShape | null = null;
+	private fingerprints: string[] = [];
 	private dirty = false;
 
 	constructor(
@@ -39,12 +61,12 @@ export class StrapiStateStore extends StateStore {
 	}
 
 	async init(): Promise<void> {
-		this.state = await this.gateway.loadDiscoveryState<StateShape>() ?? {
-			cursors: {},
-			fingerprints: [],
-			runs: 0,
-		};
-		this.logger.info(`מצב נטען מ-Strapi: cursor=${JSON.stringify(this.state.cursors)}, ${this.state.fingerprints.length} טביעות`);
+		this.state = await this.gateway.loadDiscoveryState<StateShape>() ?? { cursors: {}, runs: 0 };
+		// דחוס אם יש; אחרת הרשימה הגלויה מהגרסה הישנה (תומר בשמירה הבאה)
+		this.fingerprints = unpackList(this.state.fp) ?? this.state.fingerprints ?? [];
+		if (!this.state.fp && this.fingerprints.length > 0) this.dirty = true;
+		const mem = ScanMemory.unpack(this.state.memory).size;
+		this.logger.info(`מצב נטען מ-Strapi: cursor=${JSON.stringify(this.state.cursors)}, ${this.fingerprints.length} טביעות, זיכרון: ${mem.urls} כתובות, ${mem.queries} שאילתות (${mem.staleQueries} בהשהיה)`);
 	}
 
 	private get s(): StateShape {
@@ -68,14 +90,23 @@ export class StrapiStateStore extends StateStore {
 	async recordCandidate(_runId: string, _record: CandidateRecord): Promise<void> {}
 
 	async knownFingerprints(): Promise<Set<string>> {
-		return new Set(this.s.fingerprints);
+		return new Set(this.fingerprints);
 	}
 
 	async rememberFingerprints(fps: string[], _origin: FingerprintOrigin): Promise<void> {
-		const set = new Set(this.s.fingerprints);
+		const set = new Set(this.fingerprints);
 		for (const fp of fps) set.add(fp);
 		// שומרים את החדשות ביותר בתוך התקרה
-		this.s.fingerprints = [...set].slice(-MAX_FINGERPRINTS);
+		this.fingerprints = [...set].slice(-MAX_FINGERPRINTS);
+		this.dirty = true;
+	}
+
+	async loadScanMemory(): Promise<ScanMemory> {
+		return ScanMemory.unpack(this.s.memory);
+	}
+
+	async saveScanMemory(memory: ScanMemory): Promise<void> {
+		this.s.memory = memory.pack();
 		this.dirty = true;
 	}
 
@@ -93,14 +124,18 @@ export class StrapiStateStore extends StateStore {
 			backend: 'strapi (__ng_discovery_state)',
 			runs: this.s.runs,
 			lastRunAt: this.s.lastRunAt,
-			fingerprints: this.s.fingerprints.length,
+			fingerprints: this.fingerprints.length,
 			candidatesByDecision: {},
 		};
 	}
 
 	private async flush(): Promise<void> {
 		if (!this.dirty || !this.state) return;
-		await this.gateway.saveDiscoveryState(this.state);
+		// נשמר דחוס בלבד; הרשימה הגלויה מהגרסה הישנה לא נכתבת חזרה
+		const { fingerprints: _legacy, ...rest } = this.state;
+		const toSave: StateShape = { ...rest, fp: packList(this.fingerprints) };
+		await this.gateway.saveDiscoveryState(toSave);
+		this.state = toSave;
 		this.dirty = false;
 	}
 
