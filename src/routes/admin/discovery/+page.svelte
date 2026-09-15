@@ -6,6 +6,8 @@
 
 	let tab = $state<'drafts' | 'rejected'>('drafts');
 	let scanning = $state(false);
+	/** היסטוריית הסריקות מוסתרת כברירת מחדל — נפתחת רק לבקשה */
+	let showJobs = $state(false);
 
 	const catByKey = $derived(new Map(data.categories.map((c: { key: string; label: string; icon: string }) => [c.key, c])));
 
@@ -108,9 +110,16 @@
 		{#if data.jobs.length > 0}
 			<div class="mt-4 border-t border-[#3b5794] pt-3">
 				<div class="flex items-center justify-between">
-					<h4 class="text-sm font-black text-gray-200">סריקות אחרונות</h4>
-					<button type="button" class="text-xs font-bold text-blue-300 hover:text-blue-200" onclick={() => invalidateAll()}>🔄 רענון</button>
+					<button type="button" class="flex items-center gap-2 text-sm font-black text-gray-200 hover:text-white" onclick={() => (showJobs = !showJobs)}>
+						<span class="text-xs text-gray-400">{showJobs ? '▾' : '◂'}</span>
+						סריקות אחרונות
+						<span class="rounded-full bg-[#101d3d] px-2 py-0.5 text-[11px] font-bold text-gray-400">{data.jobs.length}</span>
+					</button>
+					{#if showJobs}
+						<button type="button" class="text-xs font-bold text-blue-300 hover:text-blue-200" onclick={() => invalidateAll()}>🔄 רענון</button>
+					{/if}
 				</div>
+				{#if showJobs}
 				<ul class="mt-2 space-y-2">
 					{#each data.jobs as job (job.id)}
 						<li class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-[#101d3d] px-3 py-2 text-xs">
@@ -138,6 +147,7 @@
 						</li>
 					{/each}
 				</ul>
+				{/if}
 			</div>
 		{/if}
 	</div>
