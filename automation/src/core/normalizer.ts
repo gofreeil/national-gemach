@@ -4,7 +4,7 @@
 
 import type { Candidate, RawResult } from './types.ts';
 import { fingerprintsFor } from './fingerprint.ts';
-import { cleanDescription, extractDetails, guessCategories, stripCityFromAddress } from './details.ts';
+import { cleanDescription, decodeEntities, extractDetails, guessCategories, stripCityFromAddress } from './details.ts';
 import {
 	CityDetector,
 	cleanTitle,
@@ -31,7 +31,9 @@ export class CandidateNormalizer {
 		this.cityDetector = new CityDetector(cities);
 	}
 
-	normalize(raw: RawResult): NormalizeOutcome {
+	normalize(rawIn: RawResult): NormalizeOutcome {
+		// תוצאות חיפוש מגיעות לפעמים עם ישויות HTML (&#34; &amp;) — מפענחים לפני הכול
+		const raw: RawResult = { ...rawIn, title: decodeEntities(rawIn.title), snippet: decodeEntities(rawIn.snippet) };
 		const fullText = `${raw.title} ${raw.snippet}`;
 		if (!containsGemach(fullText)) return { ok: false, reason: 'לא מוזכר גמ"ח' };
 

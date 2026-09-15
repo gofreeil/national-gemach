@@ -14,7 +14,8 @@ import type { CandidateRecord, RawResult, RunStats, ScanSpec } from './types.ts'
 import type { Logger } from './logger.ts';
 import { readEnv } from './env.ts';
 
-export type FingerprintOrigin = 'imported' | 'rejected' | 'manual';
+/** no_phone — מועמד שנפסל כי גם אחרי ההעשרה אין לו טלפון; נזכר כדי לא להוריד את העמוד שלו שוב בכל שאילתה */
+export type FingerprintOrigin = 'imported' | 'rejected' | 'manual' | 'no_phone';
 
 export interface StoreSummary {
 	backend: string;

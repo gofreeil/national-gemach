@@ -81,7 +81,13 @@ function tidy(value: string): string {
 }
 
 function tidyAddress(value: string, city?: string): string | undefined {
-	const v = stripCityFromAddress(tidy(value).replace(/,?\s*ישראל$/, ''), city);
+	const v = stripCityFromAddress(
+		tidy(value)
+			.replace(/^(?:רחוב|רח['׳"״]?)\s*:?\s*/, '')   // "רח': חיי יצחק" → "חיי יצחק"
+			.replace(/(\d{1,4})(?:[\s,]+\1)+\b/, '$1')   // "פרדס 23 23" → "פרדס 23"
+			.replace(/,?\s*ישראל$/, ''),
+		city,
+	);
 	// כתובת שהיא רק מספר או קצרה מדי — אין בה מידע
 	if (!v || v.length < 3 || /^\d+$/.test(v)) return undefined;
 	return v.slice(0, MAX_VALUE);
@@ -206,6 +212,20 @@ export function isWeakDescription(desc: string | undefined): boolean {
 	if (d.length < 40) return true;
 	const letters = (d.match(/[א-ת]/g) ?? []).length;
 	return letters < d.length * 0.4;
+}
+
+// ---------- ישויות HTML ----------
+
+const ENTITIES: Record<string, string> = {
+	amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rlm: '', lrm: '', shy: '',
+};
+
+/** &#34; / &#x22; / &quot; → התו עצמו */
+export function decodeEntities(s: string): string {
+	return s
+		.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+		.replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+		.replace(/&([a-z]+);/gi, (m, name) => ENTITIES[name.toLowerCase()] ?? m);
 }
 
 // ---------- קטגוריות ----------

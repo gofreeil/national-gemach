@@ -146,6 +146,14 @@ export class DiscoveryPipeline {
 						continue;
 					}
 					let candidate = outcome.candidate;
+					// כפילות לפי שם+עיר / טלפון / כתובת URL נבדקת כבר עכשיו — לפני
+					// ההעשרה — כדי לא להוריד עמוד של גמ"ח שכבר במאגר (או שנפסל) בכל שאילתה
+					const dupEarly = deduper.check(candidate);
+					if (dupEarly) {
+						stats.duplicates++;
+						await store.recordCandidate(runId, { ...candidate, decision: 'duplicate', duplicateOf: dupEarly.ref });
+						continue;
+					}
 					if (spec.enrich) {
 						// ההעשרה מורידה את עמוד המועמד (fetch, בלי דפדפן) וממלאת מה שחסר:
 						// טלפון, כתובת, שכונה, שעות, איש קשר, תיאור, לוגו
@@ -153,15 +161,19 @@ export class DiscoveryPipeline {
 						candidate = await enricher.enrich(candidate);
 					}
 					// בלי טלפון אין טיוטה: גמ"ח שאי אפשר להתקשר אליו לא שווה בדיקת אדמין,
-					// והטיוטות האלה רק הציפו את מסך הגילוי. נרשם כדי שלא יישקל שוב.
+					// והטיוטות האלה רק הציפו את מסך הגילוי. הטביעות נזכרות כדי שאותו
+					// עמוד-אינדקס לא יחזור (ויורד שוב) בכל שאילתה.
 					if (!candidate.phone) {
 						stats.lowQuality++;
 						await store.recordCandidate(runId, { ...candidate, decision: 'no_phone' });
+						await store.rememberFingerprints(candidate.fingerprints, 'no_phone');
+						deduper.register(candidate, 'no_phone');
 						logger.info(`✖ בלי טלפון — לא יובא: ${candidate.name} | ${candidate.city || '-'}`);
 						continue;
 					}
 					stats.candidates++;
 
+					// בדיקה שנייה: ההעשרה הוסיפה טלפון, ואיתו טביעת-אצבע חדשה
 					const dup = deduper.check(candidate);
 					if (dup) {
 						stats.duplicates++;

@@ -13,7 +13,7 @@ import type { Logger } from './logger.ts';
 import type { RateLimiter } from './rateLimiter.ts';
 import { CityDetector } from './text.ts';
 import { fingerprintsFor } from './fingerprint.ts';
-import { cleanDescription, extractDetails, guessCategories, isWeakDescription } from './details.ts';
+import { cleanDescription, decodeEntities, extractDetails, guessCategories, isWeakDescription } from './details.ts';
 
 /** תקרת גודל ללוגו שמוטמע כ-data URI — הפריט כולו מוגבל ל-~1MB ב-Strapi */
 const MAX_LOGO_BYTES = 350_000;
@@ -200,17 +200,6 @@ export function parseHtml(html: string): PageMeta {
 		.trim()
 		.slice(0, 30_000);
 	return { description, image, imageWidth, text };
-}
-
-const ENTITIES: Record<string, string> = {
-	amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rlm: '', lrm: '', shy: '',
-};
-
-function decodeEntities(s: string): string {
-	return s
-		.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
-		.replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
-		.replace(/&([a-z]+);/gi, (m, name) => ENTITIES[name.toLowerCase()] ?? m);
 }
 
 /** מוריד תמונה ומחזיר data URI — או undefined אם גדולה/לא תמונה/נכשלה */
