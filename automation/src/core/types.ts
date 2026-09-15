@@ -64,7 +64,8 @@ export interface Candidate {
 	query: string;
 }
 
-export type CandidateDecision = 'imported' | 'duplicate' | 'dry_run' | 'skipped_cap' | 'error';
+/** no_phone — מועמד שגם אחרי ההעשרה נשאר בלי טלפון: לא עולה לטיוטה (אין למי להתקשר) */
+export type CandidateDecision = 'imported' | 'duplicate' | 'dry_run' | 'skipped_cap' | 'error' | 'no_phone';
 
 export interface CandidateRecord extends Candidate {
 	decision: CandidateDecision;

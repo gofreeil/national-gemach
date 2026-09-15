@@ -27,8 +27,10 @@ function gemachGrowth(all: Gemach[]): { yearMonth: string; added: number }[] {
 	});
 	const byYm = new Map(rows.map((r) => [r.yearMonth, r]));
 	for (const g of all) {
-		if (!g.createdAt || g.sourceId) continue;
-		const row = byYm.get(toYm(new Date(g.createdAt)));
+		// לפי תאריך ההצטרפות (אישור), לא יצירת הרשומה — טיוטה נספרת בחודש שאושרה
+		const joined = g.joinedAt ?? g.createdAt;
+		if (!joined || g.sourceId) continue;
+		const row = byYm.get(toYm(new Date(joined)));
 		if (row) row.added++;
 	}
 	return rows;

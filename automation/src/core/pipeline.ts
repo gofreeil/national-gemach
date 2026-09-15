@@ -125,6 +125,14 @@ export class DiscoveryPipeline {
 						enricher ??= new PageEnricher(await getBrowser(), limiter, cityDetector, logger.child('enrich'));
 						candidate = await enricher.enrich(candidate);
 					}
+					// בלי טלפון אין טיוטה: גמ"ח שאי אפשר להתקשר אליו לא שווה בדיקת אדמין,
+					// והטיוטות האלה רק הציפו את מסך הגילוי. נרשם כדי שלא יישקל שוב.
+					if (!candidate.phone) {
+						stats.lowQuality++;
+						await store.recordCandidate(runId, { ...candidate, decision: 'no_phone' });
+						logger.info(`✖ בלי טלפון — לא יובא: ${candidate.name} | ${candidate.city || '-'}`);
+						continue;
+					}
 					stats.candidates++;
 
 					const dup = deduper.check(candidate);

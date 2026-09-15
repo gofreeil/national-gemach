@@ -152,16 +152,29 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         status:        fromItemStatus(item.status1),
         verified:      extra.verified === true || extra.verified === 'true',
         createdAt:     item.createdAt,
+        joinedAt:      joinedAtOf(extra, item.createdAt),
     };
 }
 
-/** מיון ידני: נעוצים בראש, ואז לפי order (קטן→גדול), ואז החדשים ביותר */
+/** תאריך ההצטרפות למאגר: מתי הפריט אושר ופורסם (extra_fields.discovery.approved_at —
+ *  נכתב גם באישור טיוטת-גילוי וגם בפרסום טיוטה מ-/admin/gemachim), ואם לא עבר
+ *  דרך טיוטה — מתי נוצר. טיוטה שנוצרה לפני שבועות ואושרה היום היא "חדשה" היום. */
+function joinedAtOf(extra: Record<string, unknown>, createdAt: string): string {
+    const disc = extra.discovery;
+    const approved = (typeof disc === 'object' && disc !== null)
+        ? (disc as Record<string, unknown>).approved_at
+        : undefined;
+    return typeof approved === 'string' && !isNaN(Date.parse(approved)) ? approved : createdAt;
+}
+
+/** מיון ידני: נעוצים בראש, ואז לפי order (קטן→גדול), ואז לפי תאריך ההצטרפות
+ *  (החדש קודם) — לא לפי יצירת הרשומה, כדי שטיוטה שאושרה היום תעלה לראש. */
 function sortManaged(a: Gemach, b: Gemach): number {
     if (!!a.featured !== !!b.featured) return a.featured ? -1 : 1;
     const ao = a.order ?? Number.POSITIVE_INFINITY;
     const bo = b.order ?? Number.POSITIVE_INFINITY;
     if (ao !== bo) return ao - bo;
-    return 0; // נשמר סדר ה-fetch (createdAt:desc)
+    return (b.joinedAt ?? b.createdAt ?? '').localeCompare(a.joinedAt ?? a.createdAt ?? '');
 }
 
 /** מחזיר את כל הגמ"חים הפעילים מ-Strapi (ממויינים לפי סדר הפאנל).
