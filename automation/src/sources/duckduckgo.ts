@@ -11,12 +11,16 @@
 
 import { DiscoverySource, type SourceContext } from '../core/source.ts';
 import type { RawResult } from '../core/types.ts';
+import { sleep } from '../core/rateLimiter.ts';
 
 const ENDPOINT = 'https://html.duckduckgo.com/html/';
 const USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const REQUEST_TIMEOUT_MS = 25_000;
 const ATTEMPTS = 3;
+/** אחרי "עומס חריג" ממתינים פעם אחת ומנסים שוב — חסימת DuckDuckGo היא
+ *  לרוב קצרה (דקה-שתיים) ובלי ההמתנה כל סריקה שנייה נגמרת עם 0 תוצאות */
+const BLOCK_BACKOFF_MS = 90_000;
 
 /** דומיינים שאינם רשומת גמ"ח (מנועים, רשתות חברתיות, האתרים שלנו) */
 const SKIP_HOSTS = ['duckduckgo.com', 'google.', 'gofreeil.com', 'youtube.com', 'wikipedia.org', 'facebook.com'];
@@ -27,6 +31,7 @@ export class DuckDuckGoSource extends DiscoverySource {
 
 	async *discover(queries: string[], ctx: SourceContext): AsyncGenerator<RawResult> {
 		const log = ctx.logger.child(this.name);
+		let backedOff = false;
 		for (const query of queries) {
 			if (await ctx.shouldAbort()) {
 				log.warn('ה-job בוטל — עוצר את המקור');
@@ -34,12 +39,22 @@ export class DuckDuckGoSource extends DiscoverySource {
 			}
 			await ctx.limiter.wait();
 
-			const html = await this.fetchResults(query, log);
+			let html = await this.fetchResults(query, log);
 			if (html === null) continue;
-			if (/anomaly|unusual traffic/i.test(html) && !html.includes('result__a')) {
-				log.warn('DuckDuckGo מדווח על עומס חריג — עוצר את המקור בריצה הזו');
-				ctx.markBlocked('DuckDuckGo חסם זמנית את הבקשות. נסו שוב מאוחר יותר או הקטינו את היקף הסריקה.');
-				return;
+			if (isBlocked(html)) {
+				if (!backedOff) {
+					backedOff = true;
+					log.warn(`DuckDuckGo מדווח על עומס חריג — ממתין ${Math.round(BLOCK_BACKOFF_MS / 1000)} שניות ומנסה שוב`);
+					await sleep(BLOCK_BACKOFF_MS);
+					if (await ctx.shouldAbort()) return;
+					html = await this.fetchResults(query, log);
+					if (html === null) continue;
+				}
+				if (html !== null && isBlocked(html)) {
+					log.warn('DuckDuckGo עדיין חוסם — עוצר את המקור בריצה הזו');
+					ctx.markBlocked('DuckDuckGo חסם זמנית את הבקשות. נסו שוב בעוד כמה דקות או הקטינו את היקף הסריקה.');
+					return;
+				}
 			}
 
 			const items = parseResults(html);
@@ -86,6 +101,11 @@ export class DuckDuckGoSource extends DiscoverySource {
 		}
 		return null;
 	}
+}
+
+/** עמוד "anomaly" של DuckDuckGo במקום תוצאות */
+function isBlocked(html: string): boolean {
+	return /anomaly|unusual traffic/i.test(html) && !html.includes('result__a');
 }
 
 interface ParsedResult {

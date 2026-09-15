@@ -119,6 +119,22 @@
 						<button type="button" class="text-xs font-bold text-blue-300 hover:text-blue-200" onclick={() => invalidateAll()}>🔄 רענון</button>
 					{/if}
 				</div>
+				<!-- גם כשהרשימה מקופלת: שורה אחת על הסריקה האחרונה — אחרת סריקה
+				     שנחסמה/נכשלה נראית כאילו "לא קרה כלום" -->
+				{#if !showJobs && data.jobs[0]}
+					{@const last = data.jobs[0]}
+					<p class="mt-1.5 text-xs text-gray-400">
+						<span class="status-pill {last.status}">{JOB_LABELS[last.status] ?? last.status}</span>
+						<span class="mr-2">{fmtDate(last.createdAt)}</span>
+						{#if last.stats?.blocked}
+							<span class="text-red-300">⚠️ {last.stats.blockedReason || 'הסריקה נעצרה באמצע'}</span>
+						{:else if last.error}
+							<span class="text-red-300">{last.error}</span>
+						{:else if last.stats}
+							<span>{last.stats.rawResults ?? 0} תוצאות · {last.stats.imported ?? 0} יובאו</span>
+						{/if}
+					</p>
+				{/if}
 				{#if showJobs}
 				<ul class="mt-2 space-y-2">
 					{#each data.jobs as job (job.id)}
