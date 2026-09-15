@@ -67,7 +67,9 @@ function buildSpec(flags: CliArgs['flags'], overrides: Partial<ScanSpec> = {}): 
 		cities: flagStr(flags, 'cities')?.split(',').map((s) => s.trim()).filter(Boolean),
 		maxQueries: flagNum(flags, 'queries', 20),
 		maxImports: flagNum(flags, 'imports', 40),
-		enrich: flags.has('enrich'),
+		// העשרה מעמוד המקור (fetch, בלי דפדפן) פועלת כברירת מחדל — בלעדיה רוב
+		// המועמדים נשארים בלי טלפון ונופלים; --no-enrich לכיבוי
+		enrich: !flags.has('no-enrich'),
 		headful: flags.has('headful'),
 		apply: flags.has('apply'),
 		triggerJobId: flagStr(flags, 'job'),
@@ -205,7 +207,7 @@ async function cmdStatus(): Promise<void> {
 const HELP = `
 אוטומציית גילוי גמ"חים — פקודות:
   scan      ריצת גילוי אחת (ברירת מחדל: יבשה). דגלים: --apply --sources=a,b
-            --queries=N --imports=N --cities=א,ב --categories=a,b --enrich --headful
+            --queries=N --imports=N --cities=א,ב --categories=a,b --no-enrich --headful
   worker    לולאת עובד לתור הפאנל. דגלים: --apply (חובה) --interval=שניות --once
   migrate   הכנת סכמת האחסון (Postgres אם DATABASE_URL מוגדר)
   status    סיכום מצב האחסון התפעולי

@@ -212,18 +212,24 @@ export class StrapiGateway {
 					label: c.name,
 					category: GEMACH_CATEGORY,
 					description: c.description,
-					contact: '',
+					contact: c.contact ?? '',
 					phone: c.phone ?? '',
 					address: c.address ?? '',
 					icon: opts.icon || '🤝',
 					color: 'amber',
-					neighborhood: '',
+					neighborhood: c.neighborhood ?? '',
 					city: c.city,
-					lat: null,
-					lng: null,
+					lat: c.lat ?? null,
+					lng: c.lng ?? null,
+					// אותם מפתחות שהטופס של האתר כותב (db.ts createGemach) — כך הטיוטה
+					// נפתחת לעריכה עם כל השדות מלאים, והאדמין רק מאשר
 					extra_fields: {
 						gmach_type: c.category,
+						...(c.categories && c.categories.length > 1 ? { gmach_types: c.categories } : {}),
 						...(c.link ? { link: c.link } : {}),
+						...(c.phone2 ? { phone2: c.phone2 } : {}),
+						...(c.hours ? { hours: c.hours } : {}),
+						...(c.logo ? { logo: c.logo } : {}),
 						...(c.tags.length > 0 ? { tags: c.tags } : {}),
 						discovery: {
 							source: c.source,

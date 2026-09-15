@@ -150,11 +150,18 @@ const CATEGORY_KEYWORDS: Array<[key: string, words: string[]]> = [
 ];
 
 export function guessCategory(text: string): string {
+	return guessCategoryKeys(text)[0] ?? 'other';
+}
+
+/** כל תת-הקטגוריות שהטקסט מזכיר, לפי סדר העדיפות של CATEGORY_KEYWORDS
+ *  (הראשונה = הראשית). ריק אם אין התאמה. */
+export function guessCategoryKeys(text: string): string[] {
 	const norm = normalizeHebrew(text);
+	const keys: string[] = [];
 	for (const [key, words] of CATEGORY_KEYWORDS) {
-		if (words.some((w) => norm.includes(normalizeHebrew(w)))) return key;
+		if (words.some((w) => norm.includes(normalizeHebrew(w)))) keys.push(key);
 	}
-	return 'other';
+	return keys;
 }
 
 // ---------- ניקוי כותרות ----------

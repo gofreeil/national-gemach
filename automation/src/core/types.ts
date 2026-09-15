@@ -14,7 +14,7 @@ export interface ScanSpec {
 	maxQueries: number;
 	/** תקרת ייבוא טיוטות לריצה (בלם בטיחות) */
 	maxImports: number;
-	/** ביקור בעמוד המועמד לחילוץ טלפון/כתובת כשחסרים */
+	/** הורדת עמוד המועמד (fetch) להשלמת טלפון/כתובת/שעות/תיאור/לוגו כשחסרים */
 	enrich: boolean;
 	headful: boolean;
 	/** false = ריצה יבשה: איתור והשוואה בלבד, ללא כתיבה ל-Strapi */
@@ -49,11 +49,25 @@ export interface Candidate {
 	name: string;
 	city: string;
 	phone?: string;
+	/** טלפון נוסף (extra_fields.phone2) */
+	phone2?: string;
 	link?: string;
 	address?: string;
+	neighborhood?: string;
+	/** שעות פעילות כטקסט חופשי (extra_fields.hours) */
+	hours?: string;
+	/** איש קשר (שדה contact) */
+	contact?: string;
 	description: string;
 	/** מפתח תת-קטגוריה משוער (extra_fields.gmach_type) */
 	category: string;
+	/** כל הנושאים שזוהו, הראשי ראשון (extra_fields.gmach_types) */
+	categories?: string[];
+	/** לוגו/תמונה ראשית כ-data URI (extra_fields.logo) — מ-og:image של עמוד המקור */
+	logo?: string;
+	/** קואורדינטות (geocoding של הכתובת/העיר) — הפין במפה */
+	lat?: number;
+	lng?: number;
 	tags: string[];
 	/** 0..1 — ניקוד איכות ההתאמה */
 	confidence: number;

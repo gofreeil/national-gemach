@@ -4,7 +4,8 @@
 // ============================================================
 
 import { staticGemachim } from '../../../src/lib/staticGemachim.ts';
-import type { CandidateRecord, CategoryRef, RunStats, ScanSpec } from './types.ts';
+import { resolveGemachCoords } from '../../../src/lib/server/geocode.ts';
+import type { Candidate, CandidateRecord, CategoryRef, RunStats, ScanSpec } from './types.ts';
 import { emptyStats } from './types.ts';
 import type { Logger } from './logger.ts';
 import type { StateStore } from './stateStore.ts';
@@ -17,13 +18,35 @@ import { CityDetector } from './text.ts';
 import { Deduper } from './deduper.ts';
 import { PageEnricher } from './enricher.ts';
 import { QueryPlanner } from './queryPlanner.ts';
-import { RateLimiter } from './rateLimiter.ts';
+import { RateLimiter, sleep } from './rateLimiter.ts';
 
 const CURSOR_KEY = 'query_cursor:v1';
 /** השהיה מנומסת בין שאילתות Google */
 const QUERY_DELAY_MS: [number, number] = [4_000, 9_000];
+/** השהיה בין הורדות עמודי מועמדים (העשרה) — אתרים שונים, אפשר קצר */
+const ENRICH_DELAY_MS: [number, number] = [800, 1_800];
 /** בדיקת ביטול ה-job לכל היותר פעם ב-15 שניות */
 const ABORT_POLL_MS = 15_000;
+/** מדיניות Nominatim: לא יותר מבקשה בשנייה */
+const GEOCODE_GAP_MS = 1_100;
+let lastGeocodeAt = 0;
+
+/** משלים lat/lng למועמד (best-effort): כתובת+שכונה+עיר, ואם אין — מרכז העיר */
+async function withCoords(c: Candidate, logger: Logger): Promise<Candidate> {
+	if (c.lat !== undefined && c.lng !== undefined) return c;
+	if (!c.address && !c.neighborhood && !c.city) return c;
+	const wait = lastGeocodeAt + GEOCODE_GAP_MS - Date.now();
+	if (wait > 0) await sleep(wait);
+	lastGeocodeAt = Date.now();
+	try {
+		const { lat, lng } = await resolveGemachCoords({ address: c.address, neighborhood: c.neighborhood, city: c.city });
+		if (lat === null || lng === null) return c;
+		return { ...c, lat, lng };
+	} catch (e) {
+		logger.debug(`geocoding נכשל ל-${c.name}: ${e instanceof Error ? e.message : String(e)}`);
+		return c;
+	}
+}
 
 export interface PipelineDeps {
 	gateway: StrapiGateway;
@@ -32,6 +55,8 @@ export interface PipelineDeps {
 	sources: DiscoverySource[];
 	cities: string[];
 	defaultCategories: CategoryRef[];
+	/** השלמת lat/lng למועמד לפני הייבוא. ברירת מחדל: Nominatim; הבדיקות מזריקות stub */
+	geocode?: (c: Candidate) => Promise<Candidate>;
 }
 
 export class DiscoveryPipeline {
@@ -78,6 +103,7 @@ export class DiscoveryPipeline {
 			// אותו (מקור מבוסס-דפדפן או העשרה) — ריצת DuckDuckGo טהורה לא
 			// פותחת Chromium כלל.
 			const limiter = new RateLimiter(...QUERY_DELAY_MS);
+			const enrichLimiter = new RateLimiter(...ENRICH_DELAY_MS);
 			const cityDetector = new CityDetector(cities);
 			const normalizer = new CandidateNormalizer(cities);
 			let enricher: PageEnricher | null = null;
@@ -120,9 +146,10 @@ export class DiscoveryPipeline {
 						continue;
 					}
 					let candidate = outcome.candidate;
-					if (spec.enrich && !candidate.phone) {
-						// ההעשרה גולשת לעמוד המועמד ולכן דורשת דפדפן — נוצר כאן בפעם הראשונה
-						enricher ??= new PageEnricher(await getBrowser(), limiter, cityDetector, logger.child('enrich'));
+					if (spec.enrich) {
+						// ההעשרה מורידה את עמוד המועמד (fetch, בלי דפדפן) וממלאת מה שחסר:
+						// טלפון, כתובת, שכונה, שעות, איש קשר, תיאור, לוגו
+						enricher ??= new PageEnricher(enrichLimiter, cityDetector, logger.child('enrich'));
 						candidate = await enricher.enrich(candidate);
 					}
 					// בלי טלפון אין טיוטה: גמ"ח שאי אפשר להתקשר אליו לא שווה בדיקת אדמין,
@@ -151,6 +178,9 @@ export class DiscoveryPipeline {
 						logger.warn(`תקרת הייבוא (${spec.maxImports}) הושגה — מדלג על ${candidate.name}`);
 					} else {
 						try {
+							// פין במפה: geocoding של הכתובת (או מרכז העיר) — בלי זה הגמ"ח
+							// המאושר לא מופיע במפה של "קהילה בשכונה" ולא נספר שם
+							candidate = await (this.deps.geocode ?? withCoords)(candidate, logger);
 							const docId = await gateway.createDraftGemach(candidate, {
 								icon: catIcons.get(candidate.category),
 								runRef: runId,

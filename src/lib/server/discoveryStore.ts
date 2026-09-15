@@ -12,7 +12,7 @@
 //     ה-worker של האוטומציה מושך משימות queued, מריץ ומעדכן סטטוס.
 
 import { strapiGet, strapiPost, strapiPut, StrapiContentTypeError } from './strapiClient.js';
-import { getRawGemachimByStatus, mapItemToGemach, setGemachStatus } from './db.js';
+import { getRawGemachimByStatus, mapItemToGemach, setGemachStatus, ensureGemachCoords } from './db.js';
 import { getCategories } from './adminStore.js';
 import type { Gemach } from '$lib/gemachData';
 
@@ -119,6 +119,8 @@ export async function approveDraft(id: string, decidedBy: string): Promise<void>
 		approved_by: decidedBy,
 		rejection_reason: '',
 	});
+	// טיוטה שנוצרה בלי פין מקבלת אותו עכשיו — אחרת לא תופיע במפה
+	await ensureGemachCoords(id);
 }
 
 /** דחיית טיוטה: נשארת ברשומות (וגם בזיכרון האוטומציה) כדי שלא תיובא שוב */

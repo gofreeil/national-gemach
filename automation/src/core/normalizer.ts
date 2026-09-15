@@ -4,12 +4,11 @@
 
 import type { Candidate, RawResult } from './types.ts';
 import { fingerprintsFor } from './fingerprint.ts';
+import { cleanDescription, extractDetails, guessCategories, stripCityFromAddress } from './details.ts';
 import {
 	CityDetector,
 	cleanTitle,
 	containsGemach,
-	extractPhone,
-	guessCategory,
 	hasIdentityBeyondGemach,
 	normalizePhone,
 } from './text.ts';
@@ -17,6 +16,13 @@ import {
 export type NormalizeOutcome =
 	| { ok: true; candidate: Candidate }
 	| { ok: false; reason: string };
+
+/** "גמ"ח ציוד רפואי בסנהדריה, ירושלים" — מהשדות שחולצו, כשאין תיאור אמיתי */
+export function fallbackDescription(p: { name: string; categoryText?: string; neighborhood?: string; city?: string }): string {
+	const what = p.categoryText ? `גמ"ח ${p.categoryText.replace(/^גמ["״']?ח\s*/, '')}` : p.name;
+	const where = [p.neighborhood ? `ב${p.neighborhood}` : '', p.city].filter(Boolean).join(', ');
+	return where ? `${what} ${where}` : what;
+}
 
 export class CandidateNormalizer {
 	private readonly cityDetector: CityDetector;
@@ -34,14 +40,31 @@ export class CandidateNormalizer {
 		// כותרת שהיא רק המילה "גמח" (עמודי אינדקס) — אין בה זיהוי
 		if (!hasIdentityBeyondGemach(name)) return { ok: false, reason: 'שם כללי מדי' };
 
-		const phone = raw.phone ? normalizePhone(raw.phone) : extractPhone(fullText);
-		const city = raw.city ?? this.cityDetector.detect(fullText) ?? '';
+		// עיר: מה שהמקור סיפק → "עיר: X" בטקסט → זיהוי חופשי בטקסט
+		const details = extractDetails(fullText);
+		const city = raw.city
+			?? (details.city ? this.cityDetector.detect(details.city) : undefined)
+			?? this.cityDetector.detect(fullText)
+			?? '';
+
+		// טלפונים: של המקור קודם, ואז לפי סדר ההופעה בטקסט. השני → phone2.
+		const phones = [
+			...(raw.phone ? [normalizePhone(raw.phone)] : []),
+			...details.phones,
+		].filter((p, i, arr) => arr.indexOf(p) === i);
+		const phone = phones[0];
+		const phone2 = phones[1];
 
 		// בלי עיר ובלי טלפון אין במה לאחוז — גם לא לזיהוי כפילויות אמין
 		if (!city && !phone) return { ok: false, reason: 'אין עיר ואין טלפון' };
 
-		const category = guessCategory(fullText);
+		const categories = guessCategories(fullText);
+		const category = categories[0];
 		const link = raw.url && raw.url.startsWith('http') ? raw.url : undefined;
+		// העיר זוהתה רק עכשיו — מורידים אותה מסוף הכתובת ("סנהדריה 106, ירושלים")
+		const address = stripCityFromAddress(raw.address ?? details.address, city);
+		// שכונה שזוהתה כעיר היא לא שכונה ("שכונה: ירושלים")
+		const neighborhood = details.neighborhood && details.neighborhood !== city ? details.neighborhood : undefined;
 
 		let confidence = 0.25;
 		if (containsGemach(raw.title)) confidence += 0.2;
@@ -53,17 +76,30 @@ export class CandidateNormalizer {
 
 		if (confidence < 0.4) return { ok: false, reason: `ביטחון נמוך (${confidence})` };
 
-		const description = raw.snippet.replace(/\s+/g, ' ').trim().slice(0, 400);
-		const tags = [city].filter(Boolean);
+		// התיאור: ה-snippet בלי בלוקי "שדה: ערך" (שפורקו לשדות) ובלי שאריות
+		// תבנית. אם לא נשאר משפט אמיתי — שורה עניינית מהשדות שכן ידועים,
+		// עדיף על "כתיבת תגובה / מאת ... / דירוג: אין דירוג" בכרטיס.
+		const rawSnippet = raw.snippet.replace(/\s+/g, ' ').trim();
+		const cleaned = cleanDescription(rawSnippet, { name });
+		const description = (cleaned.length >= 15
+			? cleaned
+			: fallbackDescription({ name, categoryText: details.categoryText, neighborhood, city })
+		).slice(0, 400);
+		const tags = [city, neighborhood].filter((t): t is string => !!t);
 
 		const candidate: Candidate = {
 			name,
 			city,
 			phone,
+			phone2,
 			link,
-			address: raw.address,
+			address,
+			neighborhood,
+			hours: details.hours,
+			contact: details.contact,
 			description,
 			category,
+			categories,
 			tags,
 			confidence,
 			fingerprints: fingerprintsFor({ name, city, phone, link }),

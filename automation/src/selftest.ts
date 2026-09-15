@@ -15,6 +15,9 @@ import { CandidateNormalizer } from './core/normalizer.ts';
 import { Deduper } from './core/deduper.ts';
 import { fingerprintsFor } from './core/fingerprint.ts';
 import { CityDetector, cleanTitle, extractPhone, guessCategory, normalizePhone } from './core/text.ts';
+import { cleanDescription, extractDetails, guessCategories, isWeakDescription } from './core/details.ts';
+import { PageEnricher, parseHtml } from './core/enricher.ts';
+import { RateLimiter } from './core/rateLimiter.ts';
 import { DiscoverySource, type SourceContext } from './core/source.ts';
 import { DiscoveryPipeline } from './core/pipeline.ts';
 import { FileStateStore } from './db/fileStateStore.ts';
@@ -160,6 +163,8 @@ async function pipelineIntegrationTest(): Promise<void> {
 		sources: [new FixtureSource(rows)],
 		cities: siteCities,
 		defaultCategories: siteCategories.map((c) => ({ key: c.key, label: c.label, icon: c.icon })),
+		// בלי רשת: geocoding מזויף
+		geocode: async (c) => ({ ...c, lat: 32.96, lng: 35.5 }),
 	});
 
 	const stats = await pipeline.run({
@@ -197,9 +202,69 @@ async function pipelineIntegrationTest(): Promise<void> {
 	await store.close();
 }
 
+// ---------- חילוץ פרטים: "שדה: ערך" → שדות הטופס ----------
+
+function detailsTests(): void {
+	console.log('\nחילוץ פרטים (details):');
+
+	// snippet אמיתי מטיוטה שנוצרה לפני השכלול — כל המידע היה תקוע בתיאור
+	const snippet = 'גמ"ח -ירושלים תרופות כתיבת תגובה / מאת ahron yossef / יולי 25, 2025 כתובת: סנהדריה המורחבת 106, ירושלים שכונה: סנהדריה המורחבת עיר: ירושלים מדינה: ישראל קטגוריה: תרופות טלפון ליצירת קשר: 02-5812345 שעות פעילות/פרטים: 20:00-23:00 בערב, לא בשבת';
+	const d = extractDetails(snippet, 'ירושלים');
+	check('כתובת חולצה בלי העיר', d.address === 'סנהדריה המורחבת 106', d.address);
+	check('שכונה חולצה', d.neighborhood === 'סנהדריה המורחבת', d.neighborhood);
+	check('עיר חולצה', d.city === 'ירושלים', d.city);
+	check('שעות חולצו', d.hours === '20:00-23:00 בערב, לא בשבת', d.hours);
+	check('טלפון חולץ', d.phones[0] === '025812345', d.phones);
+
+	const desc = cleanDescription(snippet, { name: 'גמ"ח -ירושלים תרופות' });
+	check('התיאור נוקה מבלוקי השדות ומשאריות התבנית', !/כתובת:|מאת|כתיבת תגובה|טלפון/.test(desc), desc);
+
+	// כתובת בסגנון מדריך + שני טלפונים
+	const d2 = extractDetails('כתובת הגמ"ח: מתתיהו 12, בני ברק, ישראל טלפונים: 03-5551234, 050-1234567 איש קשר: משפחת כהן', 'בני ברק');
+	check('כתובת מדריך בלי ", ישראל" ובלי העיר', d2.address === 'מתתיהו 12', d2.address);
+	check('שני טלפונים', d2.phones.length === 2 && d2.phones[1] === '0501234567', d2.phones);
+	check('איש קשר', d2.contact === 'משפחת כהן', d2.contact);
+
+	// בלי תוויות: "ברחוב X N" / "שכונת Y"
+	const d3 = extractDetails('הגמ"ח ממוקם ברחוב בית ישראל 4 בשכונת הר נוף, פתוח בימים א-ה 9:00-13:00');
+	check('כתובת חופשית "ברחוב"', d3.address === 'בית ישראל 4', d3.address);
+	check('שכונה חופשית "בשכונת"', d3.neighborhood?.startsWith('הר נוף') === true, d3.neighborhood);
+	check('שעות חופשיות', !!d3.hours && d3.hours.includes('9:00-13:00'), d3.hours);
+
+	check('קטגוריות מרובות, הראשית ראשונה', JSON.stringify(guessCategories('גמ"ח ציוד רפואי וקביים וגם עגלות תינוק')) === '["medical","baby"]', guessCategories('גמ"ח ציוד רפואי וקביים וגם עגלות תינוק'));
+	check('תיאור חלש מזוהה', isWeakDescription('גמ"ח, ירושלים') && !isWeakDescription('גמ"ח להשאלת ציוד רפואי לכל דורש בירושלים, ללא תשלום, בתיאום טלפוני מראש'));
+
+	// המעשיר: עמוד HTML → מטא + טקסט → מילוי שדות חסרים בלי דריסה
+	const html = `<html><head><meta name="description" content="גמ&quot;ח ציוד רפואי בהר נוף — קביים, הליכונים וכיסאות גלגלים להשאלה ללא תשלום, בתיאום מראש"><meta property="og:image" content="/img/photo.jpg"></head>
+		<body><script>var x=1;</script><h1>גמ"ח רפואי</h1><p>כתובת: אגסי 12, ירושלים</p><p>שעות פעילות: 10:00-12:00</p><p>טלפון: 02-6543210 &middot; נייד: 052-1112222</p></body></html>`;
+	const meta = parseHtml(html);
+	check('meta description פוענח (כולל ישויות)', meta.description.startsWith('גמ"ח ציוד רפואי'), meta.description);
+	check('og:image נקרא', meta.image === '/img/photo.jpg', meta.image);
+	check('סקריפטים הוסרו מהטקסט', !meta.text.includes('var x') && meta.text.includes('כתובת: אגסי 12'), meta.text.slice(0, 80));
+	const enricher = new PageEnricher(new RateLimiter(0, 0), new CityDetector(siteCities), new Logger('selftest-enrich', 'warn'));
+	const base: Candidate = {
+		name: 'גמ"ח רפואי', city: 'ירושלים', description: 'גמ"ח, ירושלים', category: 'other', tags: ['ירושלים'],
+		confidence: 0.5, fingerprints: [], source: 'fixture', sourceUrl: 'https://example.org', query: 'q', link: 'https://example.org',
+	};
+	const merged = enricher.merge(base, meta);
+	check('טלפון מולא', merged.phone === '026543210', merged.phone);
+	check('טלפון שני לא נלקח מעמוד (רק מה-snippet)', merged.phone2 === undefined, merged.phone2);
+	// עמוד מדריך שבו הגמ"ח לא מוזכר כלל — שום פרט לא נלקח מהטקסט
+	const foreign = enricher.merge({ ...base, name: 'גמ"ח אחר לגמרי' }, { ...meta, description: '' });
+	check('עמוד בלי שם הגמ"ח — בלי טלפון/כתובת ממנו', !foreign.phone && !foreign.address, foreign);
+	check('כתובת מולאה', merged.address === 'אגסי 12', merged.address);
+	check('שעות מולאו', merged.hours === '10:00-12:00', merged.hours);
+	check('תיאור חלש הוחלף ב-meta', merged.description.startsWith('גמ"ח ציוד רפואי'), merged.description);
+	check('קטגוריה other הושלמה מהעמוד', merged.category === 'medical', merged.category);
+	const keep: Candidate = { ...base, phone: '0501111111', address: 'רחוב אחר 1', description: 'תיאור מלא ומפורט של הגמ"ח שנכתב בידי המקור המקורי ואין לגעת בו' };
+	const merged2 = enricher.merge(keep, meta);
+	check('ערכים קיימים לא נדרסים', merged2.phone === '0501111111' && merged2.address === 'רחוב אחר 1' && merged2.description === keep.description, merged2);
+}
+
 export async function runSelftest(): Promise<void> {
 	failed = 0;
 	unitTests();
+	detailsTests();
 	await pipelineIntegrationTest();
 	console.log(failed === 0 ? '\nכל הבדיקות עברו ✔' : `\n${failed} בדיקות נכשלו ✗`);
 	process.exitCode = failed === 0 ? 0 : 1;

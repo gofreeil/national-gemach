@@ -755,6 +755,19 @@ export async function patchGemachLocation(
  * שולף את הגמ"ח, גוזר lat/lng מהכתובת/עיר, וכותב אותם. מחזיר את התוצאה
  * (null אם הפריט לא נמצא; lat/lng = null אם אין מספיק מידע/הגיאוקודינג נכשל).
  */
+/** משלים פין במפה לפריט שאין לו (best-effort, לא זורק): נקרא בפרסום/אישור
+ *  טיוטה — טיוטות ישנות של הגילוי החכם נוצרו בלי lat/lng, ובלי פין הגמ"ח
+ *  המאושר לא מופיע במפה של "קהילה בשכונה". פריט שכבר יש לו פין לא נגוע. */
+export async function ensureGemachCoords(documentId: string): Promise<void> {
+    try {
+        const g = await getGemachById(documentId);
+        if (!g || hasValidCoords(g.lat, g.lng)) return;
+        await geocodeGemachById(documentId);
+    } catch (e) {
+        console.warn('[national-gemach] ensureGemachCoords failed:', e);
+    }
+}
+
 export async function geocodeGemachById(
     documentId: string,
 ): Promise<{ lat: number | null; lng: number | null } | null> {
