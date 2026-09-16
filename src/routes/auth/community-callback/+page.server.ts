@@ -1,11 +1,12 @@
 import { redirect, isRedirect } from '@sveltejs/kit';
-import { signIn } from '../../../auth';
+import { signIn, oauthEnabled } from '../../../auth';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const raw = url.searchParams.get('returnTo') ?? '/';
 	const returnTo = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
-	return { returnTo, error: url.searchParams.get('error') };
+	// oauth: מסך "עדיין אין חשבון" מציע כניסה בלחיצה עם Google/Facebook — רק לספקים שמוגדרים
+	return { returnTo, error: url.searchParams.get('error'), oauth: oauthEnabled };
 };
 
 // כניסת ה-SSO חייבת לרוץ בצד שרת: ה-signIn של @auth/sveltekit/client שולח
