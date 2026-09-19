@@ -8,8 +8,11 @@
 export const SITE_URL = 'https://gemach.gofreeil.com';
 export const SITE_NAME = 'הגמ"ח הארצי';
 export const SITE_TAGLINE = 'כל הגמ"חים בארץ במקום אחד';
+/** שם התנועה-האם. מצורף לכל <title> (ב-Seo.svelte), לתיאור ולסכימות — כדי שחיפוש
+ *  "יוצאים לחירות הגמח הארצי" יגיע לכאן ולא לאתרים זרים בשם דומה. */
+export const PARENT_BRAND = 'יוצאים לחירות';
 export const SITE_DESCRIPTION =
-    'הגמ"ח הארצי — מאגר הגמ"חים הגדול בישראל. גמ"ח ציוד רפואי, ריהוט, בגדים ושמלות, כלי אירוח, ציוד לתינוקות, ספרים, כלי עבודה, מזון ועוד. חיפוש גמ"ח לפי עיר ולפי נושא, עם טלפון וכתובת — חינם ובלי הרשמה.';
+    'הגמ"ח הארצי של תנועת יוצאים לחירות — מאגר הגמ"חים הגדול בישראל. גמ"ח ציוד רפואי, ריהוט, בגדים ושמלות, כלי אירוח, ציוד לתינוקות, ספרים, כלי עבודה, מזון ועוד. חיפוש גמ"ח לפי עיר ולפי נושא, עם טלפון וכתובת — חינם ובלי הרשמה.';
 /** תמונת השיתוף. חייבת להיות קלה (ווצאפ מוריד רק את תחילת הקובץ — מעל ~300KB
  *  הוא מוותר על התצוגה המקדימה) ובמידות 1200×630 כדי לקבל באנר גדול ולא אייקון. */
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-logo.jpg`;
@@ -120,7 +123,14 @@ export function websiteSchema() {
         '@type': 'WebSite',
         '@id': `${SITE_URL}/#website`,
         name: SITE_NAME,
-        alternateName: ['הגמח הארצי', 'מאגר הגמחים הארצי', 'גמחים', 'gofreeil gemach'],
+        alternateName: [
+            'הגמח הארצי',
+            'הגמ"ח הארצי של יוצאים לחירות',
+            'יוצאים לחירות גמחים',
+            'מאגר הגמחים הארצי',
+            'גמחים',
+            'gofreeil gemach',
+        ],
         url: SITE_URL,
         description: SITE_DESCRIPTION,
         inLanguage: 'he-IL',
@@ -136,6 +146,7 @@ export function organizationSchema() {
         '@type': 'Organization',
         '@id': `${SITE_URL}/#organization`,
         name: SITE_NAME,
+        alternateName: ['הגמ"ח הארצי של יוצאים לחירות', 'הגמח הארצי — יוצאים לחירות'],
         url: SITE_URL,
         logo: { '@type': 'ImageObject', url: SITE_LOGO },
         image: SITE_LOGO,

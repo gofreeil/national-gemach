@@ -10,6 +10,7 @@
     import {
         SITE_NAME,
         SITE_DESCRIPTION,
+        PARENT_SITE,
         websiteSchema,
         organizationSchema,
         serviceSchema,
@@ -564,10 +565,10 @@
 </script>
 
 <Seo
-    title='הגמ"ח הארצי — כל הגמ"חים בישראל במקום אחד, לפי עיר ולפי נושא'
+    title='הגמ"ח הארצי — כל הגמ"חים בישראל במקום אחד'
     description={SITE_DESCRIPTION}
     path="/"
-    keywords='גמ"ח, גמחים, מאגר גמחים, אינדקס גמחים, גמ"ח ציוד רפואי, גמ"ח שמלות, גמ"ח ריהוט, גמ"ח כלי אירוח, גמ"ח תינוקות, גמ"ח הלוואות, גמילות חסדים'
+    keywords='יוצאים לחירות, הגמח הארצי יוצאים לחירות, גמ"ח, גמחים, מאגר גמחים, אינדקס גמחים, גמ"ח ציוד רפואי, גמ"ח שמלות, גמ"ח ריהוט, גמ"ח כלי אירוח, גמ"ח תינוקות, גמ"ח הלוואות, גמילות חסדים'
 />
 <JsonLd data={schemas} />
 
@@ -607,7 +608,20 @@
             {/if}
         </div>
     </div>
-    <h1 class="sr-only">הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</h1>
+    <h1 class="sr-only">הגמ"ח הארצי של יוצאים לחירות – כל הגמחים בארץ בכף ידך</h1>
+    <!-- שיוך גלוי לתנועה-האם: טקסט אמיתי מעל הקפל (לא רק בפוטר) כדי שגוגל יקשר
+         "יוצאים לחירות" לאתר. גלולה כהה — חוק הניגודיות על הרקע הוורוד. -->
+    <p class="mb-4">
+        <a
+            href={PARENT_SITE.url}
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1.5 rounded-full border border-[#3b5794] bg-[#1c2f5a] px-4 py-1.5 text-xs md:text-sm font-semibold text-gray-200 shadow-md hover:bg-[#2a4379] hover:text-white transition-colors"
+        >
+            <span aria-hidden="true">👉</span>
+            מיזם של התנועה החברתית יוצאים לחירות
+        </a>
+    </p>
 
     <!-- Search Bar — עיצוב "רגוע ומלוכד": שדה חיפוש-גיבור אחד רחב עם כפתור מוטמע בקצה,
          ומתחתיו שני מסננים שקטים (קטגוריה · עיר) שמתעוררים במגע ומאירים בזהב כשהם פעילים.

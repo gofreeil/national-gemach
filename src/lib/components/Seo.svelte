@@ -12,6 +12,7 @@
         OG_IMAGE_WIDTH,
         OG_IMAGE_HEIGHT,
         canonical,
+        PARENT_BRAND,
     } from '$lib/seo';
 
     let {
@@ -33,6 +34,9 @@
     } = $props();
 
     const url = $derived(canonical(path));
+    /** כל כותרת מסתיימת ב"| יוצאים לחירות" — כמו בשאר אתרי הרשת. בלי זה גוגל לא
+     *  קישר בין התנועה לאתר, וחיפוש "יוצאים לחירות הגמח הארצי" הוביל לאתרים זרים. */
+    const fullTitle = $derived(title.includes(PARENT_BRAND) ? title : `${title} | ${PARENT_BRAND}`);
     const robots = $derived(
         noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1',
     );
@@ -44,7 +48,7 @@
 </script>
 
 <svelte:head>
-    <title>{title}</title>
+    <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={url} />
     <meta name="robots" content={robots} />
@@ -52,7 +56,7 @@
     <meta property="og:type" content={type} />
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:locale" content="he_IL" />
-    <meta property="og:title" content={title} />
+    <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={url} />
     <meta property="og:image" content={absImage} />
@@ -63,7 +67,7 @@
         <meta property="og:image:height" content={String(OG_IMAGE_HEIGHT)} />
     {/if}
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
+    <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={absImage} />
 </svelte:head>

@@ -35,7 +35,7 @@
 
 <svelte:head>
     <!-- כותרת גיבוי בלבד: כל דף ציבורי דורס אותה דרך <Seo> ($lib/components/Seo.svelte) -->
-    <title>הגמ"ח הארצי – כל הגמחים בארץ בכף ידך</title>
+    <title>הגמ"ח הארצי – כל הגמחים בארץ בכף ידך | יוצאים לחירות</title>
 
     <!-- אייקונים בגדלים אמיתיים — הקובץ המלא (709KB) נשאר רק לסכימת ה-SEO -->
     <link rel="icon" href="/images/favicon.png" type="image/png" />
