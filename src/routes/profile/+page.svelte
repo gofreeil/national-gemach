@@ -289,7 +289,7 @@
 				{#if role}
 					<section
 						id="admin"
-						class="scroll-mt-28 rounded-3xl border border-emerald-500/30 bg-[#16264d] p-4 shadow-2xl sm:p-5"
+						class="rounded-3xl border border-emerald-500/30 bg-[#16264d] p-4 shadow-2xl sm:p-5"
 					>
 						<div>
 							<h2 class="flex items-center gap-2 text-lg font-black text-white">

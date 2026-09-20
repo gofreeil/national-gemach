@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { headerHeight } from '$lib/actions/headerHeight';
     import { locale } from 'svelte-i18n';
     import { onMount } from 'svelte';
 
@@ -42,7 +43,7 @@
     });
 </script>
 
-<header
+<header use:headerHeight
     class="site-header sticky top-0 z-50 shadow-lg backdrop-blur-lg"
 >
     <div class="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
