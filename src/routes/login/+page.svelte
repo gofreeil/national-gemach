@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { signIn } from '@auth/sveltekit/client';
+	import GuestDraftBanner from '$lib/components/GuestDraftBanner.svelte';
 
 	let { data } = $props();
 
@@ -26,7 +27,7 @@
 				return 'לא זוהית דרך "יוצאים לחירות" — חברות בקבוצות הווצאפ אינה חשבון באתר. כניסה עם Google או Facebook למטה יוצרת חשבון בלחיצה אחת.';
 			case 'Configuration':
 			case 'OAuthSignin':
-				return 'דרך ההתחברות הזו אינה זמינה כרגע באתר. התחברו דרך "יוצאים לחירות" או עם אימייל וסיסמה.';
+				return 'דרך ההתחברות הזו אינה זמינה כרגע באתר. התחברו עם אימייל וסיסמה, או הירשמו לחשבון חדש.';
 			case 'OAuthCallback':
 				return 'ההתחברות מול הספק החיצוני נקטעה. נסו שוב.';
 			case 'OAuthAccountNotLinked':
@@ -66,6 +67,9 @@
 	// (localhost בפיתוח, ‎*.vercel.app) מחזיר 400. עדיף להסביר מראש מלשלוח לשגיאה.
 	const SSO_HOME = 'https://gemach.gofreeil.com';
 	let ssoOffsite = $state(false);
+	// המסלול הזה יוצא מהאתר אל "קהילה בשכונה", ומשתמשים לחצו עליו בטעות ומצאו
+	// את עצמם באתר אחר. לכן הוא קישור קטן בתחתית + אישור מפורש לפני היציאה.
+	let ssoConfirm = $state(false);
 
 	function ssoAllowedHere(): boolean {
 		const { protocol, hostname } = window.location;
@@ -98,10 +102,17 @@
 <div class="min-h-[80vh] flex items-center justify-center px-4 py-12" dir="rtl">
 	<div class="w-full max-w-md rounded-3xl border border-[#3b5794] bg-[#16264d] p-8 shadow-2xl">
 		<div class="mb-6 text-center">
-			<div class="mb-3 text-4xl">👤</div>
-			<h1 class="text-2xl font-black text-white">הרשמה / התחברות</h1>
+			<div class="mb-3 text-4xl">{data.draft ? '🤝' : '👤'}</div>
+			<h1 class="text-2xl font-black text-white">
+				{data.draft ? 'התחברות — שהגמ"ח יהיה שלך' : 'הרשמה / התחברות'}
+			</h1>
 			<p class="mt-1 text-sm text-gray-400">כדי להוסיף גמ"ח או לנהל את הפרטים שלכם</p>
 		</div>
+
+		<!-- גמ"ח שנוסף כאורח וממתין לבעלים — מה מצבו ומה קורה בלי התחברות -->
+		{#if data.draft}
+			<GuestDraftBanner draft={data.draft} />
+		{/if}
 
 		<!-- הודעה למשתמש חדש: הכניסה עם Google/Facebook היא גם ההרשמה -->
 		{#if !data.ssoName}
@@ -204,41 +215,6 @@
 		</button>
 		{/if}
 
-		{#if !data.ssoName}
-			<!-- 3. יוצאים לחירות (SSO) — אפשרות משנית למי שכבר יש לו חשבון באתר הקהילה.
-			     חברי קבוצות הווצאפ בלי חשבון: הכפתור לא נכשל, אתר הקהילה מציע להם
-			     כניסה עם Google/Facebook ומחזיר אותם לכאן מחוברים. -->
-			<button
-				type="button"
-				onclick={communitySSO}
-				disabled={loading !== null}
-				class="mb-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-purple-400/40 bg-purple-500/10 px-4 py-3 text-sm font-bold text-purple-100 transition hover:border-purple-400/60 hover:bg-purple-500/20 disabled:opacity-60"
-			>
-				{#if loading === 'sso'}
-					<span class="h-4 w-4 flex-shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
-				{:else}
-					<span class="text-lg" aria-hidden="true">🕊️</span>
-				{/if}
-				<span>כניסה דרך קהילת יוצאים לחירות (חשבון קיים או קוד ב-SMS)</span>
-			</button>
-			<p class="mb-3 text-center text-xs leading-relaxed text-gray-400">
-				חברות בקבוצות הווצאפ אינה חשבון באתר. אם עדיין אין לך חשבון, הכניסה עם Google או Facebook למעלה יוצרת אחד בלחיצה.
-			</p>
-
-			{#if ssoOffsite}
-				<div class="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-xs leading-relaxed text-amber-200">
-					ההתחברות דרך "יוצאים לחירות" עובדת רק בכתובת הרשמית
-					(<span dir="ltr">gemach.gofreeil.com</span>) — היא נשענת על עוגייה משותפת לכל אתרי הרשת.
-					<a
-						href="{SSO_HOME}/login?redirect={encodeURIComponent(data.redirectTo || '/')}"
-						class="mt-2 block font-bold text-amber-100 underline hover:text-white"
-					>
-						המשך להתחברות בכתובת הרשמית
-					</a>
-				</div>
-			{/if}
-		{/if}
-
 		<!-- 4. אימייל וסיסמה (למי שנרשם כך) -->
 		<div class="my-4 flex items-center gap-3">
 			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
@@ -271,5 +247,65 @@
 				{loading === 'credentials' ? 'מתחבר...' : 'התחבר'}
 			</button>
 		</form>
+
+		{#if !data.ssoName}
+			<!-- יוצאים לחירות (SSO): מסלול משני שיוצא מהאתר. הוא יושב בתחתית כקישור
+			     קטן, ולחיצה עליו לא מעבירה לשום מקום עד אישור מפורש — כך אף אחד לא
+			     מוצא את עצמו פתאום באתר "קהילה בשכונה" באמצע התחברות. -->
+			<div class="mt-6 border-t border-[#1c2f5a] pt-4">
+				{#if ssoOffsite}
+					<div class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-xs leading-relaxed text-amber-200">
+						ההתחברות דרך "יוצאים לחירות" עובדת רק בכתובת הרשמית
+						(<span dir="ltr">gemach.gofreeil.com</span>) — היא נשענת על עוגייה משותפת לכל אתרי הרשת.
+						<a
+							href="{SSO_HOME}/login?redirect={encodeURIComponent(data.redirectTo || '/')}"
+							class="mt-2 block font-bold text-amber-100 underline hover:text-white"
+						>
+							המשך להתחברות בכתובת הרשמית
+						</a>
+					</div>
+				{:else if ssoConfirm}
+					<div class="rounded-xl border border-purple-400/40 bg-purple-500/10 px-4 py-3">
+						<p class="text-xs leading-relaxed text-purple-100">
+							שימו לב: הכניסה הזו פותחת את האתר <span class="font-bold">קהילה בשכונה</span> —
+							אתר אחר ברשת — ומחזירה אתכם לכאן מחוברים. חברות בקבוצות הווצאפ אינה חשבון
+							באתר; אם אין לכם שם חשבון, עדיף להתחבר למעלה עם Google או אימייל וסיסמה.
+						</p>
+						<div class="mt-3 flex flex-wrap items-center gap-2">
+							<button
+								type="button"
+								onclick={communitySSO}
+								disabled={loading !== null}
+								class="inline-flex items-center gap-2 rounded-xl border border-purple-400/40 bg-purple-500/20 px-3 py-2 text-xs font-bold text-purple-50 transition hover:bg-purple-500/30 disabled:opacity-60"
+							>
+								{#if loading === 'sso'}
+									<span class="h-3.5 w-3.5 flex-shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+								{:else}
+									<span aria-hidden="true">🕊️</span>
+								{/if}
+								הבנתי, המשיכו לקהילה בשכונה
+							</button>
+							<button
+								type="button"
+								onclick={() => (ssoConfirm = false)}
+								disabled={loading !== null}
+								class="text-xs font-bold text-gray-300 underline hover:text-white disabled:opacity-60"
+							>
+								ביטול — נשאר כאן
+							</button>
+						</div>
+					</div>
+				{:else}
+					<button
+						type="button"
+						onclick={() => (ssoConfirm = true)}
+						disabled={loading !== null}
+						class="block w-full text-center text-xs leading-relaxed text-gray-400 underline underline-offset-4 transition hover:text-gray-200 disabled:opacity-60"
+					>
+						יש לי כבר חשבון באתר "קהילה בשכונה" — להתחבר דרכו
+					</button>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </div>
