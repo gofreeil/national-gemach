@@ -38,7 +38,7 @@ export const ads: Ad[] = [
         cta: 'לאתר קהילה בשכונה',
         hover: 'כל היתרונות בשכונה שלך!',
         href: "https://community.gofreeil.com/",
-        image: "/images/community-neighborhood.png",
+        image: "/images/community-neighborhood.webp",
         color: "from-blue-500 to-purple-600",
     },
     {

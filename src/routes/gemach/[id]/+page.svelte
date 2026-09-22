@@ -323,7 +323,7 @@
                 <div class="w-full md:w-64 lg:w-72 flex-shrink-0">
                     <button type="button" onclick={() => (lightbox = allImages[0])}
                         class="block w-full aspect-video md:aspect-[4/3] overflow-hidden rounded-xl border border-[#3b5794] bg-[#0f1c3d] transition-transform hover:scale-[1.01]">
-                        <img bind:this={coverEl} src={allImages[0]} alt="תמונת השער של {gemach.name}" decoding="async"
+                        <img bind:this={coverEl} src={allImages[0]} alt="תמונת השער של {gemach.name}" fetchpriority="high" decoding="async"
                             onload={measureCover}
                             style={coverFit ? fitStyle(coverFit) : undefined}
                             class="h-full w-full {coverContain ? 'object-contain' : 'object-cover'}" />
@@ -588,7 +588,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
         role="dialog" aria-modal="true" aria-label="תצוגת תמונה" tabindex="-1" onclick={() => (lightbox = null)}>
-        <img src={lightbox} alt="" class="max-h-full max-w-full rounded-xl object-contain" />
+        <img src={lightbox} alt="תמונה של {gemach.name} בתצוגה מוגדלת" decoding="async" class="max-h-full max-w-full rounded-xl object-contain" />
         <button type="button" onclick={() => (lightbox = null)}
             class="absolute top-4 left-4 rounded-full bg-white/10 hover:bg-white/20 px-4 py-2 font-bold text-white transition-colors">
             ✕ סגור

@@ -48,7 +48,11 @@
             >
                 <img
                     src="/images/yotzim-lecherut.webp"
-                    alt="יוצאים לחירות"
+                    alt="לוגו תנועת יוצאים לחירות"
+                    width="640"
+                    height="365"
+                    loading="lazy"
+                    decoding="async"
                     class="h-28 w-28 md:h-32 md:w-32 object-contain rounded-lg hover:scale-105 transition-transform flex-shrink-0"
                 />
 

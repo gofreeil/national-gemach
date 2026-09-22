@@ -26,14 +26,14 @@ export const networkSites: NetworkSite[] = [
         id: 2,
         title: 'הגמ"ח הארצי',
         href: 'https://gemach.gofreeil.com/',
-        image: '/images/gemach-harzi.png',
+        image: '/images/gemach-harzi.webp',
         color: 'from-pink-600 via-fuchsia-600 to-purple-700'
     },
     {
         id: 3,
         title: 'קהילה בשכונה',
         href: 'https://community.gofreeil.com/',
-        image: '/images/community-neighborhood.png',
+        image: '/images/community-neighborhood.webp',
         color: 'from-blue-500 to-purple-600'
     },
     {

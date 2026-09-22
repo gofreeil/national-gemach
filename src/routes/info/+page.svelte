@@ -97,7 +97,10 @@
         <div class="flex flex-col items-center gap-5 p-5 text-center sm:flex-row sm:p-7 sm:text-right">
             <img
                 src="/images/logo-hero.webp"
-                alt='הגמ"ח הארצי'
+                alt='לוגו הגמ"ח הארצי'
+                width="416"
+                height="425"
+                decoding="async"
                 class="h-24 w-24 flex-shrink-0 rounded-2xl border-[3px] border-[#D4AF37] bg-white object-cover shadow-lg md:h-28 md:w-28"
             />
             <div class="min-w-0">

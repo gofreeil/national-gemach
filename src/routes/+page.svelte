@@ -579,8 +579,11 @@
                  עם fetchpriority כדי שהדפדפן יוריד אותה ראשונה -->
             <img
                 src="/images/logo-hero.webp"
-                alt="הגמח הארצי לוגו"
+                alt='לוגו הגמ"ח הארצי'
+                width="416"
+                height="425"
                 fetchpriority="high"
+                decoding="async"
                 class="w-full h-full object-cover scale-[1.15]"
                 style="object-position: center; translate: 0 4%;"
             />
@@ -746,6 +749,8 @@
                             <img
                                 src={cat.image}
                                 alt=""
+                                width="400"
+                                height="400"
                                 draggable="false"
                                 loading="lazy"
                                 decoding="async"
@@ -754,7 +759,7 @@
                             />
                         </span>
                     {:else if cat.key === 'judaism'}
-                        <img src="/icons/menorah.svg" alt="" draggable="false" class="h-9 w-9 object-contain" />
+                        <img src="/icons/menorah.svg" alt="" width="36" height="36" draggable="false" loading="lazy" decoding="async" class="h-9 w-9 object-contain" />
                     {:else}
                         <span class="text-3xl leading-none" aria-hidden="true">{cat.icon}</span>
                     {/if}

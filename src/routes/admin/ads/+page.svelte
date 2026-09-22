@@ -448,7 +448,7 @@
                         {#if ad.mainImage}
                             <!-- אותו מיקום/זום שהמפרסם קבע בבילדר — המנהל מאשר את מה שבאמת יוצג -->
                             <div class="relative overflow-hidden w-full md:w-40 h-32 md:h-40 rounded-xl border border-white/10 flex-shrink-0">
-                                <img src={ad.mainImage} alt={ad.title}
+                                <img src={ad.mainImage} alt="התמונה הראשית של {ad.title}" loading="lazy" decoding="async"
                                      class="w-full h-full object-cover"
                                      use:adImgFit={parseAdImageFit(ad.mainImageFit)} />
                             </div>

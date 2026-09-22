@@ -372,7 +372,7 @@
         <div class="flex flex-wrap gap-2">
             {#each images as src, i (i)}
                 <div class="group relative h-24 w-24 overflow-hidden rounded-xl border {fitEditing === String(i) ? 'border-purple-400' : 'border-[#3b5794]'} bg-[#1e293b]">
-                    <img {src} alt="תמונה {i + 1}" class="h-full w-full object-cover"
+                    <img {src} alt="תמונת גלריה {i + 1} של הגמ&quot;ח" loading="lazy" decoding="async" class="h-full w-full object-cover"
                         onerror={(e) => (e.currentTarget as HTMLImageElement).classList.add('opacity-30', 'grayscale')} />
                     <!-- עורך המיקוד: איזה חלק מהתמונה ימלא את משבצות התצוגה -->
                     <button type="button" onclick={() => (fitEditing = fitEditing === String(i) ? null : String(i))}
