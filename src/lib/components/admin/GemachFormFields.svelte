@@ -1,6 +1,7 @@
 <script lang="ts">
     import { DONATE_KINDS, donateKindDef, type Gemach, type CategoryDef, type DonateOption } from '$lib/gemachData';
     import TagEditor from './TagEditor.svelte';
+    import GemachFormQuality from './GemachFormQuality.svelte';
     import OpeningHoursEditor from './OpeningHoursEditor.svelte';
     import { imageDrop } from '$lib/imageDrop';
     import { compressImage, dataUriWeightKb, MAX_GALLERY_IMAGES, MAX_TOTAL_IMAGE_KB } from '$lib/imageCompress';
@@ -654,6 +655,10 @@
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             placeholder="הערה קצרה" />
     </div>
+
+    <!-- משוב חי: מה עוד חסר בכרטיס, ומה זה עושה למי שמחפש. יושב אחרי
+         השדות ולפני התגים — כלומר מול העיניים ברגע שמסיימים למלא. -->
+    <GemachFormQuality />
 
     <!-- תגים -->
     <div class="md:col-span-2">
