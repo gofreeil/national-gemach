@@ -25,6 +25,8 @@ export interface CreateGemachInput {
     arrivalNotes?: string;
     /** לא לפרסם את הכתובת המדויקת (extra_fields.hide_address) */
     hideAddress?: boolean;
+    /** לוגו על המפה (extra_fields.map_logo) — ראו Gemach.mapLogo */
+    mapLogo?: 'requested' | 'active';
     icon?: string;
     image?: string;         // כתובת https או data URI — נשמר ב-extra_fields.logo
     link?: string;
@@ -71,7 +73,10 @@ export function isSafeHttpUrl(url: string): boolean {
  * מפענח את נתוני טופס הגמ"ח (משותף ליצירה ולעריכה).
  * `input` מוחזר תמיד (לזריעת הטופס מחדש בעת שגיאה); `error` מוגדר אם חסר שדה חובה.
  */
-export function parseGemachForm(form: FormData): { input: CreateGemachInput; error?: string } {
+export function parseGemachForm(
+	form: FormData,
+	opts: { admin?: boolean } = {},
+): { input: CreateGemachInput; error?: string } {
 	const str = (k: string): string | undefined => {
 		const v = ((form.get(k) as string) ?? '').trim();
 		return v === '' ? undefined : v;
@@ -129,6 +134,10 @@ export function parseGemachForm(form: FormData): { input: CreateGemachInput; err
 		apartment:    str('apartment'),
 		arrivalNotes: str('arrival_notes'),
 		hideAddress:  form.get('hide_address') === 'true',
+		// רק אדמין מסמן "שולם" — מבעלים 'active' יורד ל-'requested'
+		// (עריכת בעלים של שדרוג פעיל משמרת אותו בשרת, מול הקיים)
+		mapLogo:      form.get('map_logo') === 'active' ? (opts.admin ? 'active' : 'requested')
+		            : form.get('map_logo') === 'requested' ? 'requested' : undefined,
 		link:         str('link'),
 		donateOptions,
 		notes:        str('notes'),

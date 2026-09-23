@@ -13,7 +13,7 @@ export const load: PageServerLoad = async () => {
 export const actions: Actions = {
 	default: async ({ request }) => {
 		const form = await request.formData();
-		const { input, error } = parseGemachForm(form);
+		const { input, error } = parseGemachForm(form, { admin: true });
 		if (error) return fail(400, { error, values: input });
 
 		let created: { id: string };

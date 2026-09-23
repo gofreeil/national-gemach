@@ -136,6 +136,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         apartment:     toStr(extra.apartment),
         arrivalNotes:  toStr(extra.arrival_notes),
         hideAddress:   extra.hide_address === true || extra.hide_address === 'true',
+        mapLogo:       extra.map_logo === 'active' || extra.map_logo === 'requested' ? extra.map_logo : undefined,
         lat:           typeof item.lat === 'number' ? item.lat : null,
         lng:           typeof item.lng === 'number' ? item.lng : null,
         icon:          item.icon ?? undefined,
@@ -478,6 +479,7 @@ function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     if (input.apartment)    extra.apartment     = input.apartment;
     if (input.arrivalNotes) extra.arrival_notes = input.arrivalNotes;
     if (input.hideAddress)  extra.hide_address  = true;
+    if (input.mapLogo)      extra.map_logo      = input.mapLogo;
     const logo = input.image || input.logoBase64;
     if (logo)             extra.logo    = logo;
     if (input.images && input.images.length > 0) extra.images = input.images;
@@ -662,6 +664,7 @@ export async function updateGemach(
     if (input.images && input.images.length === 0) delete mergedExtra.images;
     // מיקומי-תמונה שאופסו לברירת המחדל נמחקים — הטופס שולח תמיד את המפה המלאה
     if (!input.imageFit || Object.keys(input.imageFit).length === 0) delete mergedExtra.image_fit;
+    if (!input.mapLogo)      delete mergedExtra.map_logo;
     // עריכה ע"י אדמין = הגמ"ח החדש נבדק — מכבים את התראת needs_review.
     // עריכת בעלים אינה מעבירה את הדגל (clearReview נשלח רק ממסכי האדמין).
     if (opts.clearReview) delete mergedExtra.needs_review;

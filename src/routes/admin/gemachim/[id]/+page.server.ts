@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ params }) => {
 export const actions: Actions = {
 	update: async ({ request, params }) => {
 		const form = await request.formData();
-		const { input, error: err } = parseGemachForm(form);
+		const { input, error: err } = parseGemachForm(form, { admin: true });
 		if (err) return fail(400, { error: err, values: input });
 
 		try {

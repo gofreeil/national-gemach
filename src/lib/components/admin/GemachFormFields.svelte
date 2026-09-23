@@ -296,14 +296,6 @@
         </p>
     </fieldset>
 
-    <!-- אייקון -->
-    <div class="md:col-span-2">
-        <label for="f-icon" class="block text-sm font-bold text-gray-300 mb-1">אייקון (אימוג'י)</label>
-        <input id="f-icon" name="icon" defaultValue={gemach?.icon ?? ''} maxlength="4"
-            class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
-            placeholder="לדוגמה: 🤝" />
-    </div>
-
     <!-- לוגו -->
     <div class="md:col-span-2">
         <span class="block text-sm font-bold text-gray-300 mb-1">לוגו / תמונה ראשית</span>
@@ -359,6 +351,44 @@
                 </p>
             </div>
         </div>
+    </div>
+
+    <!-- אייקון + לוגו על המפה — שורה אחת קומפקטית, אחרי התמונה -->
+    <div class="md:col-span-2 flex flex-wrap items-stretch gap-3">
+        <div class="flex items-center gap-2">
+            <label for="f-icon" class="text-sm font-bold text-gray-300 whitespace-nowrap">אייקון</label>
+            <input id="f-icon" name="icon" defaultValue={gemach?.icon ?? ''} maxlength="4"
+                class="w-16 rounded-xl border border-[#3b5794] bg-[#1e293b] px-2 py-2 text-center text-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                placeholder="🤝" />
+        </div>
+
+        <!-- שדרוג בתשלום: הלוגו מחליף את הפין במפה של "קהילה בשכונה".
+             הבעלים רק מבקש; "שולם" מסמן אדמין (ראו parseGemachForm). -->
+        {#if admin}
+            <label class="flex flex-1 min-w-[220px] items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-950/30 px-3 py-2 text-sm">
+                <span class="font-bold text-amber-200 whitespace-nowrap">🗺️ לוגו על המפה</span>
+                <select name="map_logo" value={gemach?.mapLogo ?? ''}
+                    class="rounded-lg border border-[#3b5794] bg-[#1e293b] px-2 py-1 text-white focus:outline-none">
+                    <option value="">לא</option>
+                    <option value="requested">ביקש — ממתין לתשלום</option>
+                    <option value="active">פעיל (שולם)</option>
+                </select>
+            </label>
+        {:else if gemach?.mapLogo === 'active'}
+            <input type="hidden" name="map_logo" value="active" />
+            <div class="flex flex-1 min-w-[220px] items-center rounded-xl border border-emerald-400/40 bg-emerald-950/40 px-3 py-2 text-sm font-bold text-emerald-200">
+                🗺️ הלוגו שלך מוצג על המפה ב"קהילה בשכונה"
+            </div>
+        {:else}
+            <label class="flex flex-1 min-w-[220px] cursor-pointer items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-950/30 px-3 py-2 select-none">
+                <input type="checkbox" name="map_logo" value="requested" checked={gemach?.mapLogo === 'requested'}
+                    class="h-4 w-4 accent-amber-500" />
+                <span class="text-sm leading-snug">
+                    <span class="font-bold text-amber-200">🗺️ שדרוג: הלוגו שלך על המפה — 50 ₪ לחודש</span>
+                    <span class="block text-xs text-amber-100/80">לתצוגה במפה של אתר "קהילה בשכונה" במקום הפין הרגיל. נחזור אליך לתשלום לפני ההפעלה.</span>
+                </span>
+            </label>
+        {/if}
     </div>
 
     <!-- גלריית תמונות -->

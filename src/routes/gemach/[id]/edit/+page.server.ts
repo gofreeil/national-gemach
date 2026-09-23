@@ -42,6 +42,8 @@ export const actions: Actions = {
 		// הבעלים אינו שולט בהצמדה/סידור — משמרים את מה שהאדמין קבע
 		input.featured = existing.featured ?? false;
 		input.order = existing.order;
+		// שדרוג "לוגו על המפה" ששולם — הבעלים לא יכול להפעיל, אבל גם לא לאבד בשמירה
+		if (input.mapLogo && existing.mapLogo === 'active') input.mapLogo = 'active';
 
 		try {
 			await updateGemach(params.id, input);
