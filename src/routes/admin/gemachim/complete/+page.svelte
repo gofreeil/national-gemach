@@ -28,7 +28,15 @@
     ]);
 
     // תוצאת פעולה בקריאה רופפת — נמנע מהצרה של איחוד סוגי ה-ActionData בתבנית.
-    const f = $derived(form as { success?: boolean; id?: string; geocoded?: boolean; error?: string } | null | undefined);
+    const f = $derived(form as { success?: boolean; id?: string; geocoded?: boolean; error?: string; job?: { geocoded: number; notFound: number; pendingGeocode: number; smsSent: number; smsFailed: number } } | null | undefined);
+    const job = $derived(f?.job);
+    let jobBusy = $state(false);
+
+    const PRECISION_LABEL: Record<string, string> = {
+        street: 'לפי רחוב',
+        neighborhood: 'לפי שכונה',
+        city: 'מרכז היישוב',
+    };
 
     function catLabel(key: string) {
         return data.categories.find(c => c.key === key)?.label ?? key;
@@ -69,7 +77,7 @@
             invalidateAll();
             return;
         }
-        batchIds = queue.slice(0, 8).join(',');
+        batchIds = queue.slice(0, 3).join(',');
         await tick(); // לוודא שערך ה-input הנסתר עודכן ב-DOM לפני השליחה
         geoForm.requestSubmit();
     }
@@ -78,48 +86,76 @@
     }
 </script>
 
-<svelte:head><title>גמ"חים לא מלאים – פאנל ניהול</title></svelte:head>
+<svelte:head><title>מיקום הגמ"חים במפה – פאנל ניהול</title></svelte:head>
 
 <div class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-xl font-black text-white">🗺️ גמ"חים לא מלאים</h2>
+        <h2 class="text-xl font-black text-white">🗺️ מיקום הגמ"חים במפה</h2>
         <a href="/admin/gemachim" class="text-sm text-gray-400 hover:text-white transition-colors">→ לניהול הגמ"חים</a>
     </div>
 
     <p class="text-sm text-gray-300 leading-relaxed">
-        כדי שגמ"ח יופיע על המפה של <b>קהילה בשכונה</b> וייספר במונה "פרטים במפה", דרושה לו
-        <b>כתובת/עיר</b> שממנה נגזרות קואורדינטות. מלא כאן את הפרטים החסרים — הקואורדינטות
-        נגזרות אוטומטית בכל שמירה.
+        המערכת מציבה כל גמ"ח על המפה של <b>קהילה בשכונה</b> לבד, פעם ביום: מהבית המדויק ועד מרכז היישוב.
+        יממה אחרי שגמ"ח הוצב במיקום משוער או לא אותר, נשלח SMS לנייד שבכרטיס עם קישור לאשר את המיקום או לדייק אותו במפה.
     </p>
 
-    <!-- סיכום מוכנוּת -->
+    <!-- סיכום -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div class="card p-4">
-            <div class="text-2xl font-black text-white">{data.summary.managed}</div>
-            <div class="text-xs text-gray-400 mt-1">גמ"חים ב-DB</div>
+            <div class="text-2xl font-black text-emerald-400">{data.summary.exact}</div>
+            <div class="text-xs text-gray-400 mt-1">על המפה, מיקום מדויק</div>
         </div>
         <div class="card p-4">
-            <div class="text-2xl font-black text-emerald-400">{data.summary.ready}</div>
-            <div class="text-xs text-gray-400 mt-1">מוכנים למפה (עם מיקום)</div>
+            <div class="text-2xl font-black text-sky-300">{data.summary.approx}</div>
+            <div class="text-xs text-gray-400 mt-1">על המפה, מיקום משוער</div>
         </div>
         <div class="card p-4">
-            <div class="text-2xl font-black text-amber-400">{data.summary.missingCoords}</div>
-            <div class="text-xs text-gray-400 mt-1">חסרי קואורדינטות</div>
+            <div class="text-2xl font-black text-amber-300">{data.summary.queued}</div>
+            <div class="text-xs text-gray-400 mt-1">יוצבו בריצה הבאה</div>
         </div>
         <div class="card p-4">
-            <div class="text-2xl font-black text-red-400">{data.summary.missingLocation}</div>
-            <div class="text-xs text-gray-400 mt-1">בלי כתובת/שכונה</div>
+            <div class="text-2xl font-black text-purple-300">{data.summary.owner}</div>
+            <div class="text-xs text-gray-400 mt-1">ממתינים לסימון הבעלים</div>
         </div>
     </div>
 
-    <!-- גזירת מיקום אוטומטית לכל החסרים -->
+    <!-- הריצה האוטומטית + בקשות לבעלים -->
+    <div class="card p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="text-xs text-gray-300 space-y-0.5">
+            <div>
+                ✉️ בקשות אישור/דיוק לבעלים:
+                {#if !data.notify.sms}<b class="text-amber-300">אין ספק SMS מוגדר</b>
+                {:else if data.notify.off}<b class="text-amber-300">כבויות</b>
+                {:else}<b class="text-emerald-300">פעילות</b> (עד 25 ביום, פעם אחת לכל גמ"ח){/if}
+            </div>
+            {#if job}
+                <div class="text-emerald-300">
+                    הריצה הסתיימה: {job.geocoded} הוצבו{#if job.notFound}, {job.notFound} לא אותרו{/if}{#if job.pendingGeocode}, {job.pendingGeocode} ימשיכו בריצה הבאה{/if} · {job.smsSent} הודעות נשלחו{#if job.smsFailed}, {job.smsFailed} נכשלו{/if}
+                </div>
+            {/if}
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <form method="POST" action="?/notify" use:enhance>
+                <input type="hidden" name="off" value={data.notify.off ? '0' : '1'} />
+                <button class="rounded-lg border border-[#3b5794] bg-[#16264d] px-3 py-1.5 text-xs font-bold text-gray-200 hover:bg-[#243a6e]">
+                    {data.notify.off ? '▶️ הפעל בקשות לבעלים' : '⏸️ כבה בקשות לבעלים'}
+                </button>
+            </form>
+            <form method="POST" action="?/runJob" use:enhance={() => { jobBusy = true; return async ({ update }) => { await update(); jobBusy = false; }; }}>
+                <button disabled={jobBusy} class="rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+                    {jobBusy ? '⏳ רץ…' : '🔄 הרץ את הריצה היומית עכשיו'}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- הצבה מיידית לכל מי שעוד אין לו פין -->
     <div class="card p-4 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h3 class="font-bold text-white">📍 גזירת מיקום לכל החסרים</h3>
+                <h3 class="font-bold text-white">📍 הצב עכשיו את כל מי שעוד לא במפה</h3>
                 <p class="text-xs text-gray-400 mt-0.5">
-                    גוזר קואורדינטות מהכתובת/עיר לכל גמ"ח שיש לו עיר וחסר מיקום ({data.geocodableMissingIds.length} מועמדים).
-                    רץ באצוות, ניתן לעצירה.
+                    בלי לחכות לריצה היומית ({data.geocodableMissingIds.length} גמ"חים). רץ באצוות, ניתן לעצירה.
                 </p>
             </div>
             {#if running}
@@ -127,14 +163,14 @@
             {:else}
                 <button type="button" onclick={startGeocode} disabled={data.geocodableMissingIds.length === 0}
                     class="rounded-xl bg-gradient-to-r from-blue-600 to-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed">
-                    ▶️ גזור מיקום לכל החסרים
+                    ▶️ הצב עכשיו
                 </button>
             {/if}
         </div>
         {#if running || doneCount > 0}
             <div>
                 <div class="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>{doneCount} / {totalToDo} עובדו · <b class="text-emerald-300">{okCount}</b> נגזרו{#if failCount > 0}, <b class="text-red-300">{failCount}</b> ללא תוצאה{/if}</span>
+                    <span>{doneCount} / {totalToDo} עובדו · <b class="text-emerald-300">{okCount}</b> הוצבו{#if failCount > 0}, <b class="text-amber-300">{failCount}</b> יחכו לסימון הבעלים{/if}</span>
                     <span>{pct}%</span>
                 </div>
                 <div class="h-2.5 rounded-full bg-[#1c2f5a] overflow-hidden">
@@ -176,14 +212,14 @@
         <button class="rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-5 py-2.5 text-sm font-bold text-white transition-colors">חפש</button>
         <a href={data.onlyMissing ? `/admin/gemachim/complete${data.q ? `?q=${encodeURIComponent(data.q)}` : ''}` : `/admin/gemachim/complete?missing=1${data.q ? `&q=${encodeURIComponent(data.q)}` : ''}`}
             class="rounded-xl px-4 py-2.5 text-sm font-bold transition-colors {data.onlyMissing ? 'bg-amber-600 text-white' : 'bg-[#16264d] text-gray-300 hover:bg-[#243a6e]'}">
-            {data.onlyMissing ? '✓ רק חסרים' : 'רק חסרים'}
+            {data.onlyMissing ? '✓ רק לא מדויקים' : 'רק לא מדויקים'}
         </a>
     </form>
 
     {#if data.items.length === 0}
         <div class="card p-10 text-center text-gray-400">
             <div class="text-4xl mb-3">🎉</div>
-            <p class="font-bold">אין גמ"חים להצגה{data.onlyMissing ? ' — הכל מושלם!' : ''}.</p>
+            <p class="font-bold">אין גמ"חים להצגה{data.onlyMissing ? ' — כולם במקום מדויק!' : ''}.</p>
         </div>
     {:else}
         <p class="text-xs text-gray-400">מציג {data.items.length} מתוך {data.total} · עמוד {data.page}/{data.pages}</p>
@@ -192,7 +228,7 @@
             {#each orderedItems as g (g.id)}
                 {@const saved = f?.success && f?.id === g.id}
                 <form method="POST" action="?/save" use:enhance
-                    class="card p-3 md:p-4 {g._ready ? '' : 'border-amber-500/25'}">
+                    class="card p-3 md:p-4">
                     <input type="hidden" name="id" value={g.id} />
                     <div class="flex items-start gap-3">
                         <div class="text-2xl pt-1 flex-shrink-0" aria-hidden="true">{g.icon || catIcon(g.category)}</div>
@@ -200,13 +236,18 @@
                             <div class="flex items-center gap-2 flex-wrap">
                                 <h3 class="font-bold text-white truncate">{g.name}</h3>
                                 <span class="text-[11px] bg-blue-900/40 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/20">{catLabel(g.category)}</span>
-                                {#if g._ready}
-                                    <span class="text-[11px] bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/20">✓ על המפה</span>
+                                {#if g._state === 'exact'}
+                                    <span class="text-[11px] bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/20">✓ על המפה{g.geo?.ok ? ' · אושר ע"י הבעלים' : ''}</span>
+                                {:else if g._state === 'approx'}
+                                    <span class="text-[11px] bg-sky-900/40 text-sky-200 px-2 py-0.5 rounded-full border border-sky-500/20">📍 על המפה · {PRECISION_LABEL[g.geo?.p ?? 'city']}</span>
+                                {:else if g._state === 'queued'}
+                                    <span class="text-[11px] bg-amber-900/30 text-amber-200 px-2 py-0.5 rounded-full border border-amber-500/20">⏳ יוצב אוטומטית</span>
                                 {:else}
-                                    <span class="text-[11px] bg-red-900/40 text-red-300 px-2 py-0.5 rounded-full border border-red-500/20">✗ חסר מיקום</span>
+                                    <span class="text-[11px] bg-purple-900/40 text-purple-200 px-2 py-0.5 rounded-full border border-purple-500/20">✉️ ממתין לסימון הבעלים</span>
                                 {/if}
-                                {#if saved && f?.geocoded}<span class="text-[11px] text-emerald-300 font-bold">✅ נשמר + מיקום נגזר</span>{/if}
-                                {#if saved && !f?.geocoded}<span class="text-[11px] text-red-300 font-bold">⚠️ נשמר, אך המיקום לא נגזר — ייתכן שהקואורדינטות הישנות נותרו; בדוק כתובת/עיר ושמור שוב</span>{/if}
+                                {#if g.geo?.asked && !g.geo?.ok}<span class="text-[11px] text-gray-400">בקשה נשלחה {new Date(g.geo.asked).toLocaleDateString('he-IL')}</span>{/if}
+                                {#if saved && f?.geocoded}<span class="text-[11px] text-emerald-300 font-bold">✅ נשמר והוצב במפה</span>{/if}
+                                {#if saved && !f?.geocoded}<span class="text-[11px] text-amber-300 font-bold">נשמר. הכתובת לא אותרה — אפשר לדקור במפה</span>{/if}
                                 {#if f?.error && f?.id === g.id}<span class="text-[11px] text-red-300 font-bold">⚠️ {f.error}</span>{/if}
                             </div>
 
@@ -214,23 +255,23 @@
                                 <div>
                                     <label class="block text-[11px] text-gray-400 mb-0.5" for="city-{g.id}">עיר <span class="text-red-400">*</span></label>
                                     <input id="city-{g.id}" name="city" defaultValue={g.city ?? ''} list="complete-cities"
-                                        class="w-full rounded-lg border {g.city ? 'border-[#3b5794]' : 'border-red-500/50'} bg-[#1e293b] px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" />
+                                        class="w-full rounded-lg border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" />
                                 </div>
                                 <div>
                                     <label class="block text-[11px] text-gray-400 mb-0.5" for="hood-{g.id}">שכונה</label>
                                     <input id="hood-{g.id}" name="neighborhood" defaultValue={g.neighborhood ?? ''}
-                                        class="w-full rounded-lg border {(!g.address && !g.neighborhood) ? 'border-amber-500/50' : 'border-[#3b5794]'} bg-[#1e293b] px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" />
+                                        class="w-full rounded-lg border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" />
                                 </div>
                                 <div>
                                     <label class="block text-[11px] text-gray-400 mb-0.5" for="addr-{g.id}">כתובת (רחוב ומספר)</label>
                                     <input id="addr-{g.id}" name="address" defaultValue={g.address ?? ''}
-                                        class="w-full rounded-lg border {(!g.address && !g.neighborhood) ? 'border-amber-500/50' : 'border-[#3b5794]'} bg-[#1e293b] px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" />
+                                        class="w-full rounded-lg border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" />
                                 </div>
                             </div>
 
                             <div class="flex items-center justify-between gap-2 flex-wrap">
                                 <span class="text-[11px] text-gray-400" dir="ltr">
-                                    {#if g._ready}📍 {Number(g.lat).toFixed(5)}, {Number(g.lng).toFixed(5)}{:else}— ללא קואורדינטות —{/if}
+                                    {#if g._ready}📍 {Number(g.lat).toFixed(5)}, {Number(g.lng).toFixed(5)}{:else}— עוד לא במפה —{/if}
                                 </span>
                                 <span class="flex flex-wrap items-center gap-2">
                                     <!-- type="button" — הכפתור יושב בתוך form השמירה ואסור שישלח אותו -->
@@ -238,8 +279,12 @@
                                         class="rounded-lg border border-[#3b5794] bg-[#16264d] px-3 py-1.5 text-xs font-bold text-gray-300 hover:bg-[#243a6e] hover:text-white transition-colors">
                                         {deferred.includes(g.id) ? '⬆️ החזר מהסוף' : '⬇️ העבר לסוף הרשימה'}
                                     </button>
+                                    <a href={g._pinHref} target="_blank" rel="noopener"
+                                        class="rounded-lg border border-[#3b5794] bg-[#16264d] px-3 py-1.5 text-xs font-bold text-gray-200 hover:bg-[#243a6e] hover:text-white transition-colors">
+                                        🗺️ דקור במפה
+                                    </a>
                                     <button class="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-opacity">
-                                        💾 שמור וגזור מיקום
+                                        💾 שמור ואתר
                                     </button>
                                 </span>
                             </div>

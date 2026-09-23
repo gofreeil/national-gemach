@@ -8,42 +8,50 @@ import {
 import { getPublicCategories } from '$lib/server/adminStore';
 import { withImageUrls } from '$lib/server/gemachSource';
 import { hasValidCoords } from '$lib/server/geocode';
-import { cities } from '$lib/gemachData';
+import { geoToken } from '$lib/server/claimInvite';
+import { isGeoNotifyOff, runGeoJob, setGeoNotifyOff } from '$lib/server/geoJob';
+import { smsEnabled } from '$lib/server/sms';
+import { getAdminContext } from '$lib/server/admin';
+import { cities, isApproxGeo } from '$lib/gemachData';
 import type { Gemach } from '$lib/gemachData';
 
 const PAGE_SIZE = 40;
 
-/** האם לגמ"ח יש קואורדינטות תקינות — התנאי להופעה על מפת הקהילה ולספירתו במונה.
- *  שים לב: g.lat/g.lng מגיעים כ-null כשאין קואורדינטות, ולכן חובה בדיקת-סוג
- *  ולא Number(x) (כי Number(null)===0 "היה עובר" בטעות). */
-function hasCoords(g: Pick<Gemach, 'lat' | 'lng'>): boolean {
-    return hasValidCoords(g.lat, g.lng);
-}
+/**
+ * מצב המיקום של גמ"ח. אף אחד מהם אינו "חסר פרטים": מי שאין לו פין
+ * יוצב אוטומטית (ה-cron היומי), ומי שלא נמצא לו מקום מקבל בקשה מהבעלים.
+ *   exact   — על המפה, בית מדויק / נדקר ידנית
+ *   approx  — על המפה, מיקום משוער (רחוב/שכונה/מרכז יישוב)
+ *   queued  — עוד אין פין; יוצב בריצה האוטומטית הבאה
+ *   owner   — לא נמצא מיקום; ממתין שהבעלים יסמן במפה
+ */
+type GeoState = 'exact' | 'approx' | 'queued' | 'owner';
 
-/** שדות חסרים שמונעים מהגמ"ח להופיע מדויק על המפה. */
-function missingFields(g: Gemach): string[] {
-    const miss: string[] = [];
-    if (!g.city) miss.push('city');
-    // צריך רחוב או שכונה כדי לדייק את הפין (אחרת רק מרכז העיר)
-    if (!g.address && !g.neighborhood) miss.push('location');
-    if (!hasCoords(g)) miss.push('coords');
-    return miss;
+function geoState(g: Gemach): GeoState {
+    // g.lat/g.lng מגיעים כ-null כשאין קואורדינטות — חובה בדיקת-סוג, לא Number(x)
+    if (hasValidCoords(g.lat, g.lng)) {
+        // פריט ותיק בלי מטא-דאטה — אין דרך לדעת; לא מסמנים אותו כבעייתי
+        return g.geo && isApproxGeo(g.geo.p) ? 'approx' : 'exact';
+    }
+    return g.geo && g.geo.p === null ? 'owner' : 'queued';
 }
 
 export const load: PageServerLoad = async ({ url }) => {
     const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
-    const onlyMissing = url.searchParams.get('missing') === '1';
+    const onlyOpen = url.searchParams.get('missing') === '1';
     const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
-    const [all, categories] = await Promise.all([
+    const [all, categories, notifyOff] = await Promise.all([
         getAllGemachim(),
         getPublicCategories(),
+        isGeoNotifyOff(),
     ]);
 
     const enriched = all.map(g => ({
         ...g,
-        _missing: missingFields(g),
-        _ready: hasCoords(g),
+        _state: geoState(g),
+        _ready: hasValidCoords(g.lat, g.lng),
+        _pinHref: `/l/${geoToken(g.id)}`,
     }));
 
     let filtered = enriched;
@@ -55,7 +63,8 @@ export const load: PageServerLoad = async ({ url }) => {
             (g.address?.toLowerCase().includes(q) ?? false),
         );
     }
-    if (onlyMissing) filtered = filtered.filter(g => g._missing.length > 0);
+    // "רק לא מדויקים" — כל מה שלא יושב בבית מדויק במפה
+    if (onlyOpen) filtered = filtered.filter(g => g._state !== 'exact');
 
     const total = filtered.length;
     const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -63,17 +72,18 @@ export const load: PageServerLoad = async ({ url }) => {
     // תמונות ככתובות endpoint ולא כ-data URI מוטמע — הרשימה נטענת מהר
     const items = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE).map(withImageUrls);
 
-    // כל המזהים שאפשר לגזור להם קואורדינטות אך עדיין חסרים (בכל העמודים) —
-    // לשימוש כפתור "גזור מיקום לכל החסרים" (אצווה עם המשך אוטומטי).
+    // כל מי שעוד אין לו פין (בכל העמודים) — לכפתור "הצב עכשיו" (אצווה עם המשך אוטומטי)
     const geocodableMissingIds = enriched
-        .filter(g => !g._ready && !!g.city)
+        .filter(g => !g._ready)
         .map(g => g.id);
 
+    const count = (s: GeoState) => enriched.filter(g => g._state === s).length;
     const summary = {
         managed: all.length,
-        ready: enriched.filter(g => g._ready).length,
-        missingCoords: enriched.filter(g => !g._ready).length,
-        missingLocation: enriched.filter(g => !g.address && !g.neighborhood).length,
+        exact: count('exact'),
+        approx: count('approx'),
+        queued: count('queued'),
+        owner: count('owner'),
     };
 
     return {
@@ -85,22 +95,25 @@ export const load: PageServerLoad = async ({ url }) => {
         pages,
         pageSize: PAGE_SIZE,
         q: url.searchParams.get('q') ?? '',
-        onlyMissing,
+        onlyMissing: onlyOpen,
         summary,
         geocodableMissingIds,
+        notify: { off: notifyOff, sms: smsEnabled() },
     };
 };
 
+// ה-layout שומר רק על load — כל פעולה בודקת הרשאה בעצמה
 export const actions: Actions = {
     // שמירת פרטי מיקום של גמ"ח בודד + גזירת קואורדינטות מיידית
-    save: async ({ request }) => {
+    save: async ({ request, locals }) => {
+        await getAdminContext(locals);
         const fd = await request.formData();
         const id = fd.get('id') as string;
         if (!id) return fail(400, { error: 'חסר מזהה' });
         const city = ((fd.get('city') as string) ?? '').trim();
         const neighborhood = ((fd.get('neighborhood') as string) ?? '').trim();
         const address = ((fd.get('address') as string) ?? '').trim();
-        if (!city) return fail(400, { error: 'עיר היא שדה חובה למיקום על המפה', id });
+        if (!city) return fail(400, { error: 'בלי עיר אי אפשר לאתר — דקרו במפה', id });
         try {
             const coords = await patchGemachLocation(id, { city, neighborhood, address });
             return { success: true, id, geocoded: coords.lat !== null && coords.lng !== null };
@@ -110,22 +123,22 @@ export const actions: Actions = {
         }
     },
 
-    // אצווה קטנה של גזירת-מיקום למזהים שנשלחו (הלקוח ממשיך אוטומטית עד שמסיים).
-    // מגבילים ל-8 בכל בקשה ומרווחים ~1 שנייה בין קריאות בכבוד למדיניות Nominatim.
-    geocodeBatch: async ({ request }) => {
+    // אצווה קטנה של הצבה (הלקוח ממשיך אוטומטית עד שמסיים). הגיאוקודר עצמו
+    // שומר על מרווח של ~שנייה בין קריאות ל-Nominatim.
+    geocodeBatch: async ({ request, locals }) => {
+        await getAdminContext(locals);
         const fd = await request.formData();
         const ids = ((fd.get('ids') as string) ?? '')
             .split(',')
             .map(s => s.trim())
             .filter(Boolean)
-            .slice(0, 8);
+            .slice(0, 3);
         if (ids.length === 0) return { success: true, done: 0, failed: 0, processed: [] as string[] };
 
         let done = 0;
         let failed = 0;
         const processed: string[] = [];
-        for (let i = 0; i < ids.length; i++) {
-            const id = ids[i];
+        for (const id of ids) {
             try {
                 const c = await geocodeGemachById(id);
                 if (c && c.lat !== null && c.lng !== null) done++;
@@ -135,8 +148,21 @@ export const actions: Actions = {
                 failed++;
             }
             processed.push(id);
-            if (i < ids.length - 1) await new Promise(r => setTimeout(r, 1100));
         }
         return { success: true, done, failed, processed };
+    },
+
+    // הריצה היומית, עכשיו (הצבה + בקשות לבעלים שהגיע זמנן)
+    runJob: async ({ locals }) => {
+        await getAdminContext(locals);
+        const r = await runGeoJob({ budgetMs: 40_000 });
+        return { job: r };
+    },
+
+    notify: async ({ request, locals }) => {
+        await getAdminContext(locals);
+        const fd = await request.formData();
+        await setGeoNotifyOff(fd.get('off') === '1');
+        return { success: true };
     },
 };

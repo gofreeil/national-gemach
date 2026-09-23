@@ -4,11 +4,11 @@
 // ============================================================
 
 import { strapiGet, strapiGetAll, strapiPost, strapiPut, strapiDelete, StrapiContentTypeError } from './strapiClient.js';
-import type { Gemach, DonateOption } from '$lib/gemachData';
+import type { Gemach, DonateOption, GeoMeta, GeoPrecision } from '$lib/gemachData';
 import type { CreateGemachInput } from '$lib/gemachForm';
 import { categories, parseDonateOptions } from '$lib/gemachData';
 import { parseImageFitMap } from '$lib/imageFit';
-import { resolveGemachCoords, hasValidCoords } from './geocode';
+import { resolveGemachCoords, hasValidCoords, inServiceArea } from './geocode';
 
 export interface StrapiItem {
     id: number;
@@ -57,6 +57,20 @@ export function toItemStatus(status: string): string {
 export function fromItemStatus(status1: string | null): string | undefined {
     if (!status1) return undefined;
     return status1 === DRAFT_ITEM_STATUS ? 'draft' : status1;
+}
+
+const GEO_PRECISIONS = new Set(['pin', 'address', 'street', 'neighborhood', 'city']);
+
+/** extra_fields.geo → GeoMeta (או undefined לפריט ותיק / ערך פגום) */
+function readGeo(v: unknown): GeoMeta | undefined {
+    if (!v || typeof v !== 'object') return undefined;
+    const o = v as Record<string, unknown>;
+    if (typeof o.at !== 'string') return undefined;
+    const meta: GeoMeta = { p: GEO_PRECISIONS.has(o.p as string) ? (o.p as GeoPrecision) : null, at: o.at };
+    if (o.src === 'auto' || o.src === 'owner' || o.src === 'admin') meta.src = o.src;
+    if (typeof o.asked === 'string') meta.asked = o.asked;
+    if (typeof o.ok === 'string') meta.ok = o.ok;
+    return meta;
 }
 
 function toStr(v: unknown): string | undefined {
@@ -139,6 +153,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         mapLogo:       extra.map_logo === 'active' || extra.map_logo === 'requested' ? extra.map_logo : undefined,
         lat:           typeof item.lat === 'number' ? item.lat : null,
         lng:           typeof item.lng === 'number' ? item.lng : null,
+        geo:           readGeo(extra.geo),
         icon:          item.icon ?? undefined,
         image:         pickImage(extra),
         gallery:       pickGallery(extra),
@@ -505,10 +520,12 @@ export async function createGemach(
 ): Promise<{ id: string }> {
     let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
     let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
+    let geo: GeoMeta | undefined = lat !== null ? { p: 'pin', at: new Date().toISOString() } : undefined;
     if ((opts.geocode ?? true) && (lat === null || lng === null)) {
         const c = await resolveGemachCoords(coordsInput(input));
         lat = c.lat;
         lng = c.lng;
+        geo = { p: c.precision, at: new Date().toISOString(), src: 'auto' };
     }
 
     // בעלות: פריט מיובא מהרשימה הסטטית → sheet:<id>; פריט שנוצר ע"י משתמש מחובר
@@ -519,6 +536,7 @@ export async function createGemach(
     // טיוטת אורח (ראה guestDraft.ts): נשמרת בלי בעלים, עם אסימון שרק הדפדפן
     // שיצר אותה מחזיק — הוא מה שיאפשר לו לאמץ אותה אחרי ההתחברות.
     const extra = buildExtra(input);
+    if (geo) extra.geo = geo;
     if (opts.guestToken) {
         extra[GUEST_CLAIM_KEY] = { token: opts.guestToken, at: new Date().toISOString() };
     }
@@ -635,8 +653,10 @@ export async function updateGemach(
 ): Promise<void> {
     // שולפים את הקיים כדי לשמר extra_fields לא-מנוהלים (logo/images וכו')
     let existingExtra: Record<string, unknown> = {};
+    let curItem: StrapiItem | null = null;
     try {
         const cur = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
+        curItem = cur.data ?? null;
         existingExtra = (cur.data?.extra_fields ?? {}) as Record<string, unknown>;
     } catch { /* ממשיכים עם extra ריק */ }
 
@@ -687,10 +707,20 @@ export async function updateGemach(
     // קיים בכשל גיאוקודינג (Nominatim לא זמין) — פשוט לא שולחים lat/lng.
     let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
     let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
-    if ((opts.geocode ?? true) && (lat === null || lng === null)) {
+    if (lat !== null) mergedExtra.geo = { p: 'pin', at: new Date().toISOString(), src: 'admin' } satisfies GeoMeta;
+    // המיקום לא השתנה ויש כבר פין — לא גוזרים מחדש. אחרת כל שמירה של הטופס
+    // הייתה דורסת פין שהבעלים דקר במפה (או שנקבע ב"קהילה בשכונה").
+    const sameLocation = !!curItem && hasValidCoords(curItem.lat, curItem.lng)
+        && sameLocationFields(curItem, input);
+    if ((opts.geocode ?? true) && (lat === null || lng === null) && !sameLocation) {
         const c = await resolveGemachCoords(coordsInput(input));
         lat = c.lat;
         lng = c.lng;
+        if (c.precision) {
+            // בקשת הדיוק לבעלים נשלחת פעם אחת בלבד — גם אחרי שינוי כתובת
+            const prev = readGeo(existingExtra.geo);
+            mergedExtra.geo = { p: c.precision, at: new Date().toISOString(), src: 'auto', ...(prev?.asked ? { asked: prev.asked } : {}) } satisfies GeoMeta;
+        }
     }
     if (lat !== null && lng !== null) {
         data.lat = lat;
@@ -699,6 +729,16 @@ export async function updateGemach(
 
     await strapiPut(`/api/items/${documentId}`, { data });
     invalidateGemachCache();
+}
+
+/** האם שדות המיקום בקלט זהים לשמורים (כולל "הסתר כתובת", שמשנה את רמת הפין) */
+function sameLocationFields(cur: StrapiItem, input: CreateGemachInput): boolean {
+    const norm = (v: unknown) => String(v ?? '').trim();
+    const curHide = !!(cur.extra_fields as Record<string, unknown> | null)?.hide_address;
+    return norm(cur.city) === norm(input.city)
+        && norm(cur.neighborhood) === norm(input.neighborhood)
+        && norm(cur.address) === norm(input.address)
+        && curHide === !!input.hideAddress;
 }
 
 /** מוחק גמ"ח (נעלם גם מהקהילה) */
@@ -733,14 +773,16 @@ export async function patchGemachLocation(
     loc: { city?: string; neighborhood?: string; address?: string },
 ): Promise<{ lat: number | null; lng: number | null }> {
     // מכבדים "הסתר כתובת" גם כאן — אחרת מסך ההשלמה היה מציב פין מדויק
-    const hideAddress = (await getGemachById(documentId))?.hideAddress ?? false;
+    const extra = await readExtra(documentId);
     const coords = await resolveGemachCoords(coordsInput({
         address: loc.address,
         neighborhood: loc.neighborhood,
         city: loc.city,
-        hideAddress,
+        hideAddress: !!extra.hide_address,
     }));
-    const data: Record<string, unknown> = {};
+    const data: Record<string, unknown> = {
+        extra_fields: { ...extra, geo: { ...readGeo(extra.geo), p: coords.precision, at: new Date().toISOString(), src: 'admin' } },
+    };
     if (loc.city !== undefined)         data.city         = loc.city;
     if (loc.neighborhood !== undefined) data.neighborhood = loc.neighborhood;
     if (loc.address !== undefined)      data.address      = loc.address;
@@ -774,11 +816,57 @@ export async function ensureGemachCoords(documentId: string): Promise<void> {
 export async function geocodeGemachById(
     documentId: string,
 ): Promise<{ lat: number | null; lng: number | null } | null> {
-    const g = await getGemachById(documentId);
-    if (!g) return null;
-    const coords = await resolveGemachCoords(coordsInput({ ...g, lat: null, lng: null }));
-    if (coords.lat === null || coords.lng === null) return coords;
-    await strapiPut(`/api/items/${documentId}`, { data: { lat: coords.lat, lng: coords.lng } });
+    const res = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
+    const item = res.data;
+    if (!item) return null;
+    const coords = await resolveGemachCoords(coordsInput({ ...mapItemToGemach(item), lat: null, lng: null }));
+    // גם כישלון נרשם (p:null) — כך יודעים למי לשלוח בקשה לדקור את המפה
+    const extra = (item.extra_fields ?? {}) as Record<string, unknown>;
+    const data: Record<string, unknown> = {
+        extra_fields: { ...extra, geo: { ...readGeo(extra.geo), p: coords.precision, at: new Date().toISOString(), src: 'auto' } },
+    };
+    if (coords.lat !== null && coords.lng !== null) {
+        data.lat = coords.lat;
+        data.lng = coords.lng;
+    }
+    await strapiPut(`/api/items/${documentId}`, { data });
     invalidateGemachCache();
     return coords;
+}
+
+async function readExtra(documentId: string): Promise<Record<string, unknown>> {
+    const res = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
+    return (res.data?.extra_fields ?? {}) as Record<string, unknown>;
+}
+
+/** מעדכן רק את extra_fields.geo (למשל "נשלחה בקשה לבעלים"), בלי לגעת בשאר */
+export async function patchGemachGeo(documentId: string, patch: Partial<GeoMeta>): Promise<void> {
+    const extra = await readExtra(documentId);
+    const prev = readGeo(extra.geo) ?? { p: null, at: new Date().toISOString() };
+    await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: { ...extra, geo: { ...prev, ...patch } } } });
+    invalidateGemachCache();
+}
+
+/**
+ * פין שנדקר ידנית במפה (הבעלים מקישור ה-SMS, או אדמין). נשמר כ-precision
+ * 'pin' ולא נדרס בשמירות הבאות של הטופס כל עוד הכתובת לא משתנה.
+ * אפשר לעדכן באותה פעולה גם שכונה/כתובת שהבעלים השלים.
+ */
+export async function setGemachPin(
+    documentId: string,
+    pin: { lat: number; lng: number; neighborhood?: string; address?: string; src: 'owner' | 'admin' },
+): Promise<boolean> {
+    if (!hasValidCoords(pin.lat, pin.lng) || !inServiceArea(pin.lat, pin.lng)) return false;
+    const extra = await readExtra(documentId);
+    const now = new Date().toISOString();
+    const data: Record<string, unknown> = {
+        lat: pin.lat,
+        lng: pin.lng,
+        extra_fields: { ...extra, geo: { ...readGeo(extra.geo), p: 'pin', at: now, src: pin.src, ok: now } },
+    };
+    if (pin.neighborhood !== undefined) data.neighborhood = pin.neighborhood;
+    if (pin.address !== undefined)      data.address      = pin.address;
+    await strapiPut(`/api/items/${documentId}`, { data });
+    invalidateGemachCache();
+    return true;
 }

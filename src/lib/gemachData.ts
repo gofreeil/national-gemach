@@ -39,6 +39,28 @@ export function parseDonateOptions(raw: unknown): DonateOption[] {
     return out;
 }
 
+/** דיוק הפין במפה, מהמדויק לגס: pin = סומן ידנית/אושר ע"י הבעלים,
+ *  address = בית, street = רחוב, neighborhood = שכונה, city = מרכז היישוב. */
+export type GeoPrecision = 'pin' | 'address' | 'street' | 'neighborhood' | 'city';
+
+/** מטא-דאטה של המיקום (extra_fields.geo). נכתב ע"י הגיאוקודר ועמוד דקירת המפה. */
+export interface GeoMeta {
+    /** הדיוק שהושג; null = ניסינו ולא מצאנו כלום */
+    p: GeoPrecision | null;
+    /** מתי נקבע/נוסה המיקום (ISO) */
+    at: string;
+    src?: 'auto' | 'owner' | 'admin';
+    /** מתי נשלחה לבעלים בקשה לאשר/לדייק (ISO) — נשלחת פעם אחת בלבד */
+    asked?: string;
+    /** מתי הבעלים אישר את המיקום או דקר אותו (ISO) */
+    ok?: string;
+}
+
+/** פין משוער — לא בית ולא נקודה שאושרה. מוצג על המפה, אבל כדאי לדייק. */
+export function isApproxGeo(p: GeoPrecision | null | undefined): boolean {
+    return p !== 'pin' && p !== 'address';
+}
+
 export interface Gemach {
     id: string;
     name: string;
@@ -84,6 +106,8 @@ export interface Gemach {
     /** קואורדינטות למפה של "קהילה בשכונה". נגזרות אוטומטית מהכתובת/עיר בעת שמירה. */
     lat?: number | null;
     lng?: number | null;
+    /** איך נקבע הפין (extra_fields.geo) — ראה GeoMeta. חסר בפריטים ותיקים. */
+    geo?: GeoMeta;
     icon?: string;
     /** תמונה/לוגו של הגמ"ח — כתובת https או data URI. ריק = נופלים לאימוג'י */
     image?: string;

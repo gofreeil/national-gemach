@@ -1,4 +1,7 @@
 {
+	"crons": [
+		{ "path": "/api/cron/geo", "schedule": "0 8 * * *" }
+	],
 	"headers": [
 		{
 			"source": "/images/(.*)",

@@ -107,6 +107,18 @@ export function verifyDeclineToken(token: string): string | null {
     return checkSig('decline', id, sig) ? id : null;
 }
 
+/** קישור "אשרו/דייקו את המיקום במפה" (/l/<token>) — פותח את עמוד דקירת
+ *  המפה של הגמ"ח בלי התחברות. נשלח ב-SMS לנייד שבכרטיס. */
+export function geoToken(gemachId: string): string {
+    return `${gemachId}.${sign('geo', gemachId)}`;
+}
+
+export function verifyGeoToken(token: string): string | null {
+    const [id, sig, ...rest] = String(token ?? '').split('.');
+    if (rest.length || !id || !sig) return null;
+    return checkSig('geo', id, sig) ? id : null;
+}
+
 /** origin = של הבקשה הנוכחית, כדי שבפריוויו הקישור יוביל לאותה סביבה */
 export function inviteLinks(origin: string, gemachId: string) {
     const base = origin.replace(/\/$/, '');

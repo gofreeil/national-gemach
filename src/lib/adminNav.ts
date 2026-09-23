@@ -38,9 +38,9 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
         // הוספת גמ"ח אינה מסך ניהול בפני עצמו — הכפתור "➕ הוספת גמ"ח"
         // יושב בראש מסך "ניהול גמ"חים", ומשם מגיעים ל-/admin/gemachim/new.
         {
-            href: '/admin/gemachim/complete', icon: '🗺️', label: 'לא מלאים', exact: true,
-            title: 'גמ"חים לא מלאים',
-            desc: 'כתובת/עיר + גזירת קואורדינטות אוטומטית'
+            href: '/admin/gemachim/complete', icon: '🗺️', label: 'מיקום במפה', exact: true,
+            title: 'מיקום הגמ"חים במפה',
+            desc: 'הצבה אוטומטית במפה + בקשת דיוק מהבעלים'
         },
         {
             href: '/admin/pinned', icon: '📌', label: 'נעוצים', exact: false,

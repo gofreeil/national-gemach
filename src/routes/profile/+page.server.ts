@@ -30,9 +30,10 @@ async function loadTileStats() {
 	]);
 	const pinned = await getPinnedGemachim(merged).catch(() => []);
 	const managedActive = withDrafts.filter((g) => g.status !== 'draft');
-	// אותו קריטריון כמו מסך "גמ"חים לא מלאים" (missingFields): עיר, רחוב/שכונה, קואורדינטות
+	// רק מי שהמערכת לא הצליחה להציב במפה (ממתין לסימון הבעלים) — השאר מוצבים
+	// אוטומטית במסך "מיקום במפה", ולכן אינם "להשלמה"
 	const incomplete = managedActive.filter(
-		(g) => !g.city || (!g.address && !g.neighborhood) || !hasValidCoords(g.lat, g.lng)
+		(g) => !hasValidCoords(g.lat, g.lng) && g.geo?.p === null
 	).length;
 	return {
 		gemachim: merged.length,
