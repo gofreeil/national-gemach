@@ -1,0 +1,246 @@
+// ============================================================
+// claimInvite.ts — הזמנה ב-SMS לבעלי גמ"חים לקבל בעלות על הכרטיס שלהם
+//
+// (אותו מנגנון כמו claimSms של "אינדקס בעלי עסקים", מותאם לגמ"חים.)
+//
+// מסך /admin/invites מציג את כל הגמ"חים הפעילים שעדיין בלי בעלים ויש
+// בכרטיס שלהם נייד. האדמין שולח לכל אחד SMS עם שני קישורים קצרים:
+//
+//   {link}     /c/<id> — שם עוגיית הזמנה חתומה ומפנה לדף הגמ"ח. העוגייה
+//              פותחת את תיבת "זה הגמ"ח שלי" גם כשפרטי החשבון לא תואמים
+//              לכרטיס (isClaimMatch) — ההוכחה עצמה נשארת קוד ה-SMS לנייד
+//              שבכרטיס (ownerOtp), כך שההזמנה לא מקנה בעלות לאף אחד.
+//   {decline}  /d/<token> — "לא שלי / לא מעוניין": קישור חתום שמסמן את
+//              הגמ"ח כמי שביקש לא לקבל הודעות, בלי להתחבר. המסך חוסם
+//              שליחה חוזרת אליו.
+//
+// הנוסח והיומן נשמרים בהגדרות הכלליות (__ng_config).
+// ============================================================
+
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import type { Cookies } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+import { getConfigValue, setConfigValue } from './adminStore';
+import { strapiGetAll } from './strapiClient.js';
+import { toMobileE164 } from './sms';
+
+const TEMPLATE_KEY = 'claim_invite_template';
+const LOG_KEY = 'claim_invite_log';
+const INVITE_COOKIE = 'ng_invite';
+const INVITE_COOKIE_DAYS = 30;
+// SMS בעברית הוא 70 תווים למקטע — גג סביר כדי שהנוסח לא יתפוצץ לחמישה מקטעים
+export const MAX_SMS_CHARS = 480;
+
+// כל קישור בשורה משלו אחרי המלל שמסביר אותו — ב-SMS אין טקסט-עוגן
+export const DEFAULT_TEMPLATE =
+    'שלום{name}, הגמ"ח "{gemach}" מופיע באתר הגמ"ח הארצי של יוצאים לחירות.\n' +
+    'כנסו כדי לקבל עליו בעלות ולעדכן את הפרטים בעצמכם (ללא עלות):\n{link}\n' +
+    'לא שלכם או לא מעוניינים בהודעות:\n{decline}';
+
+export const PLACEHOLDERS = [
+    { key: '{name}', help: 'איש הקשר שבכרטיס (או ריק)' },
+    { key: '{gemach}', help: 'שם הגמ"ח' },
+    { key: '{link}', help: 'קישור קצר לכרטיס עם תיבת קבלת הבעלות' },
+    { key: '{decline}', help: 'קישור קצר "לא שלי / הסרה"' },
+];
+
+// ── נוסח ─────────────────────────────────────────────────────
+
+export async function getInviteTemplate(): Promise<string> {
+    const saved = await getConfigValue<string>(TEMPLATE_KEY).catch(() => undefined);
+    const text = typeof saved === 'string' ? saved.trim() : '';
+    return text || DEFAULT_TEMPLATE;
+}
+
+/** שומר נוסח חדש. ריק = חזרה לברירת המחדל. */
+export async function setInviteTemplate(text: string): Promise<{ ok: true } | { ok: false; error: string }> {
+    const t = String(text ?? '').trim();
+    if (t.length > MAX_SMS_CHARS) return { ok: false, error: `הנוסח ארוך מדי (עד ${MAX_SMS_CHARS} תווים)` };
+    if (t && !t.includes('{link}')) return { ok: false, error: 'הנוסח חייב לכלול את {link} — בלעדיו אין לאן להיכנס' };
+    await setConfigValue(TEMPLATE_KEY, t);
+    return { ok: true };
+}
+
+/** ממלא את הסוגריים. {name} ריק נמחק יחד עם הרווח שלפניו. */
+export function renderInvite(
+    template: string,
+    v: { name?: string; gemach: string; link: string; decline: string },
+): string {
+    const name = String(v.name ?? '').trim();
+    let s = String(template ?? '');
+    s = name ? s.replace(/\{name\}/g, ` ${name}`).replace(/ {2,}/g, ' ') : s.replace(/\s?\{name\}/g, '');
+    s = s.replace(/\{gemach\}/g, v.gemach.trim());
+    s = s.replace(/\{link\}/g, v.link).replace(/\{decline\}/g, v.decline);
+    return s.trim();
+}
+
+// ── חתימות וקישורים ──────────────────────────────────────────
+
+function secret(): string {
+    return env.CLAIM_LINK_SECRET || env.AUTH_SECRET || env.STRAPI_TOKEN || 'dev-only';
+}
+
+// 12 תווי hex = 48 סיביות — די מול ניחוש, וקצר ב-SMS
+const SIG_LEN = 12;
+const ID_RE = /^[A-Za-z0-9_-]{6,64}$/;
+
+function sign(purpose: string, gemachId: string): string {
+    return createHmac('sha256', secret()).update(`${purpose}|${gemachId}`).digest('hex').slice(0, SIG_LEN);
+}
+
+function checkSig(purpose: string, gemachId: string, sig: string): boolean {
+    if (!ID_RE.test(gemachId) || !/^[0-9a-f]+$/.test(sig) || sig.length !== SIG_LEN) return false;
+    return timingSafeEqual(Buffer.from(sig), Buffer.from(sign(purpose, gemachId)));
+}
+
+export function isGemachDocId(id: string): boolean {
+    return ID_RE.test(id);
+}
+
+export function declineToken(gemachId: string): string {
+    return `${gemachId}.${sign('decline', gemachId)}`;
+}
+
+export function verifyDeclineToken(token: string): string | null {
+    const [id, sig, ...rest] = String(token ?? '').split('.');
+    if (rest.length || !id || !sig) return null;
+    return checkSig('decline', id, sig) ? id : null;
+}
+
+/** origin = של הבקשה הנוכחית, כדי שבפריוויו הקישור יוביל לאותה סביבה */
+export function inviteLinks(origin: string, gemachId: string) {
+    const base = origin.replace(/\/$/, '');
+    return {
+        link: `${base}/c/${encodeURIComponent(gemachId)}`,
+        decline: `${base}/d/${declineToken(gemachId)}`,
+    };
+}
+
+/** מי שנכנס מקישור ההזמנה — עוגייה חתומה שמזהה את הגמ"ח */
+export function setInviteCookie(cookies: Cookies, gemachId: string): void {
+    cookies.set(INVITE_COOKIE, `${gemachId}.${sign('invite', gemachId)}`, {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: true,
+        maxAge: INVITE_COOKIE_DAYS * 24 * 3600,
+    });
+}
+
+/** האם הדפדפן הזה הגיע מקישור ההזמנה של הגמ"ח הזה */
+export function hasInvite(cookies: Cookies, gemachId: string): boolean {
+    const [id, sig] = String(cookies.get(INVITE_COOKIE) ?? '').split('.');
+    return !!id && id === gemachId && !!sig && checkSig('invite', id, sig);
+}
+
+// ── יומן ──────────────────────────────────────────────────────
+
+export interface InviteLogEntry {
+    /** שליחה אחרונה */
+    at?: string;
+    by?: string;
+    count?: number;
+    /** ביקש לא לקבל הודעות (קישור "לא שלי") */
+    declinedAt?: string;
+}
+
+export async function getInviteLog(): Promise<Record<string, InviteLogEntry>> {
+    const raw = await getConfigValue(LOG_KEY).catch(() => undefined);
+    return raw && typeof raw === 'object' ? (raw as Record<string, InviteLogEntry>) : {};
+}
+
+async function patchLog(gemachId: string, patch: (cur: InviteLogEntry) => InviteLogEntry): Promise<void> {
+    const log = { ...(await getInviteLog()) };
+    log[gemachId] = patch(log[gemachId] ?? {});
+    await setConfigValue(LOG_KEY, log);
+}
+
+/** רושם שליחה. נכשל בשקט — ה-SMS כבר יצא, והיומן הוא נוחות בלבד. */
+export async function recordInviteSent(gemachId: string, by: string): Promise<void> {
+    try {
+        await patchLog(gemachId, (c) => ({ ...c, at: new Date().toISOString(), by, count: (c.count ?? 0) + 1 }));
+    } catch (e) {
+        console.error('[claim-invite] log failed:', e instanceof Error ? e.message : e);
+    }
+}
+
+export async function recordInviteDeclined(gemachId: string): Promise<void> {
+    await patchLog(gemachId, (c) => ({ ...c, declinedAt: c.declinedAt ?? new Date().toISOString() }));
+}
+
+// ── מי זכאי להזמנה ───────────────────────────────────────────
+
+interface RawRow {
+    documentId: string;
+    label: string | null;
+    phone: string | null;
+    contact: string | null;
+    city: string | null;
+    user_id: string | null;
+}
+
+export interface InviteCandidate {
+    id: string;
+    name: string;
+    city: string;
+    contact: string;
+    /** 4 הספרות האחרונות של הנייד — הסוד המלא לא נשלח לדפדפן */
+    phoneTail: string;
+}
+
+/** כל הגמ"חים הפעילים בלי בעלים אמיתי (ריק או "sheet:" של ייבוא) שהטלפון
+ *  הראשי שלהם נייד — זה המספר שאליו ownerOtp ישלח את קוד האימות. */
+export async function listInviteCandidates(): Promise<{
+    candidates: InviteCandidate[];
+    owned: number;
+    noMobile: number;
+}> {
+    const rows = await strapiGetAll<RawRow>('/api/items', {
+        'filters[category][$eq]': 'gemachim',
+        'filters[status1][$eq]': 'active',
+        'fields[0]': 'documentId',
+        'fields[1]': 'label',
+        'fields[2]': 'phone',
+        'fields[3]': 'contact',
+        'fields[4]': 'city',
+        'fields[5]': 'user_id',
+        sort: 'label:asc',
+    });
+    const candidates: InviteCandidate[] = [];
+    let owned = 0;
+    let noMobile = 0;
+    for (const r of rows) {
+        const oid = (r.user_id ?? '').trim();
+        if (oid && !oid.startsWith('sheet:')) { owned++; continue; }
+        if (!toMobileE164(r.phone ?? '')) { noMobile++; continue; }
+        candidates.push({
+            id: r.documentId,
+            name: r.label ?? '',
+            city: r.city ?? '',
+            contact: (r.contact ?? '').trim(),
+            phoneTail: (r.phone ?? '').replace(/\D/g, '').slice(-4),
+        });
+    }
+    return { candidates, owned, noMobile };
+}
+
+/** פרטי השליחה לגמ"ח אחד, מחושבים מחדש בשרת (לא סומכים על הדפדפן) */
+export async function inviteTarget(gemachId: string): Promise<(RawRow & { e164: string }) | null> {
+    if (!isGemachDocId(gemachId)) return null;
+    const rows = await strapiGetAll<RawRow & { status1: string | null }>('/api/items', {
+        'filters[documentId][$eq]': gemachId,
+        'fields[0]': 'documentId',
+        'fields[1]': 'label',
+        'fields[2]': 'phone',
+        'fields[3]': 'contact',
+        'fields[4]': 'city',
+        'fields[5]': 'user_id',
+        'fields[6]': 'status1',
+    });
+    const r = rows[0];
+    if (!r || r.status1 !== 'active') return null;
+    const oid = (r.user_id ?? '').trim();
+    if (oid && !oid.startsWith('sheet:')) return null;
+    const e164 = toMobileE164(r.phone ?? '');
+    return e164 ? { ...r, e164 } : null;
+}

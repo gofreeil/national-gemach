@@ -63,6 +63,11 @@ export function adminNav(role: AdminNavRole | null, owner = false): AdminNavItem
             desc: 'אישור בעלים שמבקשים לנהל גמ"ח שהעליתם'
         },
         {
+            href: '/admin/invites', icon: '📨', label: 'הזמנות SMS', exact: false,
+            title: 'הזמנות SMS לבעלים',
+            desc: 'SMS לכל גמ"ח בלי בעלים — להירשם ולקבל את הכרטיס'
+        },
+        {
             // באזור האישי הנתונים כבר פרוסים בכרטיס ה-GA הפתוח — אריח מיותר
             href: '/admin/stats', icon: '📈', label: 'סטטיסטיקה', exact: false, navOnly: true,
             title: 'סטטיסטיקת כניסות',

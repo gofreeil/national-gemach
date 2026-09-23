@@ -313,6 +313,15 @@
                 </button>
             </form>
         </div>
+    {:else if data.inviteLogin}
+        <!-- הגיע מקישור הזמנת ה-SMS ועוד לא מחובר -->
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+            <span class="text-sm font-bold text-blue-100">🤝 הגמ"ח הזה שלך? התחבר או הירשם, ואז אמת בקוד SMS לנייד שבכרטיס — והניהול עובר אליך מיד.</span>
+            <a href="/login?redirect={encodeURIComponent(`/gemach/${gemach.id}`)}"
+                class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
+                התחברות לקבלת בעלות
+            </a>
+        </div>
     {/if}
 
     <!-- כרטיס ראשי קומפקטי: גלריה מימין (תמונת השער ראשונה), כל המידע משמאלה -->

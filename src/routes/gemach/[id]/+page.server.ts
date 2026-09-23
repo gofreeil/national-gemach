@@ -10,6 +10,7 @@ import { submitClaim, userPendingClaimGemachIds } from '$lib/server/claimsStore'
 import { getFastClaimState, requestOwnerCode, verifyOwnerCode } from '$lib/server/ownerOtp';
 import { getVerifiedPhone } from '$lib/server/userPhone';
 import { categoryKeys } from '$lib/gemachData';
+import { hasInvite } from '$lib/server/claimInvite';
 
 /** המשתמש מהסשן + הנייד המאומת שלו (משתמשי Google מגיעים בלי טלפון בסשן,
  *  אבל ייתכן שאימתו נייד בפרופיל) — כך isClaimMatch מזהה גם אותם. */
@@ -19,7 +20,7 @@ async function userWithPhone(user: unknown): Promise<ClaimMatchUser> {
     return { ...u, phone };
 }
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, cookies }) => {
     const [gemach, categories] = await Promise.all([findGemachById(params.id), getPublicCategories()]);
     if (!gemach) throw error(404, 'הגמ"ח המבוקש לא נמצא במאגר');
 
@@ -56,6 +57,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     // (או כש-SMS לא מוגדר) נשאר בזרימת התביעה הרגילה (fastClaim=false).
     let fastClaim = false;
     let fastPhoneTail = '';
+    // הגיע מקישור הזמנת ה-SMS (/c/<id>) — התיבה נפתחת גם בלי התאמת פרטים;
+    // ההוכחה נשארת קוד לנייד שבכרטיס. אורח מוזמן מקבל הזמנה להתחבר.
+    const invited = gemach.managed && hasInvite(cookies, gemach.id);
+    let inviteLogin = false;
     if (gemach.managed) {
         const session = await locals.auth();
         if (session?.user) {
@@ -63,7 +68,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
             canEdit = isGemachOwner(session.user, ownerId);
             const oid = (ownerId ?? '').trim();
             const unowned = !oid || oid.startsWith('sheet:');
-            if (!canEdit && unowned && isClaimMatch(await userWithPhone(session.user), gemach)) {
+            if (!canEdit && unowned && (invited || isClaimMatch(await userWithPhone(session.user), gemach))) {
                 const pending = await userPendingClaimGemachIds(session.user);
                 claimPending = pending.has(gemach.id);
                 claimable = !claimPending;
@@ -73,17 +78,20 @@ export const load: PageServerLoad = async ({ params, locals }) => {
                     fastPhoneTail = fast.phoneTail;
                 }
             }
+        } else if (invited) {
+            const oid = ((await getGemachOwnerId(gemach.id)) ?? '').trim();
+            inviteLogin = !oid || oid.startsWith('sheet:');
         }
     }
 
     // התמונות נשלחות ככתובות endpoint ולא כ-data URI מוטמע — העמוד נטען מיד
     // והתמונות מגיעות בנפרד עם מטמון (ראה withImageUrls ב-gemachSource)
-    return { gemach: withImageUrls(gemach), categories, related, canEdit, claimable, claimPending, fastClaim, fastPhoneTail, pinned };
+    return { gemach: withImageUrls(gemach), categories, related, canEdit, claimable, claimPending, fastClaim, fastPhoneTail, inviteLogin, pinned };
 };
 
 export const actions: Actions = {
     // "זה הגמ"ח שלי" — יוצר בקשת בעלות ממתינה לאישור אדמין
-    claim: async ({ params, locals }) => {
+    claim: async ({ params, locals, cookies }) => {
         const session = await locals.auth();
         if (!session?.user) return fail(401, { claimError: 'צריך להתחבר כדי לבקש בעלות' });
         const gemach = await findGemachById(params.id);
@@ -95,7 +103,7 @@ export const actions: Actions = {
         if (oid && !oid.startsWith('sheet:'))
             return fail(403, { claimError: 'לגמ"ח הזה כבר יש בעלים' });
         const claimUser = await userWithPhone(session.user);
-        if (!isClaimMatch(claimUser, gemach))
+        if (!hasInvite(cookies, gemach.id) && !isClaimMatch(claimUser, gemach))
             return fail(403, { claimError: 'הפרטים בחשבון שלך לא תואמים לפרטי הגמ"ח' });
         try {
             const { created } = await submitClaim({
@@ -111,13 +119,13 @@ export const actions: Actions = {
     },
 
     // המסלול המהיר: שליחת קוד אימות לטלפון של הגמ"ח (כל גמ"ח ללא בעלים עם נייד)
-    claimCode: async ({ params, locals }) => {
+    claimCode: async ({ params, locals, cookies }) => {
         const session = await locals.auth();
         if (!session?.user) return fail(401, { claimError: 'צריך להתחבר כדי לאמת בעלות' });
         const gemach = await findGemachById(params.id);
         if (!gemach) return fail(404, { claimError: 'הגמ"ח לא נמצא' });
         // אותו שער כמו התביעה הרגילה — ההצעה מוצגת רק כשהפרטים תואמים
-        if (!isClaimMatch(await userWithPhone(session.user), gemach))
+        if (!hasInvite(cookies, gemach.id) && !isClaimMatch(await userWithPhone(session.user), gemach))
             return fail(403, { claimError: 'הפרטים בחשבון שלך לא תואמים לפרטי הגמ"ח' });
         try {
             const r = await requestOwnerCode(params.id);
