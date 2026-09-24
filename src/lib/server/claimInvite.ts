@@ -6,10 +6,11 @@
 // מסך /admin/invites מציג את כל הגמ"חים הפעילים שעדיין בלי בעלים ויש
 // בכרטיס שלהם נייד. האדמין שולח לכל אחד SMS עם שני קישורים קצרים:
 //
-//   {link}     /c/<id> — שם עוגיית הזמנה חתומה ומפנה לדף הגמ"ח. העוגייה
-//              פותחת את תיבת "זה הגמ"ח שלי" גם כשפרטי החשבון לא תואמים
-//              לכרטיס (isClaimMatch) — ההוכחה עצמה נשארת קוד ה-SMS לנייד
-//              שבכרטיס (ownerOtp), כך שההזמנה לא מקנה בעלות לאף אחד.
+//   {link}     /c/<id>.<sig> — שם עוגיית הזמנה חתומה ומפנה לדף הגמ"ח.
+//              הקישור החתום נשלח רק לנייד שבכרטיס, ולכן מי שנכנס דרכו
+//              מקבל בעלות בלחיצה אחת אחרי התחברות — בלי אישור אדמין.
+//              קישורים ישנים בלי חתימה (/c/<id>) רק פותחים את התיבה —
+//              שם ההוכחה נשארת קוד ה-SMS לנייד שבכרטיס (ownerOtp).
 //   {decline}  /d/<token> — "לא שלי / לא מעוניין": קישור חתום שמסמן את
 //              הגמ"ח כמי שביקש לא לקבל הודעות, בלי להתחבר. המסך חוסם
 //              שליחה חוזרת אליו.
@@ -123,14 +124,25 @@ export function verifyGeoToken(token: string): string | null {
 export function inviteLinks(origin: string, gemachId: string) {
     const base = origin.replace(/\/$/, '');
     return {
-        link: `${base}/c/${encodeURIComponent(gemachId)}`,
+        link: `${base}/c/${gemachId}.${sign('invite-link', gemachId)}`,
         decline: `${base}/d/${declineToken(gemachId)}`,
     };
 }
 
+/** מפרק את /c/<param>: קישור חתום (נשלח לנייד שבכרטיס) או ישן בלי חתימה */
+export function parseInviteParam(param: string): { id: string; proof: boolean } | null {
+    const [id, sig, ...rest] = String(param ?? '').split('.');
+    if (rest.length || !isGemachDocId(id)) return null;
+    if (!sig) return { id, proof: false };
+    return checkSig('invite-link', id, sig) ? { id, proof: true } : null;
+}
+
+// proof = הגיע מהקישור החתום שנשלח לנייד שבכרטיס
+const cookiePurpose = (proof: boolean) => (proof ? 'invite-proof' : 'invite');
+
 /** מי שנכנס מקישור ההזמנה — עוגייה חתומה שמזהה את הגמ"ח */
-export function setInviteCookie(cookies: Cookies, gemachId: string): void {
-    cookies.set(INVITE_COOKIE, `${gemachId}.${sign('invite', gemachId)}`, {
+export function setInviteCookie(cookies: Cookies, gemachId: string, proof = false): void {
+    cookies.set(INVITE_COOKIE, `${gemachId}.${sign(cookiePurpose(proof), gemachId)}`, {
         path: '/',
         httpOnly: true,
         sameSite: 'lax',
@@ -142,7 +154,13 @@ export function setInviteCookie(cookies: Cookies, gemachId: string): void {
 /** האם הדפדפן הזה הגיע מקישור ההזמנה של הגמ"ח הזה */
 export function hasInvite(cookies: Cookies, gemachId: string): boolean {
     const [id, sig] = String(cookies.get(INVITE_COOKIE) ?? '').split('.');
-    return !!id && id === gemachId && !!sig && checkSig('invite', id, sig);
+    return !!id && id === gemachId && !!sig && (checkSig('invite', id, sig) || checkSig('invite-proof', id, sig));
+}
+
+/** הגיע מהקישור החתום שנשלח לנייד שבכרטיס — מספיק לבעלות מיידית */
+export function hasInviteProof(cookies: Cookies, gemachId: string): boolean {
+    const [id, sig] = String(cookies.get(INVITE_COOKIE) ?? '').split('.');
+    return !!id && id === gemachId && !!sig && checkSig('invite-proof', id, sig);
 }
 
 // ── יומן ──────────────────────────────────────────────────────
@@ -154,6 +172,13 @@ export interface InviteLogEntry {
     count?: number;
     /** ביקש לא לקבל הודעות (קישור "לא שלי") */
     declinedAt?: string;
+    /** נכנס לאתר מהקישור — הפעם הראשונה + מספר כניסות */
+    openedAt?: string;
+    opens?: number;
+    /** שלח בקשת בעלות שממתינה לאדמין */
+    claimRequestedAt?: string;
+    /** קיבל בעלות (מיידית / בקוד) */
+    claimedAt?: string;
 }
 
 export async function getInviteLog(): Promise<Record<string, InviteLogEntry>> {
@@ -178,6 +203,19 @@ export async function recordInviteSent(gemachId: string, by: string): Promise<vo
 
 export async function recordInviteDeclined(gemachId: string): Promise<void> {
     await patchLog(gemachId, (c) => ({ ...c, declinedAt: c.declinedAt ?? new Date().toISOString() }));
+}
+
+/** מעקב: כניסה / בקשת בעלות / קבלת בעלות. נכשל בשקט — לא חוסם את המשתמש. */
+export async function recordInviteEvent(gemachId: string, kind: 'open' | 'request' | 'claimed'): Promise<void> {
+    const now = new Date().toISOString();
+    try {
+        await patchLog(gemachId, (c) =>
+            kind === 'open' ? { ...c, openedAt: c.openedAt ?? now, opens: (c.opens ?? 0) + 1 }
+            : kind === 'request' ? { ...c, claimRequestedAt: c.claimRequestedAt ?? now }
+            : { ...c, claimedAt: c.claimedAt ?? now });
+    } catch (e) {
+        console.error('[claim-invite] track failed:', e instanceof Error ? e.message : e);
+    }
 }
 
 // ── מי זכאי להזמנה ───────────────────────────────────────────
@@ -206,6 +244,8 @@ export async function listInviteCandidates(): Promise<{
     candidates: InviteCandidate[];
     owned: number;
     noMobile: number;
+    /** גמ"חים שכבר יש להם בעלים — לשיוך מול יומן ההזמנות */
+    ownedRows: { id: string; name: string; city: string }[];
 }> {
     const rows = await strapiGetAll<RawRow>('/api/items', {
         'filters[category][$eq]': 'gemachim',
@@ -219,11 +259,14 @@ export async function listInviteCandidates(): Promise<{
         sort: 'label:asc',
     });
     const candidates: InviteCandidate[] = [];
-    let owned = 0;
+    const ownedRows: { id: string; name: string; city: string }[] = [];
     let noMobile = 0;
     for (const r of rows) {
         const oid = (r.user_id ?? '').trim();
-        if (oid && !oid.startsWith('sheet:')) { owned++; continue; }
+        if (oid && !oid.startsWith('sheet:')) {
+            ownedRows.push({ id: r.documentId, name: r.label ?? '', city: r.city ?? '' });
+            continue;
+        }
         if (!toMobileE164(r.phone ?? '')) { noMobile++; continue; }
         candidates.push({
             id: r.documentId,
@@ -233,7 +276,7 @@ export async function listInviteCandidates(): Promise<{
             phoneTail: (r.phone ?? '').replace(/\D/g, '').slice(-4),
         });
     }
-    return { candidates, owned, noMobile };
+    return { candidates, owned: ownedRows.length, noMobile, ownedRows };
 }
 
 /** פרטי השליחה לגמ"ח אחד, מחושבים מחדש בשרת (לא סומכים על הדפדפן) */

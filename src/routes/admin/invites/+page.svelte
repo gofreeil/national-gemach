@@ -6,7 +6,7 @@
 
     // svelte-ignore state_referenced_locally
     let template = $state(data.template);
-    let filter = $state<'todo' | 'sent' | 'declined' | 'all'>('todo');
+    let filter = $state<'todo' | 'sent' | 'opened' | 'requested' | 'declined' | 'all'>('todo');
     let q = $state('');
     let selected = $state(new Set<string>());
     let testPhone = $state('');
@@ -17,11 +17,28 @@
 
     const sentOf = (id: string) => !!data.log[id]?.at || results[id]?.ok === true;
     const declinedOf = (id: string) => !!data.log[id]?.declinedAt;
+    const openedOf = (id: string) => !!data.log[id]?.openedAt;
+    const requestedOf = (id: string) => !!data.log[id]?.claimRequestedAt;
+
+    // מעקב: מתוך מי שקיבל הזמנה — כמה נכנסו, דחו, ביקשו בעלות, קיבלו בעלות
+    const stats = $derived.by(() => {
+        const e = Object.values(data.log);
+        return {
+            sent: e.filter((x) => x.at).length,
+            opened: e.filter((x) => x.openedAt).length,
+            declined: e.filter((x) => x.declinedAt).length,
+            requested: e.filter((x) => x.claimRequestedAt).length,
+            claimed: data.claimedRows.length,
+        };
+    });
+    const pct = (n: number) => (stats.sent ? ` (${Math.round((n / stats.sent) * 100)}%)` : '');
 
     const counts = $derived({
         all: data.candidates.length,
         sent: data.candidates.filter((c) => sentOf(c.id) && !declinedOf(c.id)).length,
         declined: data.candidates.filter((c) => declinedOf(c.id)).length,
+        opened: data.candidates.filter((c) => openedOf(c.id)).length,
+        requested: data.candidates.filter((c) => requestedOf(c.id)).length,
         todo: data.candidates.filter((c) => !sentOf(c.id) && !declinedOf(c.id)).length,
     });
 
@@ -29,6 +46,8 @@
         if (filter === 'todo' && (sentOf(c.id) || declinedOf(c.id))) return false;
         if (filter === 'sent' && (!sentOf(c.id) || declinedOf(c.id))) return false;
         if (filter === 'declined' && !declinedOf(c.id)) return false;
+        if (filter === 'opened' && !openedOf(c.id)) return false;
+        if (filter === 'requested' && !requestedOf(c.id)) return false;
         const s = q.trim();
         return !s || c.name.includes(s) || c.city.includes(s) || c.contact.includes(s) || c.phoneTail.includes(s);
     }));
@@ -40,7 +59,7 @@
         s = name ? s.replace(/\{name\}/g, ` ${name}`).replace(/ {2,}/g, ' ') : s.replace(/\s?\{name\}/g, '');
         return s
             .replace(/\{gemach\}/g, sample?.name ?? 'גמ"ח לדוגמה')
-            .replace(/\{link\}/g, `${data.origin}/c/${sample?.id ?? 'xxxxxxxxxx'}`)
+            .replace(/\{link\}/g, `${data.origin}/c/${sample?.id ?? 'xxxxxxxxxx'}.xxxxxxxxxxxx`)
             .replace(/\{decline\}/g, `${data.origin}/d/${sample?.id ?? 'xxxxxxxxxx'}.xxxxxxxxxxxx`)
             .trim();
     });
@@ -114,7 +133,7 @@
 <div class="space-y-5">
     <h2 class="text-xl font-black text-white">📨 הזמנות SMS לבעלי גמ"חים</h2>
     <p class="text-sm text-gray-400">
-        שליחת SMS לכל גמ"ח באתר שעדיין אין לו בעלים: הקישור מוביל לכרטיס, שם הבעלים נרשם ומאמת בקוד לנייד שבכרטיס — והבעלות עוברת אליו מיד, בלי אישור ידני.
+        שליחת SMS לכל גמ"ח באתר שעדיין אין לו בעלים: הקישור (חתום, נשלח רק לנייד שבכרטיס) מוביל לכרטיס — הבעלים מתחבר ולוחץ "זה שלי", והבעלות עוברת אליו מיד, בלי אישור ידני.
     </p>
 
     {#if !data.smsReady}<div class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">שליחת SMS אינה מוגדרת בשרת (TRACCAR_SMS_TOKEN / SMSGATE_* / TWILIO_*).</div>{/if}
@@ -160,9 +179,32 @@
         </div>
     </section>
 
+    <!-- מעקב תגובות להזמנות -->
+    <section class="card p-5">
+        <h3 class="mb-3 text-sm font-bold text-white">📊 מעקב תגובות</h3>
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {#each [['📨 נשלחו', stats.sent, ''], ['👀 נכנסו לאתר', stats.opened, pct(stats.opened)], ['🙅 דחו / ביקשו הסרה', stats.declined, pct(stats.declined)], ['⏳ ביקשו בעלות (ממתין)', stats.requested, pct(stats.requested)], ['✅ קיבלו בעלות', stats.claimed, pct(stats.claimed)]] as [label, n, p] (label)}
+                <div class="rounded-xl bg-[#16264d] px-3 py-2 text-center">
+                    <div class="text-2xl font-black text-white">{n}<span class="text-xs font-bold text-gray-300">{p}</span></div>
+                    <div class="text-xs text-gray-200">{label}</div>
+                </div>
+            {/each}
+        </div>
+        {#if data.claimedRows.length}
+            <div class="mt-3 flex flex-wrap gap-1.5">
+                {#each data.claimedRows as r (r.id)}
+                    <a href="/gemach/{r.id}" target="_blank" rel="noopener" class="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-200 hover:bg-emerald-500/25">
+                        ✅ {r.name}{r.city ? ` · ${r.city}` : ''}{data.log[r.id]?.claimedAt ? ` · ${when(data.log[r.id]?.claimedAt)}` : ''}
+                    </a>
+                {/each}
+            </div>
+        {/if}
+        <p class="mt-2 text-xs text-gray-400">כניסות נספרות מהקישור שב-SMS. מי שקיבל בעלות יוצא מהרשימה למטה.</p>
+    </section>
+
     <section class="card p-5">
         <div class="mb-3 flex flex-wrap items-center gap-2">
-            {#each [['todo', 'טרם נשלח'], ['sent', 'נשלח'], ['declined', 'ביקשו הסרה'], ['all', 'הכל']] as [k, label] (k)}
+            {#each [['todo', 'טרם נשלח'], ['sent', 'נשלח'], ['opened', 'נכנסו'], ['requested', 'ביקשו בעלות'], ['declined', 'ביקשו הסרה'], ['all', 'הכל']] as [k, label] (k)}
                 <button type="button" onclick={() => { filter = k as typeof filter; selected = new Set(); }}
                     class="rounded-full px-3 py-1 text-xs font-bold {filter === k ? 'bg-blue-600 text-white' : 'bg-[#16264d] text-gray-200 hover:bg-[#1d3263]'}">
                     {label} ({counts[k as keyof typeof counts]})
@@ -210,6 +252,12 @@
                                     · <span class="text-rose-300">ביקשו הסרה {when(data.log[c.id]?.declinedAt)}</span>
                                 {:else if data.log[c.id]?.at}
                                     · <span class="text-emerald-300">נשלח {when(data.log[c.id]?.at)}{(data.log[c.id]?.count ?? 1) > 1 ? ` (${data.log[c.id]?.count} פעמים)` : ''}</span>
+                                {/if}
+                                {#if openedOf(c.id)}
+                                    · <span class="text-sky-300">👀 נכנס {when(data.log[c.id]?.openedAt)}{(data.log[c.id]?.opens ?? 1) > 1 ? ` (${data.log[c.id]?.opens}×)` : ''}</span>
+                                {/if}
+                                {#if requestedOf(c.id)}
+                                    · <span class="text-amber-300">⏳ ביקש בעלות {when(data.log[c.id]?.claimRequestedAt)}</span>
                                 {/if}
                             </div>
                         </div>

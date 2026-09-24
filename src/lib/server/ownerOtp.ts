@@ -147,12 +147,29 @@ export async function verifyOwnerCode(
         return { ok: false, error: 'קוד שגוי — בדקו ונסו שוב' };
     }
 
-    // הצלחה: רושמים בעלות, מוחקים את הקוד ואת אסימון-האורח (הגמ"ח אומץ)
+    await writeOwner(gemachId, extra, ownerId);
+    return { ok: true };
+}
+
+// רושמים בעלות, מוחקים את הקוד ואת אסימון-האורח (הגמ"ח אומץ)
+async function writeOwner(gemachId: string, extra: Record<string, unknown>, ownerId: string): Promise<void> {
     delete extra.owner_otp;
     delete extra.guest_claim;
     await strapiPut(`/api/items/${gemachId}`, {
         data: { user_id: ownerId, extra_fields: extra },
     });
     invalidateGemachCache();
+}
+
+/** בעלות מיידית בלי קוד — כשההוכחה כבר קיימת: הקישור החתום מה-SMS שנשלח
+ *  לנייד שבכרטיס, או נייד מאומת בחשבון שזהה לטלפון שבכרטיס. */
+export async function grantOwnership(gemachId: string, ownerId: string): Promise<OtpResult> {
+    if (!ownerId.trim()) return { ok: false, error: 'אין מזהה משתמש בסשן — התחברו מחדש' };
+    const item = await fetchItem(gemachId);
+    if (!item) return { ok: false, error: 'הגמ"ח לא נמצא' };
+    const oid = (item.user_id ?? '').trim();
+    if (oid !== '' && !oid.startsWith('sheet:')) return { ok: false, error: 'לגמ"ח הזה כבר יש בעלים' };
+    if (item.status1 !== 'active') return { ok: false, error: 'הגמ"ח אינו פעיל' };
+    await writeOwner(gemachId, { ...((item.extra_fields ?? {}) as Record<string, unknown>) }, ownerId);
     return { ok: true };
 }

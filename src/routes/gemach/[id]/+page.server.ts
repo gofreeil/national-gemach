@@ -7,10 +7,10 @@ import { getGemachOwnerId } from '$lib/server/db';
 import { isGemachOwner, isClaimMatch, ownerIdForSession, type ClaimMatchUser } from '$lib/server/ownership';
 import { resolveRole } from '$lib/server/admin';
 import { submitClaim, userPendingClaimGemachIds } from '$lib/server/claimsStore';
-import { getFastClaimState, requestOwnerCode, verifyOwnerCode } from '$lib/server/ownerOtp';
+import { getFastClaimState, grantOwnership, requestOwnerCode, verifyOwnerCode } from '$lib/server/ownerOtp';
 import { getVerifiedPhone } from '$lib/server/userPhone';
 import { categoryKeys } from '$lib/gemachData';
-import { hasInvite } from '$lib/server/claimInvite';
+import { hasInvite, hasInviteProof, recordInviteEvent } from '$lib/server/claimInvite';
 
 /** המשתמש מהסשן + הנייד המאומת שלו (משתמשי Google מגיעים בלי טלפון בסשן,
  *  אבל ייתכן שאימתו נייד בפרופיל) — כך isClaimMatch מזהה גם אותם. */
@@ -61,6 +61,8 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
     // ההוכחה נשארת קוד לנייד שבכרטיס. אורח מוזמן מקבל הזמנה להתחבר.
     const invited = gemach.managed && hasInvite(cookies, gemach.id);
     let inviteLogin = false;
+    // הגיע מהקישור החתום שנשלח לנייד שבכרטיס — בעלות בלחיצה, בלי קוד ובלי אדמין
+    let instantClaim = false;
     if (gemach.managed) {
         const session = await locals.auth();
         if (session?.user) {
@@ -71,8 +73,9 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
             if (!canEdit && unowned && (invited || isClaimMatch(await userWithPhone(session.user), gemach))) {
                 const pending = await userPendingClaimGemachIds(session.user);
                 claimPending = pending.has(gemach.id);
-                claimable = !claimPending;
-                if (claimable) {
+                instantClaim = !!invited && hasInviteProof(cookies, gemach.id);
+                claimable = !claimPending || instantClaim;
+                if (claimable && !instantClaim) {
                     const fast = await getFastClaimState(gemach.id);
                     fastClaim = fast.available;
                     fastPhoneTail = fast.phoneTail;
@@ -86,7 +89,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 
     // התמונות נשלחות ככתובות endpoint ולא כ-data URI מוטמע — העמוד נטען מיד
     // והתמונות מגיעות בנפרד עם מטמון (ראה withImageUrls ב-gemachSource)
-    return { gemach: withImageUrls(gemach), categories, related, canEdit, claimable, claimPending, fastClaim, fastPhoneTail, inviteLogin, pinned };
+    return { gemach: withImageUrls(gemach), categories, related, canEdit, claimable, claimPending, fastClaim, fastPhoneTail, inviteLogin, instantClaim, pinned };
 };
 
 export const actions: Actions = {
@@ -102,8 +105,21 @@ export const actions: Actions = {
         const oid = (ownerId ?? '').trim();
         if (oid && !oid.startsWith('sheet:'))
             return fail(403, { claimError: 'לגמ"ח הזה כבר יש בעלים' });
+        // הקישור החתום מה-SMS הגיע רק לנייד שבכרטיס — זו ההוכחה; הבעלות עוברת מיד
+        if (hasInviteProof(cookies, gemach.id)) {
+            try {
+                const r = await grantOwnership(gemach.id, ownerIdForSession(session.user));
+                if (!r.ok) return fail(400, { claimError: r.error });
+                await recordInviteEvent(gemach.id, 'claimed');
+                return { verified: true };
+            } catch (e) {
+                console.error('[gemach] instant claim failed:', e);
+                return fail(502, { claimError: 'העברת הבעלות נכשלה — נסו שוב' });
+            }
+        }
+        const invited = hasInvite(cookies, gemach.id);
         const claimUser = await userWithPhone(session.user);
-        if (!hasInvite(cookies, gemach.id) && !isClaimMatch(claimUser, gemach))
+        if (!invited && !isClaimMatch(claimUser, gemach))
             return fail(403, { claimError: 'הפרטים בחשבון שלך לא תואמים לפרטי הגמ"ח' });
         try {
             const { created } = await submitClaim({
@@ -111,6 +127,7 @@ export const actions: Actions = {
                 gemachName: gemach.name,
                 user: { ...session.user, phone: claimUser.phone },
             });
+            if (invited) await recordInviteEvent(gemach.id, 'request');
             return { claimed: true, already: !created };
         } catch (e) {
             console.error('[gemach] claim failed:', e);
@@ -138,13 +155,14 @@ export const actions: Actions = {
     },
 
     // אימות הקוד → העברת בעלות מיידית (בלי אישור אדמין)
-    claimVerify: async ({ params, request, locals }) => {
+    claimVerify: async ({ params, request, locals, cookies }) => {
         const session = await locals.auth();
         if (!session?.user) return fail(401, { claimError: 'צריך להתחבר כדי לאמת בעלות' });
         const code = ((await request.formData()).get('code') as string) ?? '';
         try {
             const r = await verifyOwnerCode(params.id, code, ownerIdForSession(session.user));
             if (!r.ok) return fail(400, { fastError: r.error, codeSent: true });
+            if (hasInvite(cookies, params.id)) await recordInviteEvent(params.id, 'claimed');
             return { verified: true };
         } catch (e) {
             console.error('[gemach] claimVerify failed:', e);

@@ -14,7 +14,7 @@ import {
 export const load: PageServerLoad = async ({ locals, url }) => {
     await getAdminContext(locals);
     let backendUnavailable = false;
-    let data: Awaited<ReturnType<typeof listInviteCandidates>> = { candidates: [], owned: 0, noMobile: 0 };
+    let data: Awaited<ReturnType<typeof listInviteCandidates>> = { candidates: [], owned: 0, noMobile: 0, ownedRows: [] };
     try {
         data = await listInviteCandidates();
     } catch (e) {
@@ -22,8 +22,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         backendUnavailable = true;
     }
     const [template, log] = await Promise.all([getInviteTemplate(), getInviteLog()]);
+    // מעקב: גמ"חים שקיבלו הזמנה ויש להם עכשיו בעלים (גם מי שנרשם לפני שהמעקב נוסף)
+    const { ownedRows, ...rest } = data;
+    const claimedRows = ownedRows.filter((r) => log[r.id]?.at || log[r.id]?.claimedAt);
     return {
-        ...data,
+        ...rest,
+        claimedRows,
         log,
         template,
         defaultTemplate: DEFAULT_TEMPLATE,

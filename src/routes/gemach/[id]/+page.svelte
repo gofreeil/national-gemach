@@ -254,6 +254,17 @@
         </div>
     {:else if form?.claimError}
         <div class="mb-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-200">{form.claimError}</div>
+    {:else if data.claimable && data.instantClaim}
+        <!-- הגיע מהקישור החתום שנשלח לנייד שבכרטיס — בעלות מיידית בלחיצה -->
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+            <span class="text-sm font-bold text-blue-100">🤝 הגמ"ח הזה שלך? לחיצה אחת והניהול עובר אליך — בלי המתנה לאישור.</span>
+            <form method="POST" action="?/claim" use:enhance={() => { claiming = true; return async ({ update }) => { await update(); claiming = false; }; }}>
+                <button type="submit" disabled={claiming}
+                    class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60">
+                    {claiming ? 'מעביר...' : 'כן, זה הגמ"ח שלי'}
+                </button>
+            </form>
+        </div>
     {:else if data.claimPending}
         <div class="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-200">
             ⏳ שלחת בקשת בעלות על הגמ"ח הזה — היא ממתינה לאישור אדמין.
@@ -316,7 +327,7 @@
     {:else if data.inviteLogin}
         <!-- הגיע מקישור הזמנת ה-SMS ועוד לא מחובר -->
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
-            <span class="text-sm font-bold text-blue-100">🤝 הגמ"ח הזה שלך? התחבר או הירשם, ואז אמת בקוד SMS לנייד שבכרטיס — והניהול עובר אליך מיד.</span>
+            <span class="text-sm font-bold text-blue-100">🤝 הגמ"ח הזה שלך? התחבר או הירשם — והניהול עובר אליך מיד.</span>
             <a href="/login?redirect={encodeURIComponent(`/gemach/${gemach.id}`)}"
                 class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
                 התחברות לקבלת בעלות
