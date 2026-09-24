@@ -141,6 +141,29 @@
     {#if form?.error}<div class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{form.error}</div>{/if}
     {#if data.backendUnavailable}<div class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">לא הצלחנו לטעון את הגמ"חים כרגע. רעננו בעוד רגע.</div>{/if}
 
+    <!-- מעקב תגובות להזמנות -->
+    <section class="card p-5">
+        <h3 class="mb-3 text-sm font-bold text-white">📊 מעקב תגובות</h3>
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {#each [['📨 נשלחו', stats.sent, ''], ['👀 נכנסו לאתר', stats.opened, pct(stats.opened)], ['🙅 דחו / ביקשו הסרה', stats.declined, pct(stats.declined)], ['⏳ ביקשו בעלות (ממתין)', stats.requested, pct(stats.requested)], ['✅ קיבלו בעלות', stats.claimed, pct(stats.claimed)]] as [label, n, p] (label)}
+                <div class="rounded-xl bg-[#16264d] px-3 py-2 text-center">
+                    <div class="text-2xl font-black text-white">{n}<span class="text-xs font-bold text-gray-300">{p}</span></div>
+                    <div class="text-xs text-gray-200">{label}</div>
+                </div>
+            {/each}
+        </div>
+        {#if data.claimedRows.length}
+            <div class="mt-3 flex flex-wrap gap-1.5">
+                {#each data.claimedRows as r (r.id)}
+                    <a href="/gemach/{r.id}" target="_blank" rel="noopener" class="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-200 hover:bg-emerald-500/25">
+                        ✅ {r.name}{r.city ? ` · ${r.city}` : ''}{data.log[r.id]?.claimedAt ? ` · ${when(data.log[r.id]?.claimedAt)}` : ''}
+                    </a>
+                {/each}
+            </div>
+        {/if}
+        <p class="mt-2 text-xs text-gray-400">כניסות נספרות מהקישור שב-SMS. מי שקיבל בעלות יוצא מהרשימה למטה.</p>
+    </section>
+
     <!-- נוסח + תצוגה מקדימה זה לצד זה -->
     <section class="card p-5">
         <div class="grid gap-4 md:grid-cols-2">
@@ -177,29 +200,6 @@
                 </form>
             </div>
         </div>
-    </section>
-
-    <!-- מעקב תגובות להזמנות -->
-    <section class="card p-5">
-        <h3 class="mb-3 text-sm font-bold text-white">📊 מעקב תגובות</h3>
-        <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {#each [['📨 נשלחו', stats.sent, ''], ['👀 נכנסו לאתר', stats.opened, pct(stats.opened)], ['🙅 דחו / ביקשו הסרה', stats.declined, pct(stats.declined)], ['⏳ ביקשו בעלות (ממתין)', stats.requested, pct(stats.requested)], ['✅ קיבלו בעלות', stats.claimed, pct(stats.claimed)]] as [label, n, p] (label)}
-                <div class="rounded-xl bg-[#16264d] px-3 py-2 text-center">
-                    <div class="text-2xl font-black text-white">{n}<span class="text-xs font-bold text-gray-300">{p}</span></div>
-                    <div class="text-xs text-gray-200">{label}</div>
-                </div>
-            {/each}
-        </div>
-        {#if data.claimedRows.length}
-            <div class="mt-3 flex flex-wrap gap-1.5">
-                {#each data.claimedRows as r (r.id)}
-                    <a href="/gemach/{r.id}" target="_blank" rel="noopener" class="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-200 hover:bg-emerald-500/25">
-                        ✅ {r.name}{r.city ? ` · ${r.city}` : ''}{data.log[r.id]?.claimedAt ? ` · ${when(data.log[r.id]?.claimedAt)}` : ''}
-                    </a>
-                {/each}
-            </div>
-        {/if}
-        <p class="mt-2 text-xs text-gray-400">כניסות נספרות מהקישור שב-SMS. מי שקיבל בעלות יוצא מהרשימה למטה.</p>
     </section>
 
     <section class="card p-5">
