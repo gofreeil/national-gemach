@@ -31,6 +31,21 @@
             claimed: data.claimedRows.length,
         };
     });
+    // לחיצה על מונה פותחת מתחתיו את הכרטיסים שמאחוריו
+    type StatKey = 'sent' | 'opened' | 'declined' | 'requested' | 'claimed';
+    let openStat = $state<StatKey | null>(null);
+    const nameOf = $derived(new Map([...data.candidates, ...data.claimedRows].map((c) => [c.id, c] as const)));
+    const claimedIds = $derived(new Set(data.claimedRows.map((r) => r.id)));
+    const statRows = $derived.by(() => {
+        if (!openStat) return [];
+        const field = { sent: 'at', opened: 'openedAt', declined: 'declinedAt', requested: 'claimRequestedAt', claimed: 'claimedAt' } as const;
+        const ids = openStat === 'claimed'
+            ? data.claimedRows.map((r) => r.id)
+            : Object.keys(data.log).filter((id) => data.log[id]?.[field[openStat!]]);
+        return ids
+            .map((id) => ({ id, row: nameOf.get(id), at: data.log[id]?.[field[openStat!]] as string | undefined, owned: claimedIds.has(id) }))
+            .sort((a, b) => String(b.at ?? '').localeCompare(String(a.at ?? '')));
+    });
     const pct = (n: number) => (stats.sent ? ` (${Math.round((n / stats.sent) * 100)}%)` : '');
 
     const counts = $derived({
@@ -145,23 +160,38 @@
     <section class="card p-5">
         <h3 class="mb-3 text-sm font-bold text-white">📊 מעקב תגובות</h3>
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {#each [['📨 נשלחו', stats.sent, ''], ['👀 נכנסו לאתר', stats.opened, pct(stats.opened)], ['🙅 דחו / ביקשו הסרה', stats.declined, pct(stats.declined)], ['⏳ ביקשו בעלות (ממתין)', stats.requested, pct(stats.requested)], ['✅ קיבלו בעלות', stats.claimed, pct(stats.claimed)]] as [label, n, p] (label)}
-                <div class="rounded-xl bg-[#16264d] px-3 py-2 text-center">
-                    <div class="text-2xl font-black text-white">{n}<span class="text-xs font-bold text-gray-300">{p}</span></div>
-                    <div class="text-xs text-gray-200">{label}</div>
-                </div>
+            {#each [['sent', '📨 נשלחו', stats.sent, ''], ['opened', '👀 נכנסו לאתר', stats.opened, pct(stats.opened)], ['declined', '🙅 דחו / ביקשו הסרה', stats.declined, pct(stats.declined)], ['requested', '⏳ ביקשו בעלות (ממתין)', stats.requested, pct(stats.requested)], ['claimed', '✅ קיבלו בעלות', stats.claimed, pct(stats.claimed)]] as [key, label, n, p] (key)}
+                <button type="button" onclick={() => (openStat = openStat === key ? null : (key as StatKey))}
+                    class="rounded-xl px-3 py-2 text-center transition {openStat === key ? 'bg-blue-600 ring-2 ring-blue-300' : 'bg-[#16264d] hover:bg-[#1d3263]'}">
+                    <div class="text-2xl font-black text-white">{n}<span class="text-xs font-bold text-gray-200">{p}</span></div>
+                    <div class="text-xs text-gray-100">{label} {openStat === key ? '▲' : '▼'}</div>
+                </button>
             {/each}
         </div>
-        {#if data.claimedRows.length}
-            <div class="mt-3 flex flex-wrap gap-1.5">
-                {#each data.claimedRows as r (r.id)}
-                    <a href="/gemach/{r.id}" target="_blank" rel="noopener" class="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-200 hover:bg-emerald-500/25">
-                        ✅ {r.name}{r.city ? ` · ${r.city}` : ''}{data.log[r.id]?.claimedAt ? ` · ${when(data.log[r.id]?.claimedAt)}` : ''}
-                    </a>
+        {#if openStat}
+            <div class="mt-3 space-y-1.5">
+                {#if statRows.length === 0}
+                    <p class="rounded-lg bg-[#16264d] px-3 py-2 text-sm text-gray-200">אין עדיין אף אחד כאן.</p>
+                {/if}
+                {#each statRows as r (r.id)}
+                    {@const e = data.log[r.id] ?? {}}
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-xl bg-[#16264d] px-3 py-2 text-sm">
+                        <a href="/gemach/{r.id}" target="_blank" rel="noopener" class="font-bold text-white hover:text-blue-300">{r.row?.name || r.id}</a>
+                        <span class="text-xs text-gray-300">
+                            {r.row?.city ?? ''}{r.row && 'contact' in r.row && r.row.contact ? ` · ${r.row.contact}` : ''}{r.row && 'phoneTail' in r.row ? ` · ***${r.row.phoneTail}` : ''}
+                        </span>
+                        <span class="ms-auto flex flex-wrap gap-1.5 text-xs font-bold">
+                            {#if e.at}<span class="text-emerald-300">📨 {when(e.at)}</span>{/if}
+                            {#if e.openedAt}<span class="text-sky-300">👀 {when(e.openedAt)}{(e.opens ?? 1) > 1 ? ` (${e.opens}×)` : ''}</span>{/if}
+                            {#if e.declinedAt}<span class="text-rose-300">🙅 {when(e.declinedAt)}</span>{/if}
+                            {#if e.claimRequestedAt}<span class="text-amber-300">⏳ {when(e.claimRequestedAt)}</span>{/if}
+                            {#if r.owned}<span class="text-emerald-300">✅ בעלים{e.claimedAt ? ` ${when(e.claimedAt)}` : ''}</span>{/if}
+                        </span>
+                    </div>
                 {/each}
             </div>
         {/if}
-        <p class="mt-2 text-xs text-gray-400">כניסות נספרות מהקישור שב-SMS. מי שקיבל בעלות יוצא מהרשימה למטה.</p>
+        <p class="mt-2 text-xs text-gray-400">לחצו על מונה כדי לראות את הכרטיסים שמאחוריו. כניסות נספרות מהקישור שב-SMS.</p>
     </section>
 
     <!-- נוסח + תצוגה מקדימה זה לצד זה -->
