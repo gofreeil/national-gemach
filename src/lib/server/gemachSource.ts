@@ -6,6 +6,7 @@
 import type { Gemach, ListGemach } from '$lib/gemachData';
 import { getAllGemachimWithDrafts } from './db';
 import { staticGemachim } from '$lib/staticGemachim';
+import { getHiddenStaticIds } from './hiddenStatic';
 // מספר טלפון שנכתב בתוך טקסט חופשי מוסתר גם הוא ברשימות — אחרת המספר היה
 // גלוי בלי לחיצה דרך הדלת האחורית. אותו ניקוי משמש את טקסט השיתוף בלקוח.
 import { withoutPhones } from '$lib/phoneText';
@@ -72,10 +73,10 @@ export function toListItem(g: Gemach): ListGemach {
  * על פריט שיובא היה מחיה את הגרסה הסטטית הישנה מהדלת האחורית.
  */
 export async function getMergedGemachim(): Promise<Gemach[]> {
-    const strapiGemachim = await getAllGemachimWithDrafts();
+    const [strapiGemachim, hidden] = await Promise.all([getAllGemachimWithDrafts(), getHiddenStaticIds()]);
     const importedIds = new Set(strapiGemachim.map(g => g.sourceId).filter(Boolean));
     const activeStrapi = strapiGemachim.filter(g => g.status !== 'draft');
-    const remainingStatic = staticGemachim.filter(g => !importedIds.has(g.id));
+    const remainingStatic = staticGemachim.filter(g => !importedIds.has(g.id) && !hidden.has(g.id));
     return [...activeStrapi, ...remainingStatic].map(withoutHiddenAddress);
 }
 
@@ -95,9 +96,9 @@ export function withoutHiddenAddress(g: Gemach): Gemach {
  * כולל טיוטות — הקורא (דף הגמ"ח) אחראי להסתיר טיוטה ממי שאינו אדמין.
  */
 export async function findGemachById(id: string): Promise<Gemach | null> {
-    const strapiAll = await getAllGemachimWithDrafts();
+    const [strapiAll, hidden] = await Promise.all([getAllGemachimWithDrafts(), getHiddenStaticIds()]);
     const importedIds = new Set(strapiAll.map(g => g.sourceId).filter(Boolean));
-    const all = [...strapiAll, ...staticGemachim.filter(g => !importedIds.has(g.id))];
+    const all = [...strapiAll, ...staticGemachim.filter(g => !importedIds.has(g.id) && !hidden.has(g.id))];
     const hit = all.find(g => g.id === id) ?? all.find(g => g.sourceId === id) ?? null;
     return hit ? withoutHiddenAddress(hit) : null;
 }

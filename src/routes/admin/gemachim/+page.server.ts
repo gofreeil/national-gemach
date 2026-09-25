@@ -5,6 +5,8 @@ import { getPublicCategories } from '$lib/server/adminStore';
 import { getPinnedIdsResolved, pinGemach, unpinGemach } from '$lib/server/pinned';
 import { withImageUrls } from '$lib/server/gemachSource';
 import type { Gemach } from '$lib/gemachData';
+import { staticGemachim } from '$lib/staticGemachim';
+import { getHiddenStaticIds, setStaticHidden } from '$lib/server/hiddenStatic';
 
 const PAGE_SIZE = 50;
 
@@ -22,14 +24,22 @@ export const load: PageServerLoad = async ({ url }) => {
 	const digits = (s: string) => s.replace(/\D/g, '').replace(/^972/, '0');
 	const qDigits = digits(q);
 	const phoneHit = (p?: string) => qDigits.length >= 4 && !!p && digits(p).includes(qDigits);
-	const filtered = q
-		? all.filter(g =>
-			g.name.toLowerCase().includes(q) ||
-			g.city.toLowerCase().includes(q) ||
-			(g.neighborhood?.toLowerCase().includes(q) ?? false) ||
-			phoneHit(g.phone) || phoneHit(g.phone2) ||
-			g.tags.some(t => t.toLowerCase().includes(q)))
-		: all;
+	const matches = (g: Gemach) =>
+		g.name.toLowerCase().includes(q) ||
+		g.city.toLowerCase().includes(q) ||
+		(g.neighborhood?.toLowerCase().includes(q) ?? false) ||
+		phoneHit(g.phone) || phoneHit(g.phone2) ||
+		g.tags.some(t => t.toLowerCase().includes(q));
+	const filtered = q ? all.filter(matches) : all;
+
+	// הרשימה הקבועה (לא ב-DB) — מוצגת רק בחיפוש, עם כפתור הסתרה/החזרה.
+	// פריט שכבר יובא ל-DB מופיע למעלה כפריט רגיל, ולכן לא כאן.
+	const importedIds = new Set(all.map(g => g.sourceId).filter(Boolean));
+	const hiddenStatic = await getHiddenStaticIds();
+	const staticHits = q
+		? staticGemachim.filter(g => !importedIds.has(g.id) && matches(g))
+			.map(g => ({ id: g.id, name: g.name, city: g.city, phone: g.phone ?? '', hidden: hiddenStatic.has(g.id) }))
+		: [];
 
 	// הפריטים שבועת ההתראה בהאדר סופרת — גמ"ח חדש לבדיקה (needs_review)
 	// וטיוטת-אורח שממתינה לפרסום/דחייה (guest_claim) — קופצים לראש הרשימה;
@@ -50,6 +60,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	return {
 		reviewCount,
 		items,
+		staticHits,
 		categories,
 		pinnedIds,
 		total,
@@ -88,6 +99,15 @@ async function reorder(id: string, dir: 'up' | 'down') {
 }
 
 export const actions: Actions = {
+	/** הסתרה/החזרה של גמ"ח מהרשימה הקבועה (שאינו ב-DB) */
+	hideStatic: async ({ request }) => {
+		const fd = await request.formData();
+		const id = String(fd.get('id') ?? '');
+		if (!staticGemachim.some(g => g.id === id)) return fail(400, { error: 'גמ"ח לא נמצא ברשימה הקבועה' });
+		try { await setStaticHidden(id, fd.get('hidden') === 'true'); }
+		catch (e) { console.error(e); return fail(500, { error: 'העדכון נכשל' }); }
+		return { success: true };
+	},
 	moveUp: async ({ request }) => {
 		const id = (await request.formData()).get('id') as string;
 		if (!id) return fail(400, { error: 'חסר מזהה' });

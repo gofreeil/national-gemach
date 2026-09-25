@@ -53,7 +53,33 @@
         {/if}
     </form>
 
-    {#if data.items.length === 0}
+    <!-- גמ"חים מהרשימה הקבועה בקוד (לא ב-DB) — אין להם טיוטה/מחיקה, רק הסתרה -->
+    {#if data.staticHits.length > 0}
+        <div class="card p-3 space-y-2">
+            <p class="text-xs font-bold text-gray-300">📋 מהרשימה הקבועה ({data.staticHits.length}) — כאן אפשר רק להסיר מהאתר או להחזיר</p>
+            {#each data.staticHits as s (s.id)}
+                <div class="flex flex-wrap items-center gap-2 rounded-lg bg-[#16264d] px-3 py-2">
+                    <span class="font-bold text-white {s.hidden ? 'line-through opacity-60' : ''}">{s.name}</span>
+                    <span class="text-xs text-gray-400">{s.city ? `📍 ${s.city}` : ''}</span>
+                    {#if s.phone}<span dir="ltr" class="text-xs text-gray-400">📞 {s.phone}</span>{/if}
+                    {#if s.hidden}<span class="text-[11px] font-bold text-amber-300">מוסתר מהאתר</span>{/if}
+                    <form method="POST" action="?/hideStatic" use:enhance class="ms-auto">
+                        <input type="hidden" name="id" value={s.id} />
+                        <input type="hidden" name="hidden" value={s.hidden ? 'false' : 'true'} />
+                        {#if s.hidden}
+                            <button class="h-8 rounded-lg bg-emerald-500/20 px-2.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/30 transition-colors">↩️ החזר לאתר</button>
+                        {:else}
+                            <button class="h-8 rounded-lg bg-red-900/30 px-2.5 text-xs font-bold text-red-300 hover:bg-red-900/60 transition-colors">🙈 הסר מהאתר</button>
+                        {/if}
+                    </form>
+                </div>
+            {/each}
+        </div>
+    {/if}
+
+    {#if data.items.length === 0 && data.staticHits.length > 0}
+        <!-- התוצאות רק ברשימה הקבועה (למעלה) -->
+    {:else if data.items.length === 0}
         <div class="card p-10 text-center text-gray-400">
             {#if data.managedTotal === 0}
                 <div class="text-4xl mb-3">📭</div>
