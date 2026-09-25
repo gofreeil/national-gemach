@@ -5,7 +5,7 @@ import { sendSms, smsEnabled, toMobileE164 } from '$lib/server/sms';
 import {
     DEFAULT_TEMPLATE, MAX_SMS_CHARS, PLACEHOLDERS,
     getInviteLog, getInviteTemplate, inviteLinks, inviteTarget, listInviteCandidates,
-    recordInviteSent, renderInvite, setInviteTemplate,
+    recordInviteSent, renderInvite, setInviteTemplate, undoInviteDeclined,
 } from '$lib/server/claimInvite';
 import { getAllGemachimWithDrafts, setGemachStatus } from '$lib/server/db';
 
@@ -51,6 +51,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
+    // הסירוב נרשם בטעות — מחזירים את הגמ"ח לרשימה הרגילה
+    undoDecline: async ({ request, locals }) => {
+        await getAdminContext(locals);
+        const id = String((await request.formData()).get('id') ?? '');
+        if (!id) return fail(400, { error: 'חסר מזהה' });
+        try {
+            await undoInviteDeclined(id);
+            return { message: 'הסירוב בוטל' };
+        } catch (e) {
+            console.error('invite undoDecline failed:', e);
+            return fail(502, { error: 'העדכון נכשל — נסו שוב' });
+        }
+    },
+
     // הורדה מהאתר (טיוטה) / החזרה — למשל למי שדחה את ההזמנה וביקש הסרה
     siteStatus: async ({ request, locals }) => {
         await getAdminContext(locals);

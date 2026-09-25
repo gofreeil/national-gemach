@@ -283,10 +283,11 @@ export async function clearGemachReview(documentId: string): Promise<void> {
 }
 
 /** "הגמ"ח לא שלי" מקישור ההזמנה — הנייד בכרטיס כנראה שגוי; לבדיקת אדמין */
-export async function markGemachWrongPhone(documentId: string): Promise<void> {
-    const extra = await readExtra(documentId);
-    if (extra.wrong_phone) return;
-    await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: { ...extra, wrong_phone: new Date().toISOString() } } });
+export async function markGemachWrongPhone(documentId: string, on = true): Promise<void> {
+    const extra = { ...(await readExtra(documentId)) };
+    if (!!extra.wrong_phone === on) return;
+    if (on) extra.wrong_phone = new Date().toISOString(); else delete extra.wrong_phone;
+    await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: extra } });
     invalidateGemachCache();
     draftCountCache = null;
 }

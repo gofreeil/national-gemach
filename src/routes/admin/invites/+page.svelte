@@ -194,6 +194,14 @@
                                 {/if}
                             </form>
                         {/if}
+                        {#if e.declinedAt}
+                            <!-- הסירוב נרשם בטעות → בטל; הגמ"ח חוזר לרשימה הרגילה -->
+                            <form method="POST" action="?/undoDecline" use:enhance>
+                                <input type="hidden" name="id" value={r.id} />
+                                <button onclick={(ev) => { if (!confirm('לבטל את הסירוב? הגמ"ח יחזור לרשימה הרגילה (אפשר יהיה לשלוח אליו שוב).')) ev.preventDefault(); }}
+                                    class="rounded-lg bg-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/30">✓ טעות — בטל סירוב</button>
+                            </form>
+                        {/if}
                         <span class="text-xs text-gray-300">
                             {r.row?.city ?? ''}{r.row && 'contact' in r.row && r.row.contact ? ` · ${r.row.contact}` : ''}{r.row && 'phoneTail' in r.row ? ` · ***${r.row.phoneTail}` : ''}
                         </span>

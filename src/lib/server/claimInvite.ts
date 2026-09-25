@@ -218,6 +218,14 @@ export async function recordInviteDeclined(gemachId: string, reason: DeclineReas
     if (reason === 'not_mine') await markGemachWrongPhone(gemachId);
 }
 
+/** אדמין: הסירוב נרשם בטעות (למשל בעלים שקיבל הודעה שלא הייתה צריכה לצאת) —
+ *  מוחק אותו מהיומן ומכבה את דגל "טלפון שגוי" */
+export async function undoInviteDeclined(gemachId: string): Promise<void> {
+    await patchLog(gemachId, ({ declinedAt: _d, declineReason: _r, ...rest }) => rest);
+    // גמ"ח שכבר נמחק — אין דגל לכבות
+    await markGemachWrongPhone(gemachId, false).catch(() => {});
+}
+
 /** מעקב: כניסה / בקשת בעלות / קבלת בעלות. נכשל בשקט — לא חוסם את המשתמש. */
 export async function recordInviteEvent(gemachId: string, kind: 'open' | 'request' | 'claimed'): Promise<void> {
     const now = new Date().toISOString();
