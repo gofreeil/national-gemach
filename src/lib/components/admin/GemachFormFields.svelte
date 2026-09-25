@@ -579,6 +579,12 @@
         <input id="f-phone" name="phone" defaultValue={gemach?.phone ?? ''} inputmode="tel" dir="ltr"
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
             placeholder="לדוגמה: 02-5001234" />
+        <!-- פניות מהאתר ב-SMS — רק למי שבחר; נשלחות לנייד שבכרטיס (ראו inquiry.ts) -->
+        <label class="mt-2 flex items-start gap-2 cursor-pointer select-none text-sm text-gray-300">
+            <input name="notify_inquiries" type="checkbox" value="true" checked={gemach?.notifyInquiries ?? false}
+                class="mt-0.5 h-4 w-4 accent-purple-500" />
+            <span>לקבל התראות ב-SMS כשמישהו שולח הודעה לגמ"ח מהאתר <span class="text-gray-400">(לנייד שבכרטיס)</span></span>
+        </label>
     </div>
 
     <!-- איש קשר -->

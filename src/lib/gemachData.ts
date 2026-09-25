@@ -99,6 +99,9 @@ export interface Gemach {
      *  בציבור מוצגים רק שכונה/עיר; רחוב, קומה, דירה והוראות הגעה נשארים
      *  ב-DB (לעריכה) אבל לא נשלחים לדפדפן, והפין במפה יורד לרמת שכונה/עיר. */
     hideAddress?: boolean;
+    /** הבעלים בחר לקבל ב-SMS הודעות שמבקרים שולחים מדף הגמ"ח
+     *  (extra_fields.notify_inquiries). ראו $lib/server/inquiry. */
+    notifyInquiries?: boolean;
     /** שדרוג בתשלום (50 ₪ לחודש): הלוגו של הגמ"ח מחליף את הפין במפה של
      *  "קהילה בשכונה" (extra_fields.map_logo). 'requested' = ביקש וממתין לתשלום/אישור,
      *  'active' = שולם ואושר ע"י אדמין. */

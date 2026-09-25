@@ -25,6 +25,8 @@ export interface CreateGemachInput {
     arrivalNotes?: string;
     /** לא לפרסם את הכתובת המדויקת (extra_fields.hide_address) */
     hideAddress?: boolean;
+    /** הבעלים בחר לקבל פניות מהאתר ב-SMS (extra_fields.notify_inquiries) */
+    notifyInquiries?: boolean;
     /** לוגו על המפה (extra_fields.map_logo) — ראו Gemach.mapLogo */
     mapLogo?: 'requested' | 'active';
     icon?: string;
@@ -134,6 +136,7 @@ export function parseGemachForm(
 		apartment:    str('apartment'),
 		arrivalNotes: str('arrival_notes'),
 		hideAddress:  form.get('hide_address') === 'true',
+		notifyInquiries: form.get('notify_inquiries') === 'true',
 		// רק אדמין מסמן "שולם" — מבעלים 'active' יורד ל-'requested'
 		// (עריכת בעלים של שדרוג פעיל משמרת אותו בשרת, מול הקיים)
 		mapLogo:      form.get('map_logo') === 'active' ? (opts.admin ? 'active' : 'requested')

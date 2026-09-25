@@ -11,6 +11,7 @@ import { getFastClaimState, grantOwnership, requestOwnerCode, verifyOwnerCode } 
 import { getVerifiedPhone } from '$lib/server/userPhone';
 import { categoryKeys } from '$lib/gemachData';
 import { hasInvite, hasInviteProof, recordInviteEvent } from '$lib/server/claimInvite';
+import { canInquire, sendInquiry } from '$lib/server/inquiry';
 
 /** המשתמש מהסשן + הנייד המאומת שלו (משתמשי Google מגיעים בלי טלפון בסשן,
  *  אבל ייתכן שאימתו נייד בפרופיל) — כך isClaimMatch מזהה גם אותם. */
@@ -89,10 +90,29 @@ export const load: PageServerLoad = async ({ params, locals, cookies }) => {
 
     // התמונות נשלחות ככתובות endpoint ולא כ-data URI מוטמע — העמוד נטען מיד
     // והתמונות מגיעות בנפרד עם מטמון (ראה withImageUrls ב-gemachSource)
-    return { gemach: withImageUrls(gemach), categories, related, canEdit, claimable, claimPending, fastClaim, fastPhoneTail, inviteLogin, instantClaim, pinned };
+    return { gemach: withImageUrls(gemach), categories, related, canEdit, claimable, claimPending, fastClaim, fastPhoneTail, inviteLogin, instantClaim, pinned, canInquire: canInquire(gemach) };
 };
 
 export const actions: Actions = {
+    // "שלחו הודעה לגמ"ח" — מגיעה לנייד של הבעלים ב-SMS, רק אם בחר בזה
+    inquire: async ({ params, request, getClientAddress }) => {
+        const gemach = await findGemachById(params.id);
+        if (!gemach) return fail(404, { inquiryError: 'הגמ"ח לא נמצא' });
+        const f = await request.formData();
+        const get = (k: string) => String(f.get(k) ?? '');
+        try {
+            const r = await sendInquiry(gemach, {
+                name: get('inq_name'), phone: get('inq_phone'), message: get('inq_message'),
+                trap: get('inq_website'), ip: getClientAddress(),
+            });
+            if (!r.ok) return fail(400, { inquiryError: r.error });
+            return { inquirySent: true };
+        } catch (e) {
+            console.error('[gemach] inquiry failed:', e);
+            return fail(502, { inquiryError: 'שליחת ההודעה נכשלה — נסו שוב' });
+        }
+    },
+
     // "זה הגמ"ח שלי" — יוצר בקשת בעלות ממתינה לאישור אדמין
     claim: async ({ params, locals, cookies }) => {
         const session = await locals.auth();

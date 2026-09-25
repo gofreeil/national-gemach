@@ -40,6 +40,8 @@
     /** "תרום לפעילות זו": דרך אחת שהיא קישור → פותח אותו ישירות; אחרת פותח
      *  קופסה עם כל הדרכים (ביט, הוראת קבע, העברה...). מוצג רק כשהבעלים מילא. */
     let donateOpen = $state(false);
+    let inquiryOpen = $state(false);
+    let inquiryBusy = $state(false);
     const donateOptions = $derived(gemach.donateOptions ?? []);
     const isHttp = (v: string) => /^https?:\/\//i.test(v);
     const donateDirectLink = $derived(
@@ -445,8 +447,44 @@
                             💝 תרום לפעילות זו
                         </button>
                     {/if}
+                    {#if data.canInquire}
+                        <button type="button" onclick={() => (inquiryOpen = !inquiryOpen)} aria-expanded={inquiryOpen}
+                            class="inline-flex items-center gap-2 rounded-xl bg-[#1c2f5a] hover:bg-[#2a4379] px-4 py-2 text-sm font-bold text-white transition-colors">
+                            ✉️ שלחו הודעה לגמ"ח
+                        </button>
+                    {/if}
                     <ShareGemach {gemach} {categoryLabel} place={placeName} />
                 </div>
+
+                <!-- הודעה לבעלים — יוצאת ב-SMS לנייד שבכרטיס, רק אם הבעלים בחר בזה -->
+                {#if data.canInquire && (inquiryOpen || form?.inquirySent || form?.inquiryError)}
+                    <div class="mt-3 rounded-xl border border-[#3b5794] bg-[#16264d] p-4 text-sm">
+                        {#if form?.inquirySent}
+                            <p class="font-bold text-emerald-200">✅ ההודעה נשלחה לבעלי הגמ"ח. הם יחזרו אליכם לטלפון שהשארתם.</p>
+                        {:else}
+                            <form method="POST" action="?/inquire" class="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                                use:enhance={() => { inquiryBusy = true; return async ({ update }) => { await update({ reset: false }); inquiryBusy = false; }; }}>
+                                <input name="inq_name" maxlength="40" placeholder="השם שלכם (לא חובה)" aria-label="השם שלכם"
+                                    class="rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none" />
+                                <input name="inq_phone" required inputmode="tel" dir="ltr" placeholder="טלפון לחזרה" aria-label="טלפון לחזרה"
+                                    class="rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-right text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none" />
+                                <textarea name="inq_message" required rows="3" maxlength="300" placeholder="מה תרצו לשאול או לבקש?" aria-label="ההודעה"
+                                    class="sm:col-span-2 rounded-xl border border-[#3b5794] bg-[#1e293b] px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"></textarea>
+                                <!-- מלכודת לבוטים: מוסתר מבני אדם -->
+                                <input name="inq_website" tabindex="-1" autocomplete="off" aria-hidden="true" class="hidden" />
+                                <div class="sm:col-span-2 flex flex-wrap items-center gap-3">
+                                    <button type="submit" disabled={inquiryBusy}
+                                        class="rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-60 px-4 py-2 font-bold text-white transition-colors">
+                                        {inquiryBusy ? 'שולח…' : 'שליחה'}
+                                    </button>
+                                    {#if form?.inquiryError}
+                                        <span class="font-bold text-rose-300">{form.inquiryError}</span>
+                                    {/if}
+                                </div>
+                            </form>
+                        {/if}
+                    </div>
+                {/if}
 
                 {#if donateOpen && donateOptions.length > 0}
                     <div class="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-950/50 p-4 text-sm">

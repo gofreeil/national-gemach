@@ -150,6 +150,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         apartment:     toStr(extra.apartment),
         arrivalNotes:  toStr(extra.arrival_notes),
         hideAddress:   extra.hide_address === true || extra.hide_address === 'true',
+        notifyInquiries: extra.notify_inquiries === true,
         mapLogo:       extra.map_logo === 'active' || extra.map_logo === 'requested' ? extra.map_logo : undefined,
         lat:           typeof item.lat === 'number' ? item.lat : null,
         lng:           typeof item.lng === 'number' ? item.lng : null,
@@ -494,6 +495,7 @@ function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     if (input.apartment)    extra.apartment     = input.apartment;
     if (input.arrivalNotes) extra.arrival_notes = input.arrivalNotes;
     if (input.hideAddress)  extra.hide_address  = true;
+    if (input.notifyInquiries) extra.notify_inquiries = true;
     if (input.mapLogo)      extra.map_logo      = input.mapLogo;
     const logo = input.image || input.logoBase64;
     if (logo)             extra.logo    = logo;
@@ -675,6 +677,7 @@ export async function updateGemach(
     if (!input.apartment)    delete mergedExtra.apartment;
     if (!input.arrivalNotes) delete mergedExtra.arrival_notes;
     if (!input.hideAddress)  delete mergedExtra.hide_address;
+    if (!input.notifyInquiries) delete mergedExtra.notify_inquiries;
     if (!input.featured) delete mergedExtra.featured;
     // תמונה שרוקנה: מסמנים במחרוזת ריקה (ולא במחיקה) כדי שגם גלריית `images`
     // של "קהילה בשכונה" לא תחזיר את התמונה מהדלת האחורית.
@@ -837,6 +840,20 @@ export async function geocodeGemachById(
 async function readExtra(documentId: string): Promise<Record<string, unknown>> {
     const res = await strapiGet<{ data: StrapiItem | null }>(`/api/items/${documentId}`);
     return (res.data?.extra_fields ?? {}) as Record<string, unknown>;
+}
+
+/** מונה יומי של פניות-מבקרים לגמ"ח (extra_fields.inquiries = {d, n}) — תקרה
+ *  מול הצפת הנייד של הבעלים. true = נרשמה פנייה ואפשר לשלוח; false = התקרה מוצתה.
+ *  היום נמדד לפי שעון ישראל, כך שהמונה מתאפס בחצות המקומית. */
+export async function takeInquirySlot(documentId: string, maxPerDay: number): Promise<boolean> {
+    const extra = await readExtra(documentId);
+    const day = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+    const prev = extra.inquiries as { d?: string; n?: number } | undefined;
+    const n = prev?.d === day ? Number(prev.n) || 0 : 0;
+    if (n >= maxPerDay) return false;
+    // בלי invalidateGemachCache — המונה לא משפיע על שום דבר שמוצג
+    await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: { ...extra, inquiries: { d: day, n: n + 1 } } } });
+    return true;
 }
 
 /** מעדכן רק את extra_fields.geo (למשל "נשלחה בקשה לבעלים"), בלי לגעת בשאר */
