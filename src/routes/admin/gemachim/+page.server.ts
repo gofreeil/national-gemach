@@ -17,12 +17,17 @@ export const load: PageServerLoad = async ({ url }) => {
 	// מצב הנעיצה מגיע מרשימת הנעוצים (/admin/pinned) — היא מקור האמת
 	const pinnedIds = await getPinnedIdsResolved(all);
 
+	// טלפון: משווים ספרות בלבד, ו-972 בהתחלה = 0 — כך 0523003153, 052-3003153
+	// ו-+972523003153 מוצאים את אותו גמ"ח
+	const digits = (s: string) => s.replace(/\D/g, '').replace(/^972/, '0');
+	const qDigits = digits(q);
+	const phoneHit = (p?: string) => qDigits.length >= 4 && !!p && digits(p).includes(qDigits);
 	const filtered = q
 		? all.filter(g =>
 			g.name.toLowerCase().includes(q) ||
 			g.city.toLowerCase().includes(q) ||
 			(g.neighborhood?.toLowerCase().includes(q) ?? false) ||
-			(g.phone?.includes(q) ?? false) ||
+			phoneHit(g.phone) || phoneHit(g.phone2) ||
 			g.tags.some(t => t.toLowerCase().includes(q)))
 		: all;
 

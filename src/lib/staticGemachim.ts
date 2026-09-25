@@ -468,15 +468,6 @@ export const staticGemachim: StaticGemach[] = [
         tags: ["מוזיקה לחתונות"],
     },
     {
-        id: "1047",
-        name: "בתיה",
-        category: "wedding",
-        city: "",
-        phone: "052-3003153",
-        description: "גמח שמלות",
-        tags: ["גמח שמלות"],
-    },
-    {
         id: "1048",
         name: "אודליה",
         category: "food",
