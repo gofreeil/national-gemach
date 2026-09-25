@@ -224,7 +224,7 @@ export async function resolveGemachCoords(input: {
 
     const address = (input.address ?? '').trim();
     const neighborhood = (input.neighborhood ?? '').trim();
-    const city = (input.city ?? '').trim();
+    let city = (input.city ?? '').trim();
     const none: ResolvedCoords = { lat: null, lng: null, precision: null };
     const done = (h: Hit): ResolvedCoords => ({ lat: h.lat, lng: h.lng, precision: h.precision });
 
@@ -238,7 +238,15 @@ export async function resolveGemachCoords(input: {
 
     // כשמרכז היישוב ידוע — התוצאה חייבת לשבת לידו (שם לבד מטעה: יש רחוב
     // "ירושלים" בכל עיר). בלי מרכז — נשען על שם היישוב בתוצאה.
-    const center = await cityCenter(city);
+    let center = await cityCenter(city);
+    // "עיר" שנכתבה עם תוספת חופשית ("נתניה לרוב", "ירושלים והסביבה") — מקצרים
+    // מילה-מילה מהסוף עד שנמצא יישוב, וממשיכים איתו כעיר
+    const words = city.split(/[\s,/()-]+/).filter(Boolean);
+    for (let n = words.length - 1; !center && n >= 1; n--) {
+        const shorter = words.slice(0, n).join(' ');
+        center = await cityCenter(shorter);
+        if (center) city = shorter;
+    }
     const accept: Accept = (h) => (center ? km(h, center) <= CITY_RADIUS_KM : nameMatches(h, city));
     const cities = spellings(city);
 
