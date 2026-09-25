@@ -572,7 +572,7 @@
 <JsonLd data={schemas} />
 
 <!-- Hero Section -->
-<section class="text-center py-6 md:py-8 px-4">
+<section class="text-center pt-6 md:pt-8 px-4 {filtering ? 'pb-3' : 'pb-6 md:pb-8'}">
     <div class="flex items-center justify-center gap-4 md:gap-6 mb-5">
         <div class="h-40 w-40 md:h-52 md:w-52 flex-shrink-0 rounded-2xl overflow-hidden bg-white shadow-xl border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
             <!-- זהו רכיב ה-LCP של דף הבית — גרסת webp קלה (33KB במקום 709KB)
@@ -714,12 +714,12 @@
      נושא בלי לחזור אחורה. בנייד היא נעלמת: שם המסך צר, והתוצאות הן העיקר. -->
 <section
     bind:this={railSectionEl}
-    class="px-2 md:px-4 pb-8 {filtering ? 'hidden md:block' : ''}"
+    class="px-2 md:px-4 {filtering ? 'hidden md:block pb-3' : 'pb-8'}"
     aria-labelledby="cat-rail-title"
 >
-      <div class="mx-auto max-w-4xl {filtering ? 'mb-6' : 'mb-10'}">
+      <div class="mx-auto max-w-4xl {filtering ? 'mb-0' : 'mb-10'}">
 
-        <div class="mb-3 px-1">
+        <div class="mb-3 px-1 {filtering ? 'sr-only' : ''}">
             <h2 id="cat-rail-title" class="text-2xl font-black text-white">סינון מהיר</h2>
         </div>
 
@@ -807,7 +807,7 @@
         <!-- בקרי החשיפה מרוכזים מתחת למסילה, צמודים לאלמנט שהם מזיזים:
              רמז (בלי מסגרת, לא ככפתור) מעל שורת חץ ← סקראבר נגרר → חץ+מונה.
              רוחב ידית הסקראבר מקודד כמה מהרשימה מוסתר; לחיצה על המסילה = קפיצה. -->
-        <div class="mt-3 flex flex-col items-center gap-2 {overflowing ? '' : 'invisible'}">
+        <div class="mt-3 flex flex-col items-center gap-2 {filtering ? 'hidden' : overflowing ? '' : 'invisible'}">
             <!-- בלי גלולה/מסגרת כדי שלא ייראה ככפתור; צל-טקסט מרים את הלבן מהרקע הוורוד -->
             <p class="cat-hint-label inline-flex items-center gap-1.5 text-sm font-bold text-white" aria-hidden="true">
                 <span>גררו את השורה כדי לגלות עוד</span>
