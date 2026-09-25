@@ -175,8 +175,25 @@
                 {/if}
                 {#each statRows as r (r.id)}
                     {@const e = data.log[r.id] ?? {}}
+                    {@const site = data.siteState[r.id]}
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-xl bg-[#16264d] px-3 py-2 text-sm">
-                        <a href="/gemach/{r.id}" target="_blank" rel="noopener" class="font-bold text-white hover:text-blue-300">{r.row?.name || r.id}</a>
+                        <a href="/gemach/{r.id}" target="_blank" rel="noopener" class="font-bold text-white hover:text-blue-300 {site?.draft ? 'line-through opacity-60' : ''}">{r.row?.name || site?.name || r.id}</a>
+                        <!-- הורדה מהאתר / החזרה בלחיצה (טיוטה — הפיך) -->
+                        {#if !site}
+                            <span class="text-xs font-bold text-gray-400">נמחק</span>
+                        {:else}
+                            <form method="POST" action="?/siteStatus" use:enhance>
+                                <input type="hidden" name="id" value={r.id} />
+                                {#if site.draft}
+                                    <input type="hidden" name="publish" value="1" />
+                                    <span class="text-xs font-bold text-amber-300">הורד מהאתר</span>
+                                    <button class="ms-1 rounded-lg bg-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/30">↩️ החזר</button>
+                                {:else}
+                                    <button onclick={(ev) => { if (!confirm(`להוריד מהאתר את "${site.name}"?`)) ev.preventDefault(); }}
+                                        class="rounded-lg bg-red-900/40 px-2 py-0.5 text-xs font-bold text-red-200 hover:bg-red-900/70">🙈 הסר מהאתר</button>
+                                {/if}
+                            </form>
+                        {/if}
                         <span class="text-xs text-gray-300">
                             {r.row?.city ?? ''}{r.row && 'contact' in r.row && r.row.contact ? ` · ${r.row.contact}` : ''}{r.row && 'phoneTail' in r.row ? ` · ***${r.row.phoneTail}` : ''}
                         </span>

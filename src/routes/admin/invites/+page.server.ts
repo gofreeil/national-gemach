@@ -7,6 +7,7 @@ import {
     getInviteLog, getInviteTemplate, inviteLinks, inviteTarget, listInviteCandidates,
     recordInviteSent, renderInvite, setInviteTemplate,
 } from '$lib/server/claimInvite';
+import { getAllGemachimWithDrafts, setGemachStatus } from '$lib/server/db';
 
 // הזמנות SMS לבעלי גמ"חים לקבל בעלות על הכרטיס — פתוח לכל אדמין.
 // השליחה ההמונית רצה מהדפדפן, גמ"ח אחרי גמ"ח (action לכל אחד), כדי לא
@@ -25,9 +26,19 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     // מעקב: גמ"חים שקיבלו הזמנה ויש להם עכשיו בעלים (גם מי שנרשם לפני שהמעקב נוסף)
     const { ownedRows, ...rest } = data;
     const claimedRows = ownedRows.filter((r) => log[r.id]?.at || log[r.id]?.claimedAt);
+    // מצב באתר של כל גמ"ח ביומן — כדי שהמעקב יציג שם גם לגמ"ח שהורד (טיוטה)
+    // ויאפשר להוריד/להחזיר בלחיצה. חסר = נמחק.
+    const siteState: Record<string, { name: string; draft: boolean }> = {};
+    try {
+        const all = await getAllGemachimWithDrafts();
+        for (const g of all) if (log[g.id]) siteState[g.id] = { name: g.name, draft: g.status === 'draft' };
+    } catch (e) {
+        console.error('admin/invites siteState failed:', e);
+    }
     return {
         ...rest,
         claimedRows,
+        siteState,
         log,
         template,
         defaultTemplate: DEFAULT_TEMPLATE,
@@ -40,6 +51,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
+    // הורדה מהאתר (טיוטה) / החזרה — למשל למי שדחה את ההזמנה וביקש הסרה
+    siteStatus: async ({ request, locals }) => {
+        await getAdminContext(locals);
+        const fd = await request.formData();
+        const id = String(fd.get('id') ?? '');
+        if (!id) return fail(400, { error: 'חסר מזהה' });
+        try {
+            await setGemachStatus(id, fd.get('publish') === '1' ? 'active' : 'draft');
+            return { message: fd.get('publish') === '1' ? 'הגמ"ח חזר לאתר' : 'הגמ"ח הורד מהאתר' };
+        } catch (e) {
+            console.error('invite siteStatus failed:', e);
+            return fail(502, { error: 'העדכון נכשל — נסו שוב' });
+        }
+    },
+
     template: async ({ request, locals }) => {
         await getAdminContext(locals);
         const text = String((await request.formData()).get('template') ?? '');
