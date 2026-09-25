@@ -11,14 +11,15 @@
 //      קישור חתום לעמוד דקירת המפה (/l/<token>) שלא דורש התחברות.
 //
 // כל גמ"ח מקבל לכל היותר בקשה אחת (extra_fields.geo.asked). לא נשלח למי
-// שביקש להסיר את עצמו מהודעות, ולא לגמ"ח שהסתיר את כתובתו (הפין הגס
+// שביקש להסיר את עצמו מהודעות, לא לגמ"ח שיש לו בעלים רשום (הוא יצר/אימץ
+// אותו בעצמו ומתקן מיקום בעריכה), ולא לגמ"ח שהסתיר את כתובתו (הפין הגס
 // שלו מכוון). אפשר לכבות את השליחה ממסך "גמ"חים לא מלאים".
 // ============================================================
 
 import { getAllGemachim, geocodeGemachById, patchGemachGeo } from './db';
 import { hasValidCoords } from './geocode';
 import { getConfigValue, setConfigValue } from './adminStore';
-import { declineToken, geoToken, getInviteLog } from './claimInvite';
+import { declineToken, geoToken, getInviteLog, listInviteCandidates } from './claimInvite';
 import { sendSms, smsEnabled, toMobileE164 } from './sms';
 import { isApproxGeo, type Gemach } from '$lib/gemachData';
 import { SITE_URL } from '$lib/seo';
@@ -102,9 +103,20 @@ export async function runGeoJob(opts: { budgetMs?: number } = {}): Promise<GeoJo
     if (res.smsSkipped) return res;
 
     const log = await getInviteLog().catch(() => ({}) as Awaited<ReturnType<typeof getInviteLog>>);
+    // גמ"ח שיש לו בעלים רשום — הבעלים יצר/אימץ אותו בעצמו, ונוסח "האתר מעוניין
+    // להציג את הגמ"ח שלכם... לא שלכם?" לא מתאים לו. בכשל שליפה — לא שולחים כלום.
+    let owned: Set<string>;
+    try {
+        owned = new Set((await listInviteCandidates()).ownedRows.map((r) => r.id));
+    } catch (e) {
+        console.error('[geo-job] owner lookup failed:', e);
+        res.smsSkipped = 'owner-lookup-failed';
+        return res;
+    }
     const due = (await getAllGemachim()).filter((g) =>
         awaitsOwnerPin(g)
         && age(g.geo?.at) >= DAY_MS
+        && !owned.has(g.id)
         && !log[g.id]?.declinedAt
         && !!toMobileE164(g.phone ?? ''),
     );
