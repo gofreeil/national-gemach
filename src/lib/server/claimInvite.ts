@@ -11,9 +11,9 @@
 //              מקבל בעלות בלחיצה אחת אחרי התחברות — בלי אישור אדמין.
 //              קישורים ישנים בלי חתימה (/c/<id>) רק פותחים את התיבה —
 //              שם ההוכחה נשארת קוד ה-SMS לנייד שבכרטיס (ownerOtp).
-//   {decline}  /d/<token> — "לא שלי / לא מעוניין": קישור חתום שמסמן את
-//              הגמ"ח כמי שביקש לא לקבל הודעות, בלי להתחבר. המסך חוסם
-//              שליחה חוזרת אליו.
+//   {decline}  /d/<token> — קישור חתום, בלי להתחבר, עם שתי בחירות:
+//              "הגמ"ח לא שלי" (מסמן את הכרטיס לבדיקת אדמין — הנייד שגוי)
+//              או "שלי, אבל לא מעוניין". בשתיהן המסך חוסם שליחה חוזרת.
 //
 // הנוסח והיומן נשמרים בהגדרות הכלליות (__ng_config).
 // ============================================================
@@ -24,6 +24,7 @@ import { env } from '$env/dynamic/private';
 import { getConfigValue, setConfigValue } from './adminStore';
 import { strapiGetAll } from './strapiClient.js';
 import { toMobileE164 } from './sms';
+import { markGemachWrongPhone } from './db';
 
 const TEMPLATE_KEY = 'claim_invite_template';
 const LOG_KEY = 'claim_invite_log';
@@ -178,6 +179,8 @@ export interface InviteLogEntry {
     count?: number;
     /** ביקש לא לקבל הודעות (קישור "לא שלי") */
     declinedAt?: string;
+    /** למה: הגמ"ח לא שלו (הנייד בכרטיס שגוי) / שלו אבל לא מעוניין */
+    declineReason?: DeclineReason;
     /** נכנס לאתר מהקישור — הפעם הראשונה + מספר כניסות */
     openedAt?: string;
     opens?: number;
@@ -207,8 +210,12 @@ export async function recordInviteSent(gemachId: string, by: string): Promise<vo
     }
 }
 
-export async function recordInviteDeclined(gemachId: string): Promise<void> {
-    await patchLog(gemachId, (c) => ({ ...c, declinedAt: c.declinedAt ?? new Date().toISOString() }));
+export type DeclineReason = 'not_mine' | 'opt_out';
+
+/** "לא שלי" מסמן גם את הכרטיס לבדיקת אדמין — הנייד בו כנראה שגוי */
+export async function recordInviteDeclined(gemachId: string, reason: DeclineReason): Promise<void> {
+    await patchLog(gemachId, (c) => ({ ...c, declinedAt: c.declinedAt ?? new Date().toISOString(), declineReason: reason }));
+    if (reason === 'not_mine') await markGemachWrongPhone(gemachId);
 }
 
 /** מעקב: כניסה / בקשת בעלות / קבלת בעלות. נכשל בשקט — לא חוסם את המשתמש. */

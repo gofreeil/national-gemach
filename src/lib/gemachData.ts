@@ -102,6 +102,9 @@ export interface Gemach {
     /** הבעלים בחר לקבל ב-SMS הודעות שמבקרים שולחים מדף הגמ"ח
      *  (extra_fields.notify_inquiries). ראו $lib/server/inquiry. */
     notifyInquiries?: boolean;
+    /** מי שקיבל את הזמנת ה-SMS דיווח "הגמ"ח לא שלי" — הנייד בכרטיס כנראה שגוי
+     *  (extra_fields.wrong_phone, ISO). מדליק התראת אדמין ועוצר SMS נוספים. */
+    wrongPhone?: string;
     /** שדרוג בתשלום (50 ₪ לחודש): הלוגו של הגמ"ח מחליף את הפין במפה של
      *  "קהילה בשכונה" (extra_fields.map_logo). 'requested' = ביקש וממתין לתשלום/אישור,
      *  'active' = שולם ואושר ע"י אדמין. */

@@ -35,7 +35,7 @@ function ownerMobile(g: Gemach): string | null {
 
 /** האם להציג בדף הגמ"ח את תיבת "שלחו הודעה" */
 export function canInquire(g: Gemach): boolean {
-    return !!g.managed && !!g.notifyInquiries && smsEnabled() && !!ownerMobile(g);
+    return !!g.managed && !!g.notifyInquiries && !g.wrongPhone && smsEnabled() && !!ownerMobile(g);
 }
 
 export async function sendInquiry(

@@ -151,6 +151,7 @@ export function mapItemToGemach(item: StrapiItem, includeOwner = false): Gemach 
         arrivalNotes:  toStr(extra.arrival_notes),
         hideAddress:   extra.hide_address === true || extra.hide_address === 'true',
         notifyInquiries: extra.notify_inquiries === true,
+        wrongPhone:    toStr(extra.wrong_phone),
         mapLogo:       extra.map_logo === 'active' || extra.map_logo === 'requested' ? extra.map_logo : undefined,
         lat:           typeof item.lat === 'number' ? item.lat : null,
         lng:           typeof item.lng === 'number' ? item.lng : null,
@@ -253,7 +254,7 @@ export async function countGemachAttention(): Promise<number> {
                 'filters[status1][$eq]':  DRAFT_ITEM_STATUS,
             }),
         ]);
-        const fresh = withDrafts.filter((g) => g.needsReview).length;
+        const fresh = withDrafts.filter((g) => g.needsReview || g.wrongPhone).length;
         const guestDrafts = pendingRows.filter((r) => {
             const extra = (r.extra_fields ?? {}) as Record<string, unknown>;
             return !!extra.guest_claim;
@@ -276,8 +277,18 @@ export async function clearGemachReview(documentId: string): Promise<void> {
     if (!cur.data) throw new Error(`clearGemachReview: הפריט ${documentId} לא נמצא`);
     const extra = { ...((cur.data.extra_fields ?? {}) as Record<string, unknown>) };
     delete extra.needs_review;
+    delete extra.wrong_phone;
     await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: extra } });
     invalidateGemachCache();
+}
+
+/** "הגמ"ח לא שלי" מקישור ההזמנה — הנייד בכרטיס כנראה שגוי; לבדיקת אדמין */
+export async function markGemachWrongPhone(documentId: string): Promise<void> {
+    const extra = await readExtra(documentId);
+    if (extra.wrong_phone) return;
+    await strapiPut(`/api/items/${documentId}`, { data: { extra_fields: { ...extra, wrong_phone: new Date().toISOString() } } });
+    invalidateGemachCache();
+    draftCountCache = null;
 }
 
 /** כמו getAllGemachim אבל כולל גם טיוטות ('draft') — לרשימת הניהול בפאנל,
@@ -691,6 +702,8 @@ export async function updateGemach(
     // עריכה ע"י אדמין = הגמ"ח החדש נבדק — מכבים את התראת needs_review.
     // עריכת בעלים אינה מעבירה את הדגל (clearReview נשלח רק ממסכי האדמין).
     if (opts.clearReview) delete mergedExtra.needs_review;
+    // דיווח "לא שלי" נסגר כשאדמין עבר על הכרטיס או כשהטלפון תוקן
+    if (opts.clearReview || (curItem && (curItem.phone ?? '') !== (input.phone ?? ''))) delete mergedExtra.wrong_phone;
 
     const data: Record<string, unknown> = {
         label:        input.name,

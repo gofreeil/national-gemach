@@ -48,7 +48,7 @@ function needsGeocode(g: Gemach): boolean {
 /** ממתין לבקשת אישור/דיוק מהבעלים (בלי לבדוק טלפון/הסרה) */
 export function awaitsOwnerPin(g: Gemach): boolean {
     const geo = g.geo;
-    if (!geo || geo.asked || geo.ok || g.hideAddress) return false;
+    if (!geo || geo.asked || geo.ok || g.hideAddress || g.wrongPhone) return false;
     return geo.p === null || isApproxGeo(geo.p);
 }
 

@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	// וטיוטת-אורח שממתינה לפרסום/דחייה (guest_claim) — קופצים לראש הרשימה;
 	// בלעדי זה הם קבורים בסידור הידני אי-שם בין העמודים, בלי דרך למצוא אותם.
 	// המיון יציב, לתצוגה בלבד — order האמיתי (ולכן האתר) לא משתנה.
-	const attention = (g: Gemach) => !!g.needsReview || (g.status === 'draft' && !!g.guestClaim);
+	const attention = (g: Gemach) => !!g.needsReview || !!g.wrongPhone || (g.status === 'draft' && !!g.guestClaim);
 	const reviewCount = filtered.filter(attention).length;
 	const sorted = reviewCount
 		? [...filtered.filter(attention), ...filtered.filter((g) => !attention(g))]

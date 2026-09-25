@@ -183,7 +183,7 @@
                         <span class="ms-auto flex flex-wrap gap-1.5 text-xs font-bold">
                             {#if e.at}<span class="text-emerald-300">📨 {when(e.at)}</span>{/if}
                             {#if e.openedAt}<span class="text-sky-300">👀 {when(e.openedAt)}{(e.opens ?? 1) > 1 ? ` (${e.opens}×)` : ''}</span>{/if}
-                            {#if e.declinedAt}<span class="text-rose-300">🙅 {when(e.declinedAt)}</span>{/if}
+                            {#if e.declinedAt}<span class="text-rose-300">🙅 {e.declineReason === 'not_mine' ? 'לא שלו ' : ''}{when(e.declinedAt)}</span>{/if}
                             {#if e.claimRequestedAt}<span class="text-amber-300">⏳ {when(e.claimRequestedAt)}</span>{/if}
                             {#if r.owned}<span class="text-emerald-300">✅ בעלים{e.claimedAt ? ` ${when(e.claimedAt)}` : ''}</span>{/if}
                         </span>
@@ -279,7 +279,7 @@
                             <div class="text-xs text-gray-300">
                                 {c.city}{c.contact ? ` · ${c.contact}` : ''} · <span dir="ltr">***{c.phoneTail}</span>
                                 {#if declined}
-                                    · <span class="text-rose-300">ביקשו הסרה {when(data.log[c.id]?.declinedAt)}</span>
+                                    · <span class="text-rose-300">{data.log[c.id]?.declineReason === 'not_mine' ? 'דיווחו "לא שלי"' : 'ביקשו הסרה'} {when(data.log[c.id]?.declinedAt)}</span>
                                 {:else if data.log[c.id]?.at}
                                     · <span class="text-emerald-300">נשלח {when(data.log[c.id]?.at)}{(data.log[c.id]?.count ?? 1) > 1 ? ` (${data.log[c.id]?.count} פעמים)` : ''}</span>
                                 {/if}
