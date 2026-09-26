@@ -5,6 +5,7 @@ import { getPublicCategories } from '$lib/server/adminStore';
 import { parseGemachForm, saveErrorMessage } from '$lib/server/gemachForm';
 import { ownerIdForSession } from '$lib/server/ownership';
 import { newDraftToken, setDraftTicket } from '$lib/server/guestDraft';
+import { findActiveTwins, settleCreateRace, guestTokenOf } from '$lib/server/gemachDedupe';
 import { cities } from '$lib/gemachData';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -30,6 +31,16 @@ export const actions: Actions = {
 		const { input, error } = parseGemachForm(form);
 		if (error) return fail(400, { error, values: input });
 
+		// כבר קיים באתר גמ"ח פעיל זהה (שם + טלפון) — לא יוצרים כרטיס כפול
+		const existing = (await findActiveTwins(input).catch(() => []))[0];
+		if (existing) {
+			return fail(409, {
+				error: `"${existing.label}" כבר מופיע באתר עם אותו שם ואותו טלפון — לא נוצר כרטיס כפול.`,
+				existingId: existing.documentId,
+				values: input
+			});
+		}
+
 		// ----- אורח: הגמ"ח עולה לאוויר מיד, בלי בעלים -----
 		// אסימון האימוץ נשמר בעוגייה — ההתחברות ב-/gemach/claim תרשום את הגמ"ח
 		// על שמו (לעריכה, ניהול והתראות). needsReview מדליק את בועת ההתראות
@@ -43,7 +54,17 @@ export const actions: Actions = {
 				console.error('[guest-create] createGemach failed:', e);
 				return fail(500, { error: saveErrorMessage(e, 'יצירת'), values: input });
 			}
-			setDraftTicket(cookies, { id: draftId, token });
+			// שליחה מקבילה הקדימה אותנו — שלנו נמחקה. הכרטיס שנשאר נוצר רגע
+			// קודם מאותה שליחה, ולכן הדפדפן מקבל את אסימון האימוץ שלו.
+			const winner = await settleCreateRace(input, draftId);
+			if (winner) {
+				const winnerToken = guestTokenOf(winner);
+				if (!winnerToken) throw redirect(303, `/gemach/${winner.documentId}`);
+				draftId = winner.documentId;
+				setDraftTicket(cookies, { id: draftId, token: winnerToken });
+			} else {
+				setDraftTicket(cookies, { id: draftId, token });
+			}
 			throw redirect(303, '/gemach/claim');
 		}
 
@@ -57,6 +78,8 @@ export const actions: Actions = {
 			console.error('[owner-create] createGemach failed:', e);
 			return fail(500, { error: saveErrorMessage(e, 'יצירת'), values: input });
 		}
+		const winner = await settleCreateRace(input, id);
+		if (winner) id = winner.documentId;
 		// flash=created → דף הגמ"ח מציג אישור + קישור לאתר המקביל "קהילה בשכונה"
 		throw redirect(303, `/gemach/${id}?flash=created`);
 	}

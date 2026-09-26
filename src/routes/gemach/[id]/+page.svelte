@@ -6,6 +6,7 @@
     import AdminGemachMenu from '$lib/components/AdminGemachMenu.svelte';
     import VerifiedStamp from '$lib/components/VerifiedStamp.svelte';
     import ShareGemach from '$lib/components/ShareGemach.svelte';
+    import AdvertisePromo from '$lib/components/AdvertisePromo.svelte';
     import { runInterstitial, gatedNav } from '$lib/adGate';
     import { formatOpeningHoursLines, isOpenNow, toSchemaOpeningHours } from '$lib/openingHours';
     import Seo from '$lib/components/Seo.svelte';
@@ -230,6 +231,7 @@
                 class="mt-3 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
                 🕊️ צפה בגמ"ח שלך על מפת השכונה בקהילה בשכונה
             </a>
+            <AdvertisePromo />
         </div>
     {/if}
 

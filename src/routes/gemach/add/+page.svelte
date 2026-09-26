@@ -66,7 +66,12 @@
 	</div>
 
 	{#if form?.error}
-		<div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{form.error}</div>
+		<div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+			{form.error}
+			{#if form && "existingId" in form && form.existingId}
+				<a href="/gemach/{form.existingId}" class="mr-1 font-bold text-blue-300 underline">לכרטיס הקיים</a>
+			{/if}
+		</div>
 	{/if}
 
 	{#if draft.restored}
@@ -77,7 +82,9 @@
 		method="POST"
 		action="?/create"
 		use:formDraft={draft.options}
-		use:enhance={() => {
+		use:enhance={({ cancel }) => {
+			// שליחה כבר בדרך (Enter בשדה, לחיצה חוזרת) — לא שולחים שוב
+			if (saving) return cancel();
 			saving = true;
 			return async ({ result, update }) => {
 				// נשמר בשרת — הטיוטה המקומית סיימה את תפקידה. מנקים לפני
@@ -112,5 +119,15 @@
 				ביטול
 			</a>
 		</div>
+		{#if saving}
+			<!-- השמירה לוקחת כמה שניות (תמונות, מיקום במפה) — אומרים מה קורה, כדי שלא ישלחו שוב -->
+			<div class="mt-4 flex items-start gap-3 rounded-xl border border-blue-500/30 bg-blue-900/20 p-4 text-sm text-gray-200" role="status">
+				<span class="mt-0.5 size-5 shrink-0 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></span>
+				<p class="leading-relaxed">
+					<b class="text-blue-300">בודקים שהגמ"ח לא רשום כבר באתר</b>, שומרים את הפרטים ואת המיקום —
+					זה לוקח כמה שניות. אין צורך ללחוץ שוב: המערכת לא תיצור כרטיס כפול.
+				</p>
+			</div>
+		{/if}
 	</form>
 </div>
