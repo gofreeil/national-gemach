@@ -719,9 +719,8 @@
 >
       <div class="mx-auto max-w-4xl {filtering ? 'mb-0' : 'mb-10'}">
 
-        <div class="mb-3 px-1 {filtering ? 'sr-only' : ''}">
-            <h2 id="cat-rail-title" class="text-2xl font-black text-white">סינון מהיר</h2>
-        </div>
+        <!-- כותרת לקוראי מסך בלבד (עוגן ל-aria-labelledby) — ויזואלית רק מרחיקה את התוצאות -->
+        <h2 id="cat-rail-title" class="sr-only">סינון מהיר</h2>
 
         <p id="cat-rail-help" class="sr-only">
             רשימת קטגוריות נגללת לרוחב, מסודרת לפי מספר הגמחים. אפשר לגרור אותה,
