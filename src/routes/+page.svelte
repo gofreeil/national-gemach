@@ -1159,9 +1159,9 @@
        יחד עם המסילה (עד 85% = PRESS+SWIPE), ומתרוממת. 100% = FINGER_TOTAL_MS */
     .finger-demo {
         position: absolute;
-        top: 30%;
+        top: 42%;
         right: 0;
-        width: 8.5rem;
+        width: 11rem;
         pointer-events: none;
         z-index: 30;
         filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
