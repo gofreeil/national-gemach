@@ -650,9 +650,11 @@
     <!-- Search Bar — עיצוב "רגוע ומלוכד": שדה חיפוש-גיבור אחד רחב עם כפתור מוטמע בקצה,
          ומתחתיו שני מסננים שקטים (קטגוריה · עיר) שמתעוררים במגע ומאירים בזהב כשהם פעילים.
          חוט זהב דק בקצה הגיבור קושר ללוגו מעל ולמובילי-הקטגוריות מתחת. הכול RTL בתכונות לוגיות. -->
-    <div class="max-w-2xl mx-auto">
+    <div class="max-w-2xl md:max-w-5xl mx-auto">
+        <!-- בדסקטופ: חיפוש + שני המסננים בשורה אחת -->
+        <div class="md:flex md:items-stretch md:gap-2.5">
         <!-- שדה החיפוש הראשי (הגיבור): שדה אחד רחב, כפתור גרדיאנט מוטמע בקצה — נקרא כאובייקט אחד -->
-        <div class="hero-search group relative flex items-center gap-2 rounded-2xl bg-[#16264d] border border-[#3b5794] ps-3.5 pe-2 py-2 shadow-lg shadow-black/25 transition-all duration-200 focus-within:border-blue-400 focus-within:bg-[#1b2f5e] focus-within:shadow-blue-500/20">
+        <div class="hero-search md:flex-[1.6] md:min-w-0 group relative flex items-center gap-2 rounded-2xl bg-[#16264d] border border-[#3b5794] ps-3.5 pe-2 py-2 shadow-lg shadow-black/25 transition-all duration-200 focus-within:border-blue-400 focus-within:bg-[#1b2f5e] focus-within:shadow-blue-500/20">
             <!-- זכוכית מגדלת מובילה (קצה פנימי = ימין ב-RTL) -->
             <span class="hero-icon pointer-events-none shrink-0 transition-colors" aria-hidden="true">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
@@ -674,7 +676,7 @@
         </div>
 
         <!-- שני מסננים שקטים: קטגוריה + עיר — חולקים שורה, מתעוררים במגע; זהב = מסנן פעיל -->
-        <div class="mt-3 flex items-stretch gap-2.5">
+        <div class="mt-3 md:mt-0 md:flex-1 md:min-w-0 flex items-stretch gap-2.5">
             <!-- קטגוריה -->
             <div class="filter group relative flex-1 min-w-0" class:is-active={selectedCategory}>
                 <span class="filter-icon pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 transition-colors" aria-hidden="true">
@@ -684,7 +686,7 @@
                     bind:value={selectedCategory}
                     onchange={revealResults}
                     aria-label="סנן לפי קטגוריה"
-                    class="qc-select w-full appearance-none cursor-pointer rounded-xl bg-[#1c2f5a]/70 border border-[#3b5794]/70 text-white/90 text-base sm:text-sm ps-9 pe-9 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
+                    class="qc-select w-full md:h-fullappearance-none cursor-pointer rounded-xl bg-[#1c2f5a]/70 border border-[#3b5794]/70 text-white/90 text-base sm:text-sm ps-9 pe-9 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
                 >
                     <option value="">כל הקטגוריות</option>
                     {#each categories as cat}
@@ -706,7 +708,7 @@
                     list="home-cities-list"
                     placeholder="כל הערים"
                     aria-label="סנן לפי עיר"
-                    class="w-full rounded-xl bg-[#1c2f5a]/70 border border-[#3b5794]/70 text-white/90 placeholder-white/50 text-base sm:text-sm ps-9 pe-3 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
+                    class="w-full md:h-full rounded-xl bg-[#1c2f5a]/70 border border-[#3b5794]/70 text-white/90 placeholder-white/50 text-base sm:text-sm ps-9 pe-3 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
                 />
                 <datalist id="home-cities-list">
                     {#each cities as city (city)}
@@ -714,6 +716,7 @@
                     {/each}
                 </datalist>
             </div>
+        </div>
         </div>
 
         {#if filtering}
