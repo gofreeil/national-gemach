@@ -228,7 +228,12 @@
     /** הרשימה השתנתה (עריכה בפאנל הניהול) — למדוד מחדש בלי לתלות בכך את ה-effect שלמעלה */
     $effect(() => { void railCategories.length; untrack(readScroll); });
 
-    /** נדנוד חד-פעמי "אני זזה" — פעם אחת ב-session, ולא כשמבקשים פחות תנועה */
+    /* הדגמת "אצבע מדפדפת" (מ"יוצאים לחירות") — פעם אחת ב-session, כשהמסילה נכנסת
+       למסך: המסילה קופצת לסופה (שמאל) ומדפדפת חזרה להתחלה (ימין) בזמן שהאצבע
+       חוצה מימין לשמאל. גלילה ידנית כל פריים ולא behavior:'smooth' — כך המהירות
+       שלנו ומסונכרנת עם האצבע. נגיעה של המשתמש עוצרת הכל מיד. */
+    const DEMO_MS = 1300;
+    let fingerDemo = $state(false);
     $effect(() => {
         const el = railEl;
         if (!el || !overflowing || nudged) return;
@@ -236,12 +241,42 @@
         if (prefersReduce()) return;
         try {
             if (sessionStorage.getItem('catRailHinted')) return;
-            sessionStorage.setItem('catRailHinted', '1');
         } catch { return; }                        // Safari במצב פרטי זורק
-        const s = rtl ? -1 : 1;                    // "קדימה" ב-RTL = דלתא שלילית
-        const t1 = setTimeout(() => el.scrollBy({ left: s * 36, behavior: 'smooth' }), 700);
-        const t2 = setTimeout(() => el.scrollBy({ left: -s * 36, behavior: 'smooth' }), 1250);
-        return () => { clearTimeout(t1); clearTimeout(t2); };
+        new Image().src = '/images/finger.webp';   // טעינה מוקדמת — שלא תופיע באמצע התנועה
+
+        let raf = 0, t = 0, cancelled = false;
+        const stop = () => {
+            cancelled = true;
+            cancelAnimationFrame(raf); clearTimeout(t);
+            fingerDemo = false;
+        };
+        const run = () => {
+            try { sessionStorage.setItem('catRailHinted', '1'); } catch {}
+            const max = el.scrollWidth - el.clientWidth;
+            if (max <= 4 || hinted) return;
+            const s = rtl ? -1 : 1;                // "קדימה" ב-RTL = scrollLeft שלילי
+            el.scrollLeft = s * max;               // קפיצה לסוף
+            fingerDemo = true;
+            const t0 = performance.now();
+            const step = (now: number) => {
+                if (cancelled) return;
+                const p = Math.min(1, (now - t0) / DEMO_MS);
+                const e = 1 - Math.pow(1 - p, 3);  // easeOutCubic — יציאה מהירה, נחיתה רכה
+                el.scrollLeft = s * max * (1 - e);
+                if (p < 1) raf = requestAnimationFrame(step);
+            };
+            raf = requestAnimationFrame(step);
+            t = window.setTimeout(() => (fingerDemo = false), DEMO_MS + 250);
+        };
+
+        const io = new IntersectionObserver((entries) => {
+            if (!entries.some((en) => en.isIntersecting)) return;
+            io.disconnect();
+            t = window.setTimeout(run, 250);
+        }, { threshold: 0.6 });
+        io.observe(el);
+        el.addEventListener('pointerdown', stop, { once: true });
+        return () => { io.disconnect(); stop(); el.removeEventListener('pointerdown', stop); };
     });
 
     /* גרירה: עכבר/עט מנוהלים ב-JS; מגע נשאר נטיבי כדי לשמור על מומנטום אמיתי */
@@ -770,6 +805,7 @@
 
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
         <div
+            class="relative"
             role="group"
             aria-labelledby="cat-rail-title"
             aria-describedby="cat-rail-help"
@@ -801,6 +837,11 @@
                      להיות רחב כמו המסכה כדי שהאריח האחרון לא יישאר מעומעם -->
                 <li class="cat-spacer" data-spacer aria-hidden="true"></li>
             </ul>
+            {#if fingerDemo}
+                <div class="finger-demo" aria-hidden="true">
+                    <img src="/images/finger.webp" alt="" width="500" height="802" decoding="async" />
+                </div>
+            {/if}
         </div>
 
         <!-- בקרי החשיפה מרוכזים מתחת למסילה, צמודים לאלמנט שהם מזיזים:
@@ -1111,6 +1152,30 @@
         mask-image: var(--cat-mask);
     }
     .cat-rail::-webkit-scrollbar { display: none; }
+    /* אצבע מדפדפת (מ"יוצאים לחירות"): חוצה את המסילה מימין לשמאל בסנכרון לגלילה */
+    .finger-demo {
+        position: absolute;
+        top: 38%;
+        right: 0;
+        width: 5.5rem;
+        pointer-events: none;
+        z-index: 30;
+        filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
+        animation: finger-cross 1.55s cubic-bezier(0.25, 0.7, 0.3, 1) forwards;
+    }
+    .finger-demo img {
+        width: 100%;
+        height: auto;
+        display: block;
+        transform: rotate(-18deg);
+        transform-origin: 60% 30%;
+    }
+    @keyframes finger-cross {
+        0%   { right: -6%;  opacity: 0; }
+        10%  { right: 2%;   opacity: 1; }
+        80%  { right: 72%;  opacity: 1; }
+        100% { right: 78%;  opacity: 0; }
+    }
     .cat-rail.is-dragging { cursor: grabbing; scroll-behavior: auto; }
     .cat-rail.is-dragging .cat-tile { transition: none; }
     @media (hover: none) { .cat-rail { cursor: default; } }
