@@ -3,6 +3,7 @@
     import { fly } from 'svelte/transition';
     import { cubicOut } from 'svelte/easing';
     import { categoryKeys, cities, catZoom } from '$lib/gemachData';
+    import { buildIndex, smartSearch } from '$lib/smartSearch';
     import GemachCard from '$lib/components/GemachCard.svelte';
     import AvedotBanner from '$lib/components/AvedotBanner.svelte';
     import JsonLd from '$lib/components/JsonLd.svelte';
@@ -444,7 +445,7 @@
         return (h?.offsetHeight ?? 0) + 12;
     }
 
-    function glideTo(top: number) {
+    function glideTo(top: number, duration?: number) {
         if (scrollAnimId) cancelAnimationFrame(scrollAnimId);
         const start = window.scrollY;
         const dist = top - start;
@@ -465,7 +466,7 @@
         };
 
         const t0 = performance.now();
-        const dur = scrollDuration(dist);
+        const dur = duration ?? scrollDuration(dist);
         const frame = (now: number) => {
             if (cancelled) { done(); return; }
             const p = Math.min(1, (now - t0) / dur);
@@ -501,27 +502,33 @@
         revealResults();
     }
 
+    /** אינדקס החיפוש החכם (טקסט מנורמל + שמות הקטגוריות) — נבנה פעם אחת לכל טעינת נתונים */
+    let searchIndex = $derived(
+        buildIndex(gemachim, new Map(categories.map((c) => [c.key, c.label] as [string, string])))
+    );
+
+    /** החיפוש החכם מחזיר לפי רלוונטיות; קטגוריה ועיר מסננים מעליו */
     let filteredGemachim = $derived.by(() => {
-        const q = searchQuery.trim().toLowerCase();
-        return gemachim.filter(g => {
-            const matchesQuery = !q || (
-                g.name.toLowerCase().includes(q) ||
-                g.description.toLowerCase().includes(q) ||
-                g.tags.some(t => t.toLowerCase().includes(q)) ||
-                g.city.toLowerCase().includes(q) ||
-                (g.neighborhood?.toLowerCase().includes(q) ?? false) ||
-                (g.contact?.toLowerCase().includes(q) ?? false) ||
-                (g.notes?.toLowerCase().includes(q) ?? false)
-            );
-            const cityQ = selectedCity.trim();
-            const matchesCategory = !selectedCategory || categoryKeys(g).includes(selectedCategory);
-            const matchesCity = !cityQ || g.city.includes(cityQ);
-            return matchesQuery && matchesCategory && matchesCity;
-        });
+        const cityQ = selectedCity.trim();
+        return smartSearch(searchIndex, searchQuery).filter(g =>
+            (!selectedCategory || categoryKeys(g).includes(selectedCategory)) &&
+            (!cityQ || g.city.includes(cityQ))
+        );
     });
 
-    function doSearch() {
+    /** אחרי "חפש" — גלישה איטית ועדינה, רק כמה שצריך כדי שראש התוצאות ייכנס
+     *  לחצי התחתון של המסך. לא קופצים עד למעלה: השורה שבה הקלידו נשארת בעין. */
+    async function doSearch() {
         showResults = true;
+        await tick();
+        requestAnimationFrame(() => {
+            if (!resultsEl) return;
+            const rectTop = resultsEl.getBoundingClientRect().top;
+            const want = window.innerHeight * 0.55;          // ראש התוצאות — קצת מעל האמצע-תחתון
+            if (rectTop <= want) return;                     // כבר גלוי — לא זזים
+            const nudge = Math.min(rectTop - want, window.innerHeight * 0.45);
+            glideTo(window.scrollY + nudge, 1100);
+        });
     }
 
     /* ═══════════ הוספת גמ"ח מתוך הקטגוריה שנבחרה ═══════════
