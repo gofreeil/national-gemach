@@ -150,8 +150,9 @@ export function parseGemachForm(
 		imageFit,
 		description:  ((form.get('description') as string) ?? '').trim(),
 		tags,
-		order:        orderNum !== undefined && !isNaN(orderNum) ? orderNum : undefined,
-		featured:     form.get('featured') === 'true'
+		// סידור והצמדה — רק אדמין; מבעלים מתעלמים גם מבקשה מזויפת
+		order:        opts.admin && orderNum !== undefined && !isNaN(orderNum) ? orderNum : undefined,
+		featured:     opts.admin ? form.get('featured') === 'true' : false
 	};
 
 	let error: string | undefined;
