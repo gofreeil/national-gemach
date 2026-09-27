@@ -652,9 +652,9 @@
          חוט זהב דק בקצה הגיבור קושר ללוגו מעל ולמובילי-הקטגוריות מתחת. הכול RTL בתכונות לוגיות. -->
     <div class="max-w-2xl md:max-w-5xl mx-auto">
         <!-- בדסקטופ: חיפוש + שני המסננים בשורה אחת -->
-        <div class="md:flex md:items-stretch md:gap-2.5">
+        <div class="md:flex md:items-stretch md:gap-2.5 md:h-14">
         <!-- שדה החיפוש הראשי (הגיבור): שדה אחד רחב, כפתור גרדיאנט מוטמע בקצה — נקרא כאובייקט אחד -->
-        <div class="hero-search md:flex-[1.6] md:min-w-0 group relative flex items-center gap-2 rounded-2xl bg-[#16264d] border border-[#3b5794] ps-3.5 pe-2 py-2 shadow-lg shadow-black/25 transition-all duration-200 focus-within:border-blue-400 focus-within:bg-[#1b2f5e] focus-within:shadow-blue-500/20">
+        <div class="hero-search md:flex-[1.5] md:min-w-0 md:h-full md:py-0 group relative flex items-center gap-2 rounded-2xl bg-[#16264d] border border-[#3b5794] ps-3.5 pe-2 py-2 shadow-lg shadow-black/25 transition-all duration-200 focus-within:border-blue-400 focus-within:bg-[#1b2f5e] focus-within:shadow-blue-500/20">
             <!-- זכוכית מגדלת מובילה (קצה פנימי = ימין ב-RTL) -->
             <span class="hero-icon pointer-events-none shrink-0 transition-colors" aria-hidden="true">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
@@ -686,7 +686,7 @@
                     bind:value={selectedCategory}
                     onchange={revealResults}
                     aria-label="סנן לפי קטגוריה"
-                    class="qc-select w-full md:h-fullappearance-none cursor-pointer rounded-xl bg-[#1c2f5a]/70 border border-[#3b5794]/70 text-white/90 text-base sm:text-sm ps-9 pe-9 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
+                    class="qc-select w-full md:h-full appearance-none cursor-pointer rounded-xl md:rounded-2xl bg-[#1c2f5a]/70 md:bg-[#16264d] border border-[#3b5794]/70 md:border-[#3b5794] md:shadow-lg md:shadow-black/25 text-white/90 text-base sm:text-sm ps-9 pe-9 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
                 >
                     <option value="">כל הקטגוריות</option>
                     {#each categories as cat}
@@ -708,7 +708,7 @@
                     list="home-cities-list"
                     placeholder="כל הערים"
                     aria-label="סנן לפי עיר"
-                    class="w-full md:h-full rounded-xl bg-[#1c2f5a]/70 border border-[#3b5794]/70 text-white/90 placeholder-white/50 text-base sm:text-sm ps-9 pe-3 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
+                    class="w-full md:h-full rounded-xl md:rounded-2xl bg-[#1c2f5a]/70 md:bg-[#16264d] border border-[#3b5794]/70 md:border-[#3b5794] md:shadow-lg md:shadow-black/25 text-white/90 placeholder-white/50 text-base sm:text-sm ps-9 pe-3 py-3 outline-none transition-all hover:bg-[#1c2f5a] hover:border-[#4c6cb0] focus:bg-[#243a6e] focus:border-blue-400 focus:text-white focus-visible:ring-2 focus-visible:ring-blue-400/50"
                 />
                 <datalist id="home-cities-list">
                     {#each cities as city (city)}
