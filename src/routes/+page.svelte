@@ -228,7 +228,7 @@
     /** הרשימה השתנתה (עריכה בפאנל הניהול) — למדוד מחדש בלי לתלות בכך את ה-effect שלמעלה */
     $effect(() => { void railCategories.length; untrack(readScroll); });
 
-    /* הדגמת "אצבע מדפדפת" (מ"יוצאים לחירות") — פעם אחת ב-session, כשהמסילה נכנסת
+    /* הדגמת "אצבע מדפדפת" (מ"יוצאים לחירות") — בכל טעינת דף, כשהמסילה נכנסת
        למסך: המסילה קופצת לסופה (שמאל) ומדפדפת חזרה להתחלה (ימין) בזמן שהאצבע
        חוצה מימין לשמאל. גלילה ידנית כל פריים ולא behavior:'smooth' — כך המהירות
        שלנו ומסונכרנת עם האצבע. נגיעה של המשתמש עוצרת הכל מיד. */
@@ -239,9 +239,6 @@
         if (!el || !overflowing || nudged) return;
         nudged = true;
         if (prefersReduce()) return;
-        try {
-            if (sessionStorage.getItem('catRailHinted')) return;
-        } catch { return; }                        // Safari במצב פרטי זורק
         new Image().src = '/images/finger.webp';   // טעינה מוקדמת — שלא תופיע באמצע התנועה
 
         let raf = 0, t = 0, cancelled = false;
@@ -251,7 +248,6 @@
             fingerDemo = false;
         };
         const run = () => {
-            try { sessionStorage.setItem('catRailHinted', '1'); } catch {}
             const max = el.scrollWidth - el.clientWidth;
             if (max <= 4 || hinted) return;
             const s = rtl ? -1 : 1;                // "קדימה" ב-RTL = scrollLeft שלילי
@@ -650,7 +646,7 @@
     <!-- Search Bar — עיצוב "רגוע ומלוכד": שדה חיפוש-גיבור אחד רחב עם כפתור מוטמע בקצה,
          ומתחתיו שני מסננים שקטים (קטגוריה · עיר) שמתעוררים במגע ומאירים בזהב כשהם פעילים.
          חוט זהב דק בקצה הגיבור קושר ללוגו מעל ולמובילי-הקטגוריות מתחת. הכול RTL בתכונות לוגיות. -->
-    <div class="max-w-2xl md:max-w-5xl mx-auto">
+    <div class="max-w-2xl md:max-w-4xl md:px-2 mx-auto">
         <!-- בדסקטופ: חיפוש + שני המסננים בשורה אחת -->
         <div class="md:flex md:items-stretch md:gap-2.5 md:h-14">
         <!-- שדה החיפוש הראשי (הגיבור): שדה אחד רחב, כפתור גרדיאנט מוטמע בקצה — נקרא כאובייקט אחד -->
@@ -850,12 +846,7 @@
         <!-- בקרי החשיפה מרוכזים מתחת למסילה, צמודים לאלמנט שהם מזיזים:
              רמז (בלי מסגרת, לא ככפתור) מעל שורת חץ ← סקראבר נגרר → חץ+מונה.
              רוחב ידית הסקראבר מקודד כמה מהרשימה מוסתר; לחיצה על המסילה = קפיצה. -->
-        <div class="mt-3 flex flex-col items-center gap-2 {filtering ? 'hidden' : overflowing ? '' : 'invisible'}">
-            <!-- בלי גלולה/מסגרת כדי שלא ייראה ככפתור; צל-טקסט מרים את הלבן מהרקע הוורוד -->
-            <p class="cat-hint-label inline-flex items-center gap-1.5 text-sm font-bold text-white" aria-hidden="true">
-                <span>גררו את השורה כדי לגלות עוד</span>
-                <span class="cat-hint-arrow" class:is-live={!hinted}>↔</span>
-            </p>
+        <div class="mt-1 flex flex-col items-center {filtering ? 'hidden' : overflowing ? '' : 'invisible'}">
 
             <!-- החיצים הם צעדנים, והסקראבר הנגרר ביניהם — כולם על שורה אחת -->
             <div class="cat-controls flex w-full max-w-md items-center justify-center gap-2">
@@ -1402,23 +1393,11 @@
     .cat-track.is-scrubbing { cursor: grabbing; }
     .cat-track.is-scrubbing .cat-thumb { cursor: grabbing; filter: brightness(1.12); }
 
-    /* ═══ רמז ═══ */
-    .cat-hint-label {
-        /* בלי גלולה/מסגרת — צל דק מרים את הטקסט הלבן מהרקע הוורוד ושומר על קריאוּת */
-        text-shadow: 0 1px 4px rgba(11, 18, 38, 0.55);
-    }
     /* בשורת הבקרים הסקראבר נמתח בין שני החיצים במקום רוחב קבוע */
     .cat-controls .cat-track { flex: 1 1 auto; width: auto; min-width: 0; }
-    .cat-hint-arrow { display: inline-block; }
-    .cat-hint-arrow.is-live { animation: cat-hint 1.6s ease-in-out infinite; }
-    @keyframes cat-hint {
-        0%, 100% { transform: translateX(0); }
-        50%      { transform: translateX(5px); }
-    }
 
     /* הכלל הגלובלי ב-app.css מאפס רק משכי אנימציה — הוא לא מסיר transform שכבר הוחל */
     @media (prefers-reduced-motion: reduce) {
-        .cat-hint-arrow, .cat-hint-arrow.is-live { animation: none !important; transform: none !important; }
         .cat-tile, .cat-tile:hover, .cat-tile:active { transform: none !important; }
         .cat-rail { scroll-behavior: auto !important; }
     }
