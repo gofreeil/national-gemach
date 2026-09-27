@@ -229,14 +229,15 @@
     $effect(() => { void railCategories.length; untrack(readScroll); });
 
     /* הדגמת "אצבע מדפדפת" (מ"יוצאים לחירות") — בכל טעינת דף, כשהמסילה נכנסת
-       למסך: האצבע נכנסת ולוחצת (המסילה עוד לא זזה), ורק אז "מטאטאת" לרוחב —
-       והמסילה נגררת איתה לאותו כיוון. אחרי שהאצבע עוזבת המסילה חוזרת בעדינות
-       להתחלה. גלילה ידנית כל פריים — מסונכרנת עם ה-keyframes של .finger-demo
+       למסך: המסילה מוצגת כשהיא כבר גלולה קדימה, האצבע לוחצת בצד ימין ועושה
+       סוויפ קצר מימין לשמאל (המסילה נגררת איתה), ואז המסילה ממשיכה במומנטום
+       עד ההתחלה. גלילה ידנית כל פריים — מסונכרנת עם ה-keyframes של .finger-demo
        (FINGER_* חייבים להתאים לאחוזים שם). נגיעה של המשתמש עוצרת הכל מיד. */
-    const FINGER_PRESS_MS = 550;   // כניסה + לחיצה — בלי גלילה
-    const FINGER_SWIPE_MS = 1150;  // הטאטוא — המסילה נגררת
-    const FINGER_TOTAL_MS = 2000;  // כולל הרמה ויציאה
-    const RETURN_MS = 700;
+    const FINGER_PRESS_MS = 450;   // כניסה + לחיצה — בלי גלילה
+    const FINGER_SWIPE_MS = 450;   // הסוויפ הקצר — המסילה נגררת עם האצבע
+    const FINGER_TOTAL_MS = 1300;  // כולל המשך התנועה ויציאה מהמסך
+    const SWIPE_SHARE = 0.3;       // איזה חלק מהדרך עוברים בזמן הסוויפ עצמו
+    const GLIDE_MS = 1500;         // המומנטום עד ההתחלה — מהירות תחילית תואמת לסוף הסוויפ
     let fingerDemo = $state(false);
     $effect(() => {
         const el = railEl;
@@ -255,20 +256,25 @@
             const max = el.scrollWidth - el.clientWidth;
             if (max <= 4 || hinted) return;
             const s = rtl ? -1 : 1;                // "קדימה" ב-RTL = scrollLeft שלילי
-            const dist = s * Math.min(max, el.clientWidth * 0.7);
-            const ease = (p: number) => p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+            const dist = s * Math.min(max, el.clientWidth * 1.5);
+            const outCubic = (p: number) => 1 - Math.pow(1 - p, 3);
+            el.scrollLeft = dist;                  // נקודת הפתיחה: גלולה קדימה
             fingerDemo = true;
             const t0 = performance.now();
             const swipeEnd = FINGER_PRESS_MS + FINGER_SWIPE_MS;
-            const back0 = FINGER_TOTAL_MS + 150;
             const step = (now: number) => {
                 if (cancelled) return;
                 const dt = now - t0;
-                if (dt < FINGER_PRESS_MS) el.scrollLeft = 0;
-                else if (dt < swipeEnd) el.scrollLeft = dist * ease((dt - FINGER_PRESS_MS) / FINGER_SWIPE_MS);
-                else if (dt < back0) el.scrollLeft = dist;
-                else el.scrollLeft = dist * (1 - ease(Math.min(1, (dt - back0) / RETURN_MS)));
-                if (dt < back0 + RETURN_MS) raf = requestAnimationFrame(step);
+                if (dt < FINGER_PRESS_MS) el.scrollLeft = dist;
+                else if (dt < swipeEnd) {
+                    // ease-in: מאיצה עם האצבע, כך שהמומנטום ממשיך באותה מהירות
+                    const p = (dt - FINGER_PRESS_MS) / FINGER_SWIPE_MS;
+                    el.scrollLeft = dist * (1 - SWIPE_SHARE * p * p);
+                } else {
+                    const p = Math.min(1, (dt - swipeEnd) / GLIDE_MS);
+                    el.scrollLeft = dist * (1 - SWIPE_SHARE) * (1 - outCubic(p));
+                }
+                if (dt < swipeEnd + GLIDE_MS) raf = requestAnimationFrame(step);
             };
             raf = requestAnimationFrame(step);
             t = window.setTimeout(() => (fingerDemo = false), FINGER_TOTAL_MS);
@@ -814,6 +820,7 @@
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
         <div
             class="relative"
+            style="overflow-x: clip"
             role="group"
             aria-labelledby="cat-rail-title"
             aria-describedby="cat-rail-help"
@@ -1155,8 +1162,9 @@
         mask-image: var(--cat-mask);
     }
     .cat-rail::-webkit-scrollbar { display: none; }
-    /* אצבע מדפדפת: נכנסת ולוחצת (0–27.5% = FINGER_PRESS_MS), מטאטאת משמאל לימין
-       יחד עם המסילה (עד 85% = PRESS+SWIPE), ומתרוממת. 100% = FINGER_TOTAL_MS */
+    /* אצבע מדפדפת: נכנסת ולוחצת בצד ימין (0–35% = FINGER_PRESS_MS), סוויפ קצר
+       מימין לשמאל עם המסילה (עד 70% = PRESS+SWIPE), וממשיכה ויוצאת שמאלה —
+       העטיפה חותכת אופקית (overflow-x: clip) כדי שלא תיווצר גלילה. 100% = FINGER_TOTAL_MS */
     .finger-demo {
         position: absolute;
         top: 42%;
@@ -1165,7 +1173,7 @@
         pointer-events: none;
         z-index: 30;
         filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
-        animation: finger-cross 2s linear forwards;
+        animation: finger-cross 1.3s linear forwards;
     }
     .finger-demo img {
         width: 100%;
@@ -1175,11 +1183,11 @@
         transform-origin: 60% 30%;
     }
     @keyframes finger-cross {
-        0%    { right: 66%; opacity: 0; transform: translateY(14px) scale(1.08); }
-        15%   { right: 66%; opacity: 1; transform: translateY(0) scale(1.08); animation-timing-function: ease-in; }
-        27.5% { right: 66%; opacity: 1; transform: scale(0.94); animation-timing-function: ease-in-out; }
-        85%   { right: 10%; opacity: 1; transform: scale(0.94); animation-timing-function: ease-in; }
-        100%  { right: -120%; opacity: 1; transform: translateY(-10px) scale(1.05); }   /* יוצאת הצידה מהמסך (ב-RTL גלישה ימינה לא יוצרת גלילה) */
+        0%   { right: 4%;   opacity: 0; transform: translateY(14px) scale(1.08); }
+        20%  { right: 4%;   opacity: 1; transform: translateY(0) scale(1.08); animation-timing-function: ease-in; }
+        35%  { right: 4%;   opacity: 1; transform: scale(0.94); animation-timing-function: ease-in; }
+        70%  { right: 34%;  opacity: 1; transform: scale(0.94); animation-timing-function: linear; }
+        100% { right: 130%; opacity: 1; transform: translateY(-10px) scale(1.05); }
     }
     .cat-rail.is-dragging { cursor: grabbing; scroll-behavior: auto; }
     .cat-rail.is-dragging .cat-tile { transition: none; }
