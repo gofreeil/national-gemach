@@ -1178,8 +1178,8 @@
         0%    { right: 66%; opacity: 0; transform: translateY(14px) scale(1.08); }
         15%   { right: 66%; opacity: 1; transform: translateY(0) scale(1.08); animation-timing-function: ease-in; }
         27.5% { right: 66%; opacity: 1; transform: scale(0.94); animation-timing-function: ease-in-out; }
-        85%   { right: 10%; opacity: 1; transform: scale(0.94); animation-timing-function: ease-out; }
-        100%  { right: 6%;  opacity: 0; transform: translateY(-10px) scale(1.05); }
+        85%   { right: 10%; opacity: 1; transform: scale(0.94); animation-timing-function: ease-in; }
+        100%  { right: -120%; opacity: 1; transform: translateY(-10px) scale(1.05); }   /* יוצאת הצידה מהמסך (ב-RTL גלישה ימינה לא יוצרת גלילה) */
     }
     .cat-rail.is-dragging { cursor: grabbing; scroll-behavior: auto; }
     .cat-rail.is-dragging .cat-tile { transition: none; }
