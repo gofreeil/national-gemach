@@ -377,8 +377,12 @@
                 products, uniqueness, address, hours,
             };
             localStorage.setItem(LS_KEY, JSON.stringify(merged));
-        } catch {}
+            draftSaveFailed = false;
+        } catch {
+            draftSaveFailed = true;
+        }
     });
+    let draftSaveFailed = $state(false);
 
     // ===== תצוגה מקדימה =====
     // "אם נכנס בצורה סמטרית" — היתרונות נכנסים לטור שליד התמונה רק כשמשפט
@@ -440,8 +444,25 @@
         if (res.changed) showCompressNotice(before, bodyBytes(p));
     }
 
+    // לחיצה על "שליחה" כשהיא חסומה — מבליטים את ההסבר ומגלגלים אליו
+    /** @type {HTMLElement | null} */
+    let blockedNoteEl = $state(null);
+    let blockedFlash = $state(false);
+    function explainBlocked() {
+        const el = !loggedIn
+            ? (document.querySelector(".login-gate") ?? blockedNoteEl)
+            : document.querySelector(".submit-note");
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        blockedFlash = true;
+        setTimeout(() => (blockedFlash = false), 1600);
+    }
+
     async function submitAd() {
-        if (!canSubmit || submitting) return;
+        if (submitting) return;
+        if (!canSubmit) {
+            explainBlocked();
+            return;
+        }
         submitting = true;
         submitError = "";
         try {
@@ -546,6 +567,29 @@
             </p>
             <button type="button" onclick={goBack} class="l-back">→ חזרה לעריכת הכרטיס</button>
         </header>
+
+        <!-- שמירת הטיוטה נכשלה (בדרך כלל אחסון מלא) — חובה לומר, אחרת המפרסם
+             סומך על "נשמר במכשיר" ומגלה אחרי מעבר דף שהכול נעלם -->
+        {#if draftSaveFailed}
+            <div class="draft-fail" role="alert">
+                ⚠️ <strong>הטיוטה לא נשמרת במכשיר</strong> — האחסון בדפדפן מלא או חסום (למשל גלישה בסתר).
+                אל תסגרו ואל תרעננו את הדף עד שתשלחו, או פנו מקום / נסו דפדפן אחר.
+            </div>
+        {/if}
+
+        <!-- מי שלא מחובר חייב לדעת את זה מהרגע הראשון — לא לגלות בסוף הדף
+             שכפתור השליחה אפור בלי להבין למה (ולחשוב שהאתר תקול) -->
+        {#if !loggedIn && !submitted}
+            <div class="login-banner" role="alert">
+                <p>
+                    🔒 <strong>אינכם מחוברים לחשבון</strong> — ולכן בסוף הדף לא תוכלו לשלוח את הפרסומת.
+                    אפשר להמשיך למלא; מה שמילאתם נשמר במכשיר הזה.
+                </p>
+                <button type="button" class="login-banner-btn" onclick={goLoginToSubmit} disabled={leavingToLogin}>
+                    {leavingToLogin ? "שומר טיוטה..." : "התחברות עכשיו →"}
+                </button>
+            </div>
+        {/if}
 
         {#if !submitted}
 
@@ -916,7 +960,7 @@
                 {/if}
 
                 {#if !loggedIn}
-                    <div class="login-gate">
+                    <div class="login-gate" class:flash={blockedFlash}>
                         <p class="login-gate-title">🔐 שלב אחרון לפני השליחה — התחברות</p>
                         <p class="login-gate-text">
                             הפרסומת נשמרת על החשבון שלכם, וכך תוכלו לראות כמה גולשים ראו והקליקו עליה,
@@ -951,11 +995,17 @@
                         {/if}
                     </p>
                 {/if}
+                {#if !loggedIn}
+                    <p class="submit-note" class:flash={blockedFlash} bind:this={blockedNoteEl}>
+                        🔒 כפתור השליחה לא פעיל כי <strong>אינכם מחוברים לחשבון</strong>. לחצו למעלה על
+                        "שמירת הטיוטה והתחברות" — אחרי ההתחברות תחזרו ישר לכאן, והטיוטה תחכה לכם.
+                    </p>
+                {/if}
                 {#if submitError}
                     <p class="submit-error">{editId ? "השמירה נכשלה" : "השליחה נכשלה"}: {submitError}</p>
                 {/if}
 
-                <button type="button" onclick={submitAd} disabled={!canSubmit || submitting} class="submit-btn" class:enabled={canSubmit && !submitting}>
+                <button type="button" onclick={submitAd} disabled={submitting} aria-disabled={!canSubmit} class="submit-btn" class:enabled={canSubmit && !submitting}>
                     {#if submitting}
                         {editId ? "שומר..." : "שולח..."}
                     {:else if editId}
@@ -1765,6 +1815,57 @@
         border-color: rgba(16, 185, 129, 0.25);
     }
     /* אזהרה חוסמת = אדום. צהוב נקרא כהדגשה, ואנשים פשוט לחצו "שלח" שוב ושוב */
+    .draft-fail {
+        margin: 0.75rem auto;
+        max-width: 640px;
+        border: 1px solid rgba(239, 68, 68, 0.45);
+        background: rgba(239, 68, 68, 0.12);
+        border-radius: 14px;
+        padding: 10px 14px;
+        color: #fca5a5;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-align: right;
+        line-height: 1.5;
+    }
+    .login-banner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        margin: 0 0 1rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.9rem;
+        border: 1px solid rgba(251, 191, 36, 0.5);
+        background: rgba(251, 191, 36, 0.1);
+        color: #fde68a;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    .login-banner p {
+        margin: 0;
+        flex: 1 1 16rem;
+    }
+    .login-banner-btn {
+        border: none;
+        border-radius: 0.6rem;
+        padding: 0.45rem 1rem;
+        background: #f59e0b;
+        color: #111;
+        font-weight: 900;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .submit-note.flash,
+    .login-gate.flash {
+        animation: note-flash 0.4s ease-in-out 3;
+    }
+@keyframes note-flash {
+        50% {
+            background: rgba(251, 191, 36, 0.25);
+        }
+    }
     .submit-note {
         color: #fca5a5;
         font-size: 0.85rem;
