@@ -20,6 +20,8 @@ import {
     resumeAd,
     moveApprovedAd,
     setAdSlot,
+    addAdExtraSlot,
+    removeAdExtraSlot,
     getAd,
     withAdImageUrls,
 } from '$lib/server/adsStore';
@@ -299,6 +301,46 @@ export const actions: Actions = {
                 ? `"${r.title}" עברה למקום ${r.slot}, ו"${r.swappedTitle}" עברה למקום ${r.swappedSlot}`
                 : `"${r.title}" עברה למקום ${r.slot}`,
         };
+    },
+
+    // שכפל פרסומת: אותה פרסומת במקום נוסף בטור (סופר-אדמין)
+    addExtraSlot: async ({ request, locals }) => {
+        const { role } = await getAdminContext(locals);
+        requireSuperAdmin(role);
+        const formData = await request.formData();
+        const id = formData.get('id') as string;
+        if (!id) return fail(400, { error: 'חסר מזהה' });
+        const raw = String(formData.get('slot') || '');
+        let r;
+        try {
+            r = await addAdExtraSlot(id, raw === 'same' ? 'same' : Number(raw));
+        } catch (e) {
+            console.warn('[admin/ads] addExtraSlot failed:', e instanceof Error ? e.message : e);
+            return fail(502, { error: 'השכפול נכשל - נסה שוב בעוד רגע' });
+        }
+        if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
+        if (!r.ok) return fail(409, { error: r.error });
+        return {
+            success: true,
+            message: `"${r.title}" שוכפלה גם ${r.slots.length > 1 ? 'למקומות' : 'למקום'} ${r.slots.join(', ')}`,
+        };
+    },
+
+    removeExtraSlot: async ({ request, locals }) => {
+        const { role } = await getAdminContext(locals);
+        requireSuperAdmin(role);
+        const formData = await request.formData();
+        const id = formData.get('id') as string;
+        if (!id) return fail(400, { error: 'חסר מזהה' });
+        let r;
+        try {
+            r = await removeAdExtraSlot(id, Number(formData.get('slot')));
+        } catch (e) {
+            console.warn('[admin/ads] removeExtraSlot failed:', e instanceof Error ? e.message : e);
+            return fail(502, { error: 'ביטול השכפול נכשל - נסה שוב בעוד רגע' });
+        }
+        if (!r) return fail(404, { error: 'השכפול לא נמצא' });
+        return { success: true, message: `השכפול של "${r.title}" במקום ${r.slot} בוטל` };
     },
 
     // מחיקה לצמיתות שמורה לסופר-אדמין; אדמין שמונה מוריד מהאתר ולא מוחק

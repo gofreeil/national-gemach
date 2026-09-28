@@ -29,6 +29,8 @@ export interface ApprovedAd {
     adStyle?: AdStyle | null;
     /** מספר המקום בלוח (1..12) — נקבע במסך הניהול; חסר בקאש ישן */
     slot?: number;
+    /** שכפל פרסומת: מקומות נוספים בלוח (1..12) שבהם אותה מודעה מוצגת */
+    extraSlots?: number[];
 }
 
 export type AdSlot =
@@ -126,6 +128,13 @@ export const adSlots = derived(
             }
             if (num <= AD_SLOT_COUNT) byNum.set(num, a);
             else overflow.push({ kind: 'real', ad: a });
+        }
+        // שכפל פרסומת: אותה מודעה גם במקומות הנוספים שלה (למשל 2 ו-6 —
+        // נשארת באותו גובה בכל הסבב). מקום ראשי של אחרת גובר.
+        for (const a of $approved) {
+            for (const n of a.extraSlots ?? []) {
+                if (n >= 1 && n <= AD_SLOT_COUNT && !byNum.has(n)) byNum.set(n, a);
+            }
         }
         const cells: AdSlot[] = [];
         for (let n = 1; n <= AD_SLOT_COUNT; n++) {
