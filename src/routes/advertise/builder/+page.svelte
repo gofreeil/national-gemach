@@ -1213,18 +1213,18 @@
                             </label>
                         </div>
                     </div>
-                    <p class="step-help">שם העסק או המסר המרכזי - קצר וקליט (עד 35 תווים).</p>
+                    <p class="step-help">שם העסק או המסר המרכזי - קצר וקליט (עד 40 תווים).</p>
 
                     <input
                         type="text"
                         bind:value={title}
-                        maxlength="35"
+                        maxlength="40"
                         onfocus={() => activeStep === "title" || (activeStep = "title")}
                         onblur={() => title.trim() && commitField("title")}
                         placeholder="למשל: פיצה של אמא"
                         class="text-input"
                     />
-                    <div class="char-count">{title.length}/35</div>
+                    <div class="char-count">{title.length}/40</div>
 
                     <div class="slider-block">
                         <div class="slider-head">
