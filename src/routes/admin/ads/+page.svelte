@@ -56,6 +56,13 @@
             .map(([g, nums]) => ({ letter: GROUP_LETTERS[g - 1] ?? String(g), nums }));
     }
 
+    // טבלת התזמון מסודרת לפי תאריך הפרסום - החדשות בראש
+    let schedulesByDate = $derived(
+        [...data.schedules].sort(
+            (a, b) => (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0)
+        )
+    );
+
     // מי תופסת כל מקום בטור - גם מושהית/פגה שומרת את המקום שלה
     let slotOccupants = $derived(new Map(
         data.schedules
@@ -695,7 +702,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {#each data.schedules as s (s.id)}
+                        {#each schedulesByDate as s (s.id)}
                             {@const stateColor = s.state === 'paused' ? 'bg-blue-500/15 text-blue-300 border-blue-500/40'
                                 : s.state === 'expired' ? 'bg-red-500/15 text-red-300 border-red-500/40'
                                 : s.state === 'ending' ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
