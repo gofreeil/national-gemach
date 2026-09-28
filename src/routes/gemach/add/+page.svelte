@@ -119,15 +119,5 @@
 				ביטול
 			</a>
 		</div>
-		{#if saving}
-			<!-- השמירה לוקחת כמה שניות (תמונות, מיקום במפה) — אומרים מה קורה, כדי שלא ישלחו שוב -->
-			<div class="mt-4 flex items-start gap-3 rounded-xl border border-blue-500/30 bg-blue-900/20 p-4 text-sm text-gray-200" role="status">
-				<span class="mt-0.5 size-5 shrink-0 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></span>
-				<p class="leading-relaxed">
-					<b class="text-blue-300">בודקים שהגמ"ח לא רשום כבר באתר</b>, שומרים את הפרטים ואת המיקום —
-					זה לוקח כמה שניות. אין צורך ללחוץ שוב: המערכת לא תיצור כרטיס כפול.
-				</p>
-			</div>
-		{/if}
 	</form>
 </div>
