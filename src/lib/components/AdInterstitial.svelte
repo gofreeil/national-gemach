@@ -55,7 +55,7 @@
                 {/if}
                 <h3 class="ad-int-title">{ad.title}</h3>
                 <p class="ad-int-desc">{ad.description}</p>
-                <span class="ad-int-cta">{ad.cta} ←</span>
+                {#if ad.cta}<span class="ad-int-cta">{ad.cta} ←</span>{/if}
             </a>
 
             <!-- מחוון טעינה + ספירה-לאחור: הסימן למשתמש שהתוכן נטען וכמה זמן נשאר -->

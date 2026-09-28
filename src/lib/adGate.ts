@@ -50,7 +50,8 @@ function currentInterstitialAds(): Ad[] {
         adId: a.id,   // המזהה האמיתי ב-Strapi — למדידת חשיפות/קליקים
         title: a.title,
         description: a.subtitle,
-        cta: a.cta || 'לפרטים',
+        // כרטיס מוצר מהחנות - בלי כפתור המחיר
+        cta: a.shop ? '' : (a.cta || 'לפרטים'),
         hover: a.hover || undefined,
         href: `/ads/${a.id}`,
         image: a.mainImage,

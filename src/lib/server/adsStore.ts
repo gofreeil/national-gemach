@@ -104,6 +104,8 @@ export interface SubmittedAd {
     supersededBy?: string;
     /** מודעה נוספת שנקנתה בכוונה - האישור לא מוריד את מה שכבר רץ למפרסם */
     standalone?: boolean;
+    /** כרטיס מוצר מחנות החירות (מסונכרן מקהילה בשכונה, extra_fields.shop_product) */
+    shop?: boolean;
 }
 
 /** הצורה הרזה שמוזרמת לתצוגה הציבורית (טור ימני + פרסומת-ביניים) */
@@ -122,6 +124,8 @@ export interface ApprovedAdPublic {
     adStyle: AdStyle | null;
     /** מספר המקום בלוח (1..12) — נקבע במסך הניהול, מחושב תמיד בשרת */
     slot: number;
+    /** כרטיס מוצר מחנות החירות - מוצג בלי רצועת המחיר */
+    shop: boolean;
     /** שכפל פרסומת: מקומות נוספים בלוח (1-based) שבהם אותה מודעה מוצגת */
     extraSlots: number[];
 }
@@ -222,6 +226,7 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         replacesTitle: typeof x.replaces_title === 'string' ? x.replaces_title : undefined,
         supersededBy: typeof x.superseded_by === 'string' ? x.superseded_by : undefined,
         standalone: x.standalone === true,
+        shop: typeof x.shop_product === 'string' && x.shop_product !== '',
     };
 }
 
@@ -645,6 +650,7 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
                 // המספר בלוח (1-based) — הלקוח מציב לפיו את המודעה בדיוק
                 // במקום שנקבע לה, והחורים ביניהם נשארים משבצות פנויות
                 slot: (slots.get(a.id) ?? 0) + 1,
+                shop: a.shop === true,
                 // שכפל פרסומת — אותה מודעה גם במקומות האלה
                 extraSlots: extras.get(a.id) ?? [],
             }));
