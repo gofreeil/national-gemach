@@ -18,6 +18,7 @@
     // רק במיון הזה אפשר להחליף מקום - אחרת החצים היו מזיזים ביחס לתצוגה אחרת.
     let sortOrder = $state<'display' | 'newest' | 'oldest'>('display');
     let canDelete = $derived(data.role === 'super_admin');
+    let isSuperAdmin = $derived(data.role === 'super_admin');
     /** מתי הפרסומת פורסמה לאחרונה בכל אתרי הרשת (חותמת שנשמרת על עותק שסונכרן מהרשת) */
     function syndicatedAt(ad: unknown): string {
         const at = (ad as { landing?: { _syndicatedAt?: unknown } } | null)?.landing?._syndicatedAt;
@@ -27,12 +28,13 @@
     const DURATION_OPTIONS = [7, 14, 30, 60, 90, 180, 365];
     // 16 המקומות הממוספרים בטור הפרסומות - בורר המקום בטבלת התזמון
     const SLOT_NUMBERS = Array.from({ length: AD_SLOT_COUNT }, (_, i) => i + 1);
-    // הטור מציג רביעייה עוקבת אחת בכל רגע (1-4, אחריה 5-8, 9-12, 13-16 - ראו
-    // RightAdBanner). הסימון כאן משקף את זה: צבע לכל רביעייה (= מה שמוצג יחד),
-    // אות לרביעייה ושם-מיקום בתוך הרביעייה (רקע בהיר בלבד - כהה נשבר בהדגשת המערכת)
+    // רביעייה = המקומות שמתחלפים באותה משבצת בטור: א׳ = 1,5,9,13 (העליונה),
+    // ב׳ = 2,6,10,14, ג׳ = 3,7,11,15, ד׳ = 4,8,12,16 (התחתונה). הטור עצמו מציג
+    // 1-4 יחד, אחריהם 5-8 וכו׳ (ראו RightAdBanner) - אחד מכל רביעייה בכל רגע.
+    // צבע ואות לכל רביעייה (רקע בהיר בלבד - כהה נשבר בהדגשת המערכת)
     const GROUP_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
     const POS_NAMES = ['עליונה', 'שנייה', 'שלישית', 'תחתונה'];
-    function slotGroup(n: number): number { return Math.ceil(n / 4); }
+    function slotGroup(n: number): number { return ((n - 1) % 4) + 1; }
     function slotGroupLetter(n: number): string {
         return GROUP_LETTERS[slotGroup(n) - 1] ?? String(slotGroup(n));
     }
@@ -63,12 +65,28 @@
         )
     );
 
-    // מי תופסת כל מקום בטור - גם מושהית/פגה שומרת את המקום שלה
-    let slotOccupants = $derived(new Map(
-        data.schedules
-            .filter((s) => typeof s.slot === 'number')
-            .map((s) => [s.slot as number, { id: s.id, title: s.title }])
-    ));
+    // מי תופסת כל מקום בטור - גם מושהית/פגה שומרת את המקום שלה.
+    // extra = שכפל פרסומת: המקום תפוס בעותק נוסף של פרסומת שמקומה הראשי אחר
+    let slotOccupants = $derived.by(() => {
+        const m = new Map<number, { id: string; title: string; extra?: boolean }>();
+        for (const s of data.schedules) {
+            if (typeof s.slot === 'number') m.set(s.slot, { id: s.id, title: s.title });
+        }
+        for (const s of data.schedules) {
+            for (const n of s.extraSlots ?? []) {
+                if (!m.has(n)) m.set(n, { id: s.id, title: s.title, extra: true });
+            }
+        }
+        return m;
+    });
+    /** שכפל פרסומת - המקומות הפנויים: קודם אלה שבאותו גובה בטור (שם הפרסומת
+     *  נשארת קבועה בסבב), אחריהם כל השאר */
+    function dupOptions(s: { slot?: number }): { same: number[]; rest: number[] } {
+        const free = SLOT_NUMBERS.filter((n) => !slotOccupants.has(n));
+        const pos = typeof s.slot === 'number' ? (s.slot - 1) % 4 : -1;
+        const same = free.filter((n) => (n - 1) % 4 === pos);
+        return { same, rest: free.filter((n) => !same.includes(n)) };
+    }
     function shortTitle(t: string): string {
         return t.length > 22 ? t.slice(0, 21) + '…' : t;
     }
@@ -77,8 +95,8 @@
         const base = `${n} · ${slotPosName(n)}`;
         const occ = slotOccupants.get(n);
         if (!occ) return `${base} — פנוי`;
-        if (occ.id === selfId) return `${base} — המקום הנוכחי`;
-        return `${base} ⚠ ${shortTitle(occ.title)}`;
+        if (occ.id === selfId) return occ.extra ? `${base} — שכפול שלה` : `${base} — המקום הנוכחי`;
+        return `${base} ⚠ ${occ.extra ? 'שכפול: ' : ''}${shortTitle(occ.title)}`;
     }
     // אזהרה חיה מתחת לבורר ברגע שנבחר מקום תפוס (לפי מזהה השורה)
     let slotWarning = $state<Record<string, string>>({});
@@ -87,9 +105,11 @@
         const occ = slotOccupants.get(n);
         slotWarning = {
             ...slotWarning,
-            [self.id]: occ && occ.id !== self.id
-                ? `מקום ${n} תפוס ע"י "${shortTitle(occ.title)}" — לחיצה על "העבר" תחליף ביניהן`
-                : '',
+            [self.id]: !occ || occ.id === self.id
+                ? ''
+                : occ.extra
+                    ? `מקום ${n} הוא שכפול של "${shortTitle(occ.title)}" — לחיצה על "העבר" תבטל את השכפול הזה`
+                    : `מקום ${n} תפוס ע"י "${shortTitle(occ.title)}" — לחיצה על "העבר" תחליף ביניהן`,
         };
     }
     // תצוגה מקדימה של הכרטיס כפי שהוא באמת מוצג בטור הפרסומות באתר:
@@ -118,7 +138,11 @@
         const occ = slotOccupants.get(n);
         if (!occ || occ.id === self.id) return;
         const ok = confirm(
-            `⚠ מקום ${n} כבר תפוס על ידי "${occ.title}".\n\n` +
+            occ.extra
+                ? `⚠ מקום ${n} הוא שכפול של "${occ.title}".\n\n` +
+                  `אישור - "${self.title}" תעבור למקום ${n}, והשכפול של "${occ.title}" שם יבוטל (המקום הראשי שלה לא זז).\n` +
+                  `ביטול - ההעברה מתבטלת.`
+                : `⚠ מקום ${n} כבר תפוס על ידי "${occ.title}".\n\n` +
             `אישור — החלפה: "${self.title}" תעבור למקום ${n}, ו"${occ.title}" תעבור למקום ${self.slot ?? '-'}.\n` +
             `ביטול — ההעברה מתבטלת ושתי הפרסומות נשארות במקומן.`
         );
@@ -408,7 +432,7 @@
                         <div class="flex items-center gap-2 mb-3 pb-3 border-b border-white/10 flex-wrap">
                             <span class="inline-flex items-center justify-center min-w-7 h-7 px-1.5 rounded-lg border border-black/20 font-black text-sm whitespace-nowrap"
                                   style="background:{slotOptionBg(slotOf(ad, adIndex + 1))};color:#111"
-                                  title="רביעייה {slotGroupLetter(slotOf(ad, adIndex + 1))}׳ · הכרטיס ה{slotPosName(slotOf(ad, adIndex + 1))} בה">
+                                  title="רביעייה {slotGroupLetter(slotOf(ad, adIndex + 1))}׳ · המשבצת ה{slotPosName(slotOf(ad, adIndex + 1))} בטור">
                                 {slotOf(ad, adIndex + 1)} · {slotGroupLetter(slotOf(ad, adIndex + 1))}׳
                             </span>
                             <span class="text-[11px] md:text-xs text-gray-400 font-bold">
@@ -673,15 +697,14 @@
             </div>
         </div>
 
-        <!-- מקרא הרביעיות: הטור מציג רביעייה עוקבת אחת בכל רגע (כמו ב-RightAdBanner),
-             וכל רביעייה צבועה בצבע שלה. בתוך הרביעייה המספר הנמוך עליון והגבוה תחתון -->
+        <!-- מקרא הרביעיות: רביעייה = המקומות שמתחלפים באותה משבצת בטור (1,5,9,13 וכו׳),
+             וכל רביעייה צבועה בצבע שלה. בכל רגע הטור מציג מקום אחד מכל רביעייה -->
         <div class="flex items-center gap-2 mb-3 flex-wrap text-[10px] md:text-xs font-bold text-gray-300">
-            <span>הטור מציג רביעייה אחת בכל רגע, לפי הסדר:</span>
-            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#dbeafe;color:#111">א׳ · 1-4</span>
-            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#dcfce7;color:#111">ב׳ · 5-8</span>
-            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#fef9c3;color:#111">ג׳ · 9-12</span>
-            <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:#f3e8ff;color:#111">ד׳ · 13-16</span>
-            <span class="text-gray-500">בתוך כל רביעייה: המספר הנמוך למעלה, הגבוה למטה</span>
+            <span>כל רביעייה מתחלפת באותה משבצת בטור:</span>
+            {#each groupSlotOptions(SLOT_NUMBERS) as grp (grp.letter)}
+                <span class="px-2 py-0.5 rounded-full border border-black/20" style="background:{slotOptionBg(grp.nums[0])};color:#111">{grp.letter}׳ · {grp.nums.join(", ")}</span>
+            {/each}
+            <span class="text-gray-500">א׳ למעלה, ד׳ למטה; בכל רגע מוצג מקום אחד מכל רביעייה</span>
         </div>
 
         {#if data.schedules.length === 0}
@@ -729,7 +752,7 @@
                                         <div class="flex items-center gap-1">
                                             <span class="inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-lg border border-black/20 font-black text-xs whitespace-nowrap"
                                                   style="background:{typeof s.slot === 'number' ? slotOptionBg(s.slot) : '#fff'};color:#111"
-                                                  title={typeof s.slot === 'number' ? `רביעייה ${slotGroupLetter(s.slot)}׳ · הכרטיס ה${slotPosName(s.slot)} בה` : ''}>
+                                                  title={typeof s.slot === 'number' ? `רביעייה ${slotGroupLetter(s.slot)}׳ · המשבצת ה${slotPosName(s.slot)} בטור` : ''}>
                                                 {typeof s.slot === 'number' ? `${s.slot} · ${slotGroupLetter(s.slot)}׳` : '-'}
                                             </span>
                                             <select name="slot"
@@ -738,7 +761,7 @@
                                                 <!-- כל רביעייה תחת כותרת משלה - הקשר מספר↔רביעייה קריא במילים,
                                                      לא רק בצבע; מקום תפוס שומר את צבע הרביעייה ומסומן באדום מודגש -->
                                                 {#each groupSlotOptions(slotOptions) as grp (grp.letter)}
-                                                    <optgroup label="— רביעייה {grp.letter}׳ (מוצגות יחד) —">
+                                                    <optgroup label="— רביעייה {grp.letter}׳ · המשבצת ה{slotPosName(grp.nums[0])} בטור —">
                                                         {#each grp.nums as n (n)}
                                                             {@const occ = slotOccupants.get(n)}
                                                             {@const takenByOther = !!occ && occ.id !== s.id}
@@ -763,6 +786,53 @@
                                             </span>
                                         {/if}
                                     </form>
+                                    <!-- שכפל פרסומת (סופר-אדמין): אותה פרסומת גם במקומות נוספים - למשל
+                                         2 ו-6, כך שהיא נשארת באותו גובה ולא מתחלפת בסבב.
+                                         תג ⧉ = שכפול קיים; לחיצה עליו מבטלת אותו -->
+                                    {#if isSuperAdmin}
+                                        {@const dup = dupOptions(s)}
+                                        <div class="mt-1.5 flex max-w-[190px] flex-wrap items-center gap-1">
+                                            {#each s.extraSlots ?? [] as n (n)}
+                                                <form method="POST" action="?/removeExtraSlot" use:enhance>
+                                                    <input type="hidden" name="id" value={s.id} />
+                                                    <input type="hidden" name="slot" value={n} />
+                                                    <button type="submit"
+                                                            class="inline-flex h-6 items-center gap-1 rounded-lg border border-black/20 px-1.5 text-[11px] font-black whitespace-nowrap hover:opacity-80"
+                                                            style="background:{slotOptionBg(n)};color:#111"
+                                                            title="שכפול במקום {n} (המשבצת ה{slotPosName(n)} בטור) - לחיצה מבטלת את השכפול">
+                                                        ⧉ {n} · {slotGroupLetter(n)}׳ <span class="text-red-700">✕</span>
+                                                    </button>
+                                                </form>
+                                            {/each}
+                                            {#if dup.same.length + dup.rest.length > 0}
+                                                <form method="POST" action="?/addExtraSlot" use:enhance>
+                                                    <input type="hidden" name="id" value={s.id} />
+                                                    <select name="slot" aria-label="שכפל פרסומת"
+                                                            onchange={(e) => e.currentTarget.form?.requestSubmit()}
+                                                            class="rounded-lg border border-sky-500/40 bg-sky-500/15 px-1.5 py-1 text-[11px] font-black text-sky-200 focus:border-sky-400/60 focus:outline-none">
+                                                        <option value="" selected disabled>⧉ שכפל פרסומת</option>
+                                                        {#if dup.same.length > 1}
+                                                            <option value="same" style="background:#fff;color:#111;font-weight:700">
+                                                                ★ קבועה בכל הסבב ({dup.same.join(', ')})
+                                                            </option>
+                                                        {/if}
+                                                        {#if dup.same.length > 0}
+                                                            <optgroup label="★ אותו גובה בטור">
+                                                                {#each dup.same as n (n)}
+                                                                    <option value={n} style="background:{slotOptionBg(n)};color:#111">{n} · {slotPosName(n)}</option>
+                                                                {/each}
+                                                            </optgroup>
+                                                        {/if}
+                                                        <optgroup label="מקומות פנויים אחרים">
+                                                            {#each dup.rest as n (n)}
+                                                                <option value={n} style="background:{slotOptionBg(n)};color:#111">{n} · {slotPosName(n)}</option>
+                                                            {/each}
+                                                        </optgroup>
+                                                    </select>
+                                                </form>
+                                            {/if}
+                                        </div>
+                                    {/if}
                                 </td>
                                 <!-- פרסומת + מפרסם + סטטוס בתא אחד, מוערמים.
                                      ריחוף על הכותרת = תצוגה מקדימה צפה; הקשה = מודאל עם הכרטיס עצמו -->
