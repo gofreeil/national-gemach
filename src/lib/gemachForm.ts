@@ -159,6 +159,9 @@ export function parseGemachForm(
 	if (!input.name)          error = 'יש להזין שם לגמ"ח';
 	else if (!input.category) error = 'יש לבחור נושא אחד לפחות';
 	else if (!input.city)     error = 'יש להזין עיר';
+	// התיאור הוא התקציר בכרטיס שברשימות — חובה לבעלים (אדמין פטור, ראה GemachFormFields)
+	else if (!opts.admin && !input.description)
+		error = 'יש להזין תיאור לגמ"ח — הוא מוצג בכרטיס בתצוגה המקדימה';
 	else if (input.image && !isSafeImageSrc(input.image))
 		error = 'כתובת התמונה אינה תקינה — נדרשת כתובת https:// או data:image';
 	else if (input.link && !isSafeHttpUrl(input.link))

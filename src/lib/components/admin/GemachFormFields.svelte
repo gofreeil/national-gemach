@@ -678,8 +678,12 @@
 
     <!-- תיאור -->
     <div class="md:col-span-2">
-        <label for="f-description" class="block text-sm font-bold text-gray-300 mb-1">תיאור</label>
-        <textarea id="f-description" name="description" rows="3"
+        <!-- חובה לבעלים: התיאור הוא התקציר בכרטיס הגמ"ח ברשימות. אדמין פטור —
+             כדי שיוכל לתקן שדות אחרים ברשומות ישנות שיובאו בלי תיאור. -->
+        <label for="f-description" class="block text-sm font-bold text-gray-300 mb-1">
+            תיאור {#if !admin}<span class="text-red-400">*</span>{/if}
+        </label>
+        <textarea id="f-description" name="description" rows="3" required={!admin}
             class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none resize-y"
             placeholder="מה הגמ&quot;ח מציע, תנאי השאלה, וכו'">{gemach?.description ?? ''}</textarea>
     </div>

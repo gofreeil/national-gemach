@@ -64,8 +64,9 @@
                 {#if pinned}<span class="text-sm text-amber-400" aria-hidden="true">📌</span> {/if}{gemach.name}
             </svelte:element>
 
-            {#if gemach.description}
-                <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-300">{gemach.description}</p>
+            <!-- בעלים שכתב רק בשדה ההערות — ההערות משמשות כתקציר -->
+            {#if gemach.description || gemach.notes}
+                <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-300">{gemach.description || gemach.notes}</p>
             {/if}
 
             <!-- הקטגוריה יושבת בתחתית הבאנר, מוצמדת למטה -->

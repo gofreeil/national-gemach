@@ -8,7 +8,8 @@ import type { Gemach, DonateOption, GeoMeta, GeoPrecision } from '$lib/gemachDat
 import type { CreateGemachInput } from '$lib/gemachForm';
 import { categories, parseDonateOptions } from '$lib/gemachData';
 import { parseImageFitMap } from '$lib/imageFit';
-import { resolveGemachCoords, hasValidCoords, inServiceArea } from './geocode';
+import { resolveGemachCoords, hasValidCoords, inServiceArea, coordsFromMapLink } from './geocode';
+import { firstMapLink } from '$lib/mapLink';
 
 export interface StrapiItem {
     id: number;
@@ -485,6 +486,18 @@ function coordsInput(g: {
     };
 }
 
+/** קישור המפה שהבעלים הדביק — בהוראות ההגעה, ואם אין שם, בשדה הקישור */
+function itemMapLink(g: { arrivalNotes?: string | null; link?: string | null }): string | null {
+    return firstMapLink(g.arrivalNotes) ?? firstMapLink(g.link);
+}
+
+/** פין מקישור המפה (ראה coordsFromMapLink). לא לגמ"ח עם כתובת מוסתרת —
+ *  פין מדויק על המפה היה חושף אותה. */
+async function mapLinkPin(input: CreateGemachInput): Promise<{ lat: number; lng: number } | null> {
+    const link = input.hideAddress ? null : itemMapLink(input);
+    return link ? coordsFromMapLink(link) : null;
+}
+
 /** בונה את גוף ה-extra_fields מקלט (משותף ליצירה/עדכון) */
 function buildExtra(input: CreateGemachInput): Record<string, unknown> {
     const extra: Record<string, unknown> = { gmach_type: input.category };
@@ -535,6 +548,13 @@ export async function createGemach(
     let lat: number | null = hasValidCoords(input.lat, input.lng) ? (input.lat as number) : null;
     let lng: number | null = hasValidCoords(input.lat, input.lng) ? (input.lng as number) : null;
     let geo: GeoMeta | undefined = lat !== null ? { p: 'pin', at: new Date().toISOString() } : undefined;
+    if ((opts.geocode ?? true) && lat === null) {
+        const p = await mapLinkPin(input);
+        if (p) {
+            ({ lat, lng } = p);
+            geo = { p: 'pin', at: new Date().toISOString(), src: 'owner' };
+        }
+    }
     if ((opts.geocode ?? true) && (lat === null || lng === null)) {
         const c = await resolveGemachCoords(coordsInput(input));
         lat = c.lat;
@@ -734,6 +754,20 @@ export async function updateGemach(
         lat = c.lat;
         lng = c.lng;
         if (c.precision) {
+    // קישור מפה בהוראות ההגעה גובר על גיאוקודינג הכתובת. פין שנדקר ידנית
+    // נשמר כל עוד הקישור לא הוחלף; פין ישן/שגוי נדרס כבר בשמירה הבאה.
+    if ((opts.geocode ?? true) && lat === null) {
+        const prev = readGeo(existingExtra.geo);
+        const manualPin = prev?.p === 'pin' && (prev.src === 'owner' || prev.src === 'admin');
+        const sameLink = itemMapLink(input) === itemMapLink({
+            arrivalNotes: toStr(existingExtra.arrival_notes), link: toStr(existingExtra.link),
+        });
+        const p = manualPin && sameLink ? null : await mapLinkPin(input);
+        if (p) {
+            ({ lat, lng } = p);
+            mergedExtra.geo = { p: 'pin', at: new Date().toISOString(), src: 'owner' } satisfies GeoMeta;
+        }
+    }
             // בקשת הדיוק לבעלים נשלחת פעם אחת בלבד — גם אחרי שינוי כתובת
             const prev = readGeo(existingExtra.geo);
             mergedExtra.geo = { p: c.precision, at: new Date().toISOString(), src: 'auto', ...(prev?.asked ? { asked: prev.asked } : {}) } satisfies GeoMeta;

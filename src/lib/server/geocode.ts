@@ -18,6 +18,7 @@
 // ============================================================
 
 import type { GeoPrecision } from '$lib/gemachData';
+import { isMapLink } from '$lib/mapLink';
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 const PHOTON = 'https://photon.komoot.io/api/';
@@ -193,6 +194,59 @@ export async function geocodeAddress(query: string): Promise<{ lat: number; lng:
     if (!q) return null;
     const hit = await attempt({ q }, q, () => true, 'address');
     return hit ? { lat: hit.lat, lng: hit.lng } : null;
+}
+
+/** קואורדינטות מתוך כתובת מפה מלאה. null כשאין בה יעד חד-משמעי. */
+function parseMapCoords(url: string): { lat: number; lng: number } | null {
+    let u = url;
+    try { u = decodeURIComponent(url); } catch { /* נשארים עם המקור */ }
+    const pick = (a: string, b: string) => {
+        const lat = Number(a);
+        const lng = Number(b);
+        return Number.isFinite(lat) && Number.isFinite(lng) && inServiceArea(lat, lng) ? { lat, lng } : null;
+    };
+    // המקום עצמו (!3d<lat>!4d<lng>). בקישור "מסלול" (/dir/) הנקודה הראשונה
+    // בנתיב היא המיקום של מי שיצר את הקישור — ולכן היא אף פעם לא נלקחת.
+    const place = [...u.matchAll(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/g)].pop();
+    if (place) return pick(place[1], place[2]);
+    const q = u.match(/[?&](?:q|query|ll|destination|daddr)=(?:loc:)?(-?\d+\.\d+),\s*(-?\d+\.\d+)/i)
+        ?? u.match(/[?&]to=ll\.(-?\d+\.\d+),(-?\d+\.\d+)/i);   // waze
+    if (q) return pick(q[1], q[2]);
+    const at = /\/dir\//.test(u) ? null : u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    return at ? pick(at[1], at[2]) : null;
+}
+
+/** יעד ההפניה של קישור מקוצר (maps.app.goo.gl) — בלי לטעון את הדף עצמו */
+async function redirectTarget(url: string): Promise<string | null> {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    try {
+        const res = await fetch(url, { redirect: 'manual', headers: { 'User-Agent': UA }, signal: ctrl.signal });
+        const loc = res.headers.get('location');
+        return loc ? new URL(loc, url).toString() : null;
+    } catch {
+        return null;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
+ * פין מקישור Google Maps / Waze שהבעלים הדביק (בד"כ ב"הוראות הגעה").
+ * קישור מקוצר נפתח דרך ההפניות שלו — ורק לשרתי מפות מוכרים, כדי שהשרת לא
+ * ישמש לשליפת כתובות שרירותיות. null כשאין בקישור נקודה בישראל/יו"ש.
+ */
+export async function coordsFromMapLink(url: string): Promise<{ lat: number; lng: number } | null> {
+    let cur = url;
+    for (let hop = 0; hop < 4; hop++) {
+        const hit = parseMapCoords(cur);
+        if (hit) return hit;
+        if (!isMapLink(cur)) return null;
+        const next = await redirectTarget(cur);
+        if (!next || next === cur) return null;
+        cur = next;
+    }
+    return null;
 }
 
 export interface ResolvedCoords {

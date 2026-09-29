@@ -14,6 +14,7 @@
     import { categoryKeys, donateKindDef } from '$lib/gemachData';
     import { isExtremeAspect, displayedImageFit, fitStyle } from '$lib/imageFit';
     import { enhance } from '$app/forms';
+    import { linkParts } from '$lib/mapLink';
     import type { PageData, ActionData } from './$types';
 
     let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -115,6 +116,9 @@
     );
 
     const canonical = $derived(`${SITE_URL}/gemach/${gemach.id}`);
+    /** "על הגמ"ח": התיאור, ואם הבעלים כתב רק בשדה ההערות — ההערות במקומו */
+    const aboutText = $derived(gemach.description || gemach.notes || '');
+
 
     /** המקום להצגה בכותרות ובתיאורים. 18 מהגמ"חים במאגר בלי עיר, וברשומות
      *  אחדות העיר ריקה והשכונה מחזיקה את שם העיר — ולכן חיבור ישיר של
@@ -127,8 +131,8 @@
     /** תיאור למנועי חיפוש: התיאור שהגמ"ח כתב, ואם אין — משפט שנבנה מהנושא,
      *  העיר והכתובת, כדי שלא ייווצרו תיאורים כפולים בין דפי גמ"ח. */
     const metaDescription = $derived(
-        (gemach.description
-            ? `${gemach.description} · גמ"ח ${categoryLabel}${inPlace}`
+        (aboutText
+            ? `${aboutText} · גמ"ח ${categoryLabel}${inPlace}`
             : `גמ"ח ${categoryLabel}${inPlace}${gemach.address ? `, ${gemach.address}` : ''} — פרטי הגמ"ח, שעות פעילות וטלפון במאגר הגמ"חים הארצי.`
         ).slice(0, 300)
     );
@@ -144,7 +148,7 @@
             '@id': `${canonical}#gemach`,
             name: gemach.name,
             alternateName: `גמ"ח ${categoryLabel}${inPlace}`,
-            description: gemach.description || `גמ"ח ${categoryLabel}${inPlace}`,
+            description: aboutText || `גמ"ח ${categoryLabel}${inPlace}`,
             url: canonical,
             telephone: callPhone || undefined,
             image: gemach.image || SITE_LOGO,
@@ -399,10 +403,10 @@
                     </div>
                 </div>
 
-                {#if gemach.description}
-                    <p class="text-sm md:text-[15px] text-gray-200 leading-relaxed mt-3 whitespace-pre-line">{gemach.description}</p>
+                {#if aboutText}
+                    <p class="text-sm md:text-[15px] text-gray-200 leading-relaxed mt-3 whitespace-pre-line">{aboutText}</p>
                 {/if}
-                {#if gemach.notes}
+                {#if gemach.notes && gemach.description}
                     <p class="text-sm text-gray-400 mt-2">{gemach.notes}</p>
                 {/if}
 
@@ -603,7 +607,17 @@
                         <div class="flex gap-1.5"><dt class="text-gray-400 flex-shrink-0">קומה ודירה:</dt><dd class="text-white font-bold">{floorLine}</dd></div>
                     {/if}
                     {#if gemach.arrivalNotes}
-                        <div class="flex gap-1.5 sm:col-span-2"><dt class="text-gray-400 flex-shrink-0">הוראות הגעה:</dt><dd class="text-white font-bold">{gemach.arrivalNotes}</dd></div>
+                        <div class="flex gap-1.5 sm:col-span-2">
+                            <dt class="text-gray-400 flex-shrink-0">הוראות הגעה:</dt>
+                            <dd class="min-w-0 break-words text-white font-bold">
+                                {#each linkParts(gemach.arrivalNotes) as part, i (i)}
+                                    {#if part.href}
+                                        <a href={part.href} target="_blank" rel="noopener noreferrer"
+                                            class="text-blue-300 underline decoration-blue-400/60 hover:text-blue-200 break-all">{part.text}</a>
+                                    {:else}{part.text}{/if}
+                                {/each}
+                            </dd>
+                        </div>
                     {/if}
                 </dl>
 
