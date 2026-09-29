@@ -1171,7 +1171,7 @@
         mask-image: var(--cat-mask);
     }
     .cat-rail::-webkit-scrollbar { display: none; }
-    /* אצבע מדפדפת: נכנסת ולוחצת בצד ימין (0–35% = FINGER_PRESS_MS), סוויפ קצר
+    /* אצבע מדפדפת: נכנסת מצד ימין ולוחצת (0–35% = FINGER_PRESS_MS), סוויפ קצר
        מימין לשמאל עם המסילה (עד 70% = PRESS+SWIPE), ואז מתרוממת וחוזרת החוצה מצד ימין —
        העטיפה חותכת אופקית (overflow-x: clip) כדי שלא תיווצר גלילה. 100% = FINGER_TOTAL_MS */
     .finger-demo {
@@ -1193,7 +1193,7 @@
     }
     @media (min-width: 768px) { .finger-demo { width: 11rem; } }
     @keyframes finger-cross {
-        0%   { right: 4%;   opacity: 0; transform: translateY(14px) scale(1.08); }
+        0%   { right: -13rem; opacity: 1; transform: translateY(-10px) scale(1.08); animation-timing-function: ease-out; }
         20%  { right: 4%;   opacity: 1; transform: translateY(0) scale(1.08); animation-timing-function: ease-in; }
         35%  { right: 4%;   opacity: 1; transform: scale(0.94); animation-timing-function: ease-in; }
         70%  { right: 34%;  opacity: 1; transform: scale(0.94); animation-timing-function: ease-in; }
