@@ -239,6 +239,7 @@
     const FINGER_TOTAL_MS = 1300;  // כולל המשך התנועה ויציאה מהמסך
     const SWIPE_SHARE = 0.3;       // איזה חלק מהדרך עוברים בזמן הסוויפ עצמו
     const GLIDE_MS = 1500;         // המומנטום עד ההתחלה — מהירות תחילית תואמת לסוף הסוויפ
+    const FINGER_DELAY_MS = 2000;  // השהיה מרגע שהמסילה במסך — שהמבקר יספיק להתמצא קודם
     let fingerDemo = $state(false);
     $effect(() => {
         const el = railEl;
@@ -284,7 +285,7 @@
         const io = new IntersectionObserver((entries) => {
             if (!entries.some((en) => en.isIntersecting)) return;
             io.disconnect();
-            t = window.setTimeout(run, 250);
+            t = window.setTimeout(run, FINGER_DELAY_MS);
         }, { threshold: 0.6 });
         io.observe(el);
         el.addEventListener('pointerdown', stop, { once: true });
@@ -625,8 +626,8 @@
 <JsonLd data={schemas} />
 
 <!-- Hero Section -->
-<section class="text-center pt-6 md:pt-8 px-4 {filtering ? 'pb-3' : 'pb-6 md:pb-8'}">
-    <div class="flex items-center justify-center gap-4 md:gap-6 mb-5">
+<section class="text-center pt-1 md:pt-8 px-4 {filtering ? 'pb-2 md:pb-3' : 'pb-3 md:pb-8'}">
+    <div class="flex items-center justify-center gap-4 md:gap-6 mb-3 md:mb-5">
         <div class="h-40 w-40 md:h-52 md:w-52 flex-shrink-0 rounded-2xl overflow-hidden bg-white shadow-xl border-[3px] border-[#D4AF37] shadow-[0_0_0_1px_rgba(212,175,55,0.3),0_25px_50px_-12px_rgba(0,0,0,0.25)]">
             <!-- זהו רכיב ה-LCP של דף הבית — גרסת webp קלה (33KB במקום 709KB)
                  עם fetchpriority כדי שהדפדפן יוריד אותה ראשונה -->
@@ -644,18 +645,18 @@
 
         <!-- סטטיסטיקות חיות — נגזרות מהנתונים בפועל (לא מוקאפ), צמודות ללוגו.
              באנר כהה אחד, שני הנתונים זה מתחת לזה, מופרדים בקו קצר שלא נוגע בשוליים. -->
-        <div class="rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-3 min-w-[112px]">
+        <div class="h-40 md:h-52 flex flex-col justify-evenly rounded-2xl bg-[#1c2f5a] border border-[#3b5794] shadow-md px-4 py-1.5 min-w-[112px]">
             <div class="text-center">
                 <div class="text-xl md:text-2xl font-black text-blue-300 leading-tight">{gemachim.length}</div>
                 <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">גמחים רשומים</div>
             </div>
-            <div class="mx-auto my-2 h-px w-3/5 bg-[#3b5794]" aria-hidden="true"></div>
+            <div class="mx-auto h-px w-3/5 shrink-0 bg-[#3b5794]" aria-hidden="true"></div>
             <div class="text-center">
                 <div class="text-xl md:text-2xl font-black text-purple-300 leading-tight">{cityCount}</div>
                 <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">ערים</div>
             </div>
             {#if data.visitors}
-                <div class="mx-auto my-2 h-px w-3/5 bg-[#3b5794]" aria-hidden="true"></div>
+                <div class="mx-auto h-px w-3/5 shrink-0 bg-[#3b5794]" aria-hidden="true"></div>
                 <div class="text-center">
                     <div class="text-xl md:text-2xl font-black text-green-300 leading-tight">{new Intl.NumberFormat('he-IL').format(data.visitors.count)}</div>
                     <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">{data.visitors.label}</div>
@@ -694,7 +695,7 @@
         </div>
 
         <!-- שני מסננים שקטים: קטגוריה + עיר — חולקים שורה, מתעוררים במגע; זהב = מסנן פעיל -->
-        <div class="mt-3 md:mt-0 md:flex-1 md:min-w-0 flex items-stretch gap-2.5">
+        <div class="mt-2 md:mt-0 md:flex-1 md:min-w-0 flex items-stretch gap-2.5">
             <!-- קטגוריה -->
             <div class="filter group relative flex-1 min-w-0" class:is-active={selectedCategory}>
                 <span class="filter-icon pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 transition-colors" aria-hidden="true">
@@ -770,10 +771,10 @@
      נושא בלי לחזור אחורה. בנייד היא נעלמת: שם המסך צר, והתוצאות הן העיקר. -->
 <section
     bind:this={railSectionEl}
-    class="px-2 md:px-4 {filtering ? 'hidden md:block pb-3' : 'pb-8'}"
+    class="px-2 md:px-4 {filtering ? 'hidden md:block pb-3' : 'pb-2 md:pb-8'}"
     aria-labelledby="cat-rail-title"
 >
-      <div class="mx-auto max-w-4xl {filtering ? 'mb-0' : 'mb-10'}">
+      <div class="mx-auto max-w-4xl {filtering ? 'mb-0' : 'mb-3 md:mb-10'}">
 
         <!-- כותרת לקוראי מסך בלבד (עוגן ל-aria-labelledby) — ויזואלית רק מרחיקה את התוצאות -->
         <h2 id="cat-rail-title" class="sr-only">סינון מהיר</h2>
@@ -928,7 +929,7 @@
 <!-- Results / Categories -->
 {#if filtering}
     <!-- Search Results -->
-    <section bind:this={resultsEl} class="px-2 md:px-4 pb-8" aria-label="תוצאות חיפוש">
+    <section bind:this={resultsEl} class="px-2 md:px-4 pb-4 md:pb-8" aria-label="תוצאות חיפוש">
         <!-- הקפיצה שהעין תופסת היא החלפת התוכן בפריים אחד, לא הגלילה עצמה:
              כשהמסילה כבר צמודה לראש המסך אין כמעט מרחק לגלול, וכל מה שרואים
              הוא סוויץ' חד. לכן התוצאות נכנסות בעלייה+עמעום איטיים. העטיפה היא
@@ -1000,7 +1001,7 @@
                 </div>
             </div>
         {:else}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <!-- פינת האבדות ראשונה ברשת התוצאות של "מיזמים חשובים לציבור" —
                      משבצת רגילה בגודל כרטיס, לא באנר-על מעל הרשימה -->
                 {#if selectedCategory === 'initiatives' && !hasAvedotGemach}
@@ -1015,11 +1016,11 @@
     </section>
 
 {:else}
-    <section class="px-2 md:px-4 pb-8">
+    <section class="px-2 md:px-4 pb-4 md:pb-8">
         <!-- (1) נעוצים — הרשימה שהאדמין עורך ב-/admin/pinned (📌) -->
         {#if pinnedGemachim.length > 0}
             {@render sectionHead('📌', 'גמ"חים נעוצים', 'מה שכדאי להכיר קודם')}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-10">
                 {#each pinnedGemachim as gemach (gemach.id)}
                     <GemachCard {gemach} {categories} pinned />
                 {/each}
@@ -1028,7 +1029,7 @@
 
         <!-- (2) החדשים שנוספו -->
         {@render sectionHead('✨', 'גמ"חים חדשים', 'הגמ"חים האחרונים שנוספו למאגר')}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             {#each newestGemachim as gemach (gemach.id)}
                 <GemachCard {gemach} {categories} />
             {/each}
@@ -1038,7 +1039,7 @@
 
 <!-- (3) כל השאר — מעבר לרשימה המעומדת. אותה כותרת בדיוק כמו שתי הקודמות,
      ומתחתיה קישור אחד רזה במקום קופסת-ענק. -->
-<section class="px-2 md:px-4 pb-6 pt-2">
+<section class="px-2 md:px-4 pb-4 md:pb-6 md:pt-2">
     {@render sectionHead('🗂️', 'כל שאר הגמ"חים', `עיון בכל ${gemachim.length} הגמ"חים במאגר, לפי נושא או לפי עיר`)}
     <div class="flex justify-center">
         <a
@@ -1053,7 +1054,7 @@
 <!-- באנר הוספת גמ"ח — שורה אחת בזהב, בלי כותרת ובלי אייקון-ענק.
      בכוונה בפלטה אחרת מכל שאר האתר (זהב על כמעט-שקוף במקום כחול-סגול),
      כדי שייקרא כפנייה נפרדת ולא כעוד כרטיס בדף. -->
-<section class="px-4 pb-14">
+<section class="px-4 pb-8 md:pb-14">
     <div class="add-banner mx-auto flex max-w-3xl flex-col items-center gap-3 rounded-2xl px-5 py-4 text-center sm:flex-row sm:justify-between sm:text-right">
         <p class="text-sm font-bold text-amber-50 sm:text-base">
             מפעילים גמ"ח?
@@ -1073,7 +1074,7 @@
        שלושתן חולקות אייקון, טיפוגרפיה, תת-כותרת וחוט זהב — אותו מוטיב זהב
        של שדה החיפוש ושל תגי הכמות במסילה — ולכן נקראות כרצף אחד.
        הן יושבות על הרקע הוורוד, ולכן לבן + צל דק (אסור אפור על ורוד). */
-    .sec-head { margin-bottom: 1.25rem; text-align: center; }
+    .sec-head { margin-bottom: 0.75rem; text-align: center; }
     .sec-title {
         display: inline-flex;
         align-items: center;
@@ -1102,6 +1103,7 @@
         background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.9), transparent);
     }
     @media (min-width: 768px) {
+        .sec-head { margin-bottom: 1.25rem; }
         .sec-title { font-size: 1.75rem; }
         .sec-ico { font-size: 1.35rem; }
     }
@@ -1138,7 +1140,7 @@
         gap: 0.75rem;                   /* חייב להתאים ל-GAP_PX בסקריפט */
         list-style: none;
         margin: 0;
-        padding: 0.75rem 0.5rem 1rem;   /* טבעת הפוקוס הגלובלית היא 3px + 3px offset — 4px לא הספיקו */
+        padding: 0.5rem 0.5rem 0.75rem; /* טבעת הפוקוס הגלובלית היא 3px + 3px offset — 4px לא הספיקו */
         overflow-x: auto;
         overflow-y: hidden;
         overscroll-behavior-x: contain; /* בלי back-swipe של הדפדפן באייפון */
@@ -1176,7 +1178,7 @@
         position: absolute;
         top: 42%;
         right: 0;
-        width: 11rem;
+        width: 6.5rem;                  /* בנייד — 11rem גלשה מחוץ למסך */
         pointer-events: none;
         z-index: 30;
         filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
@@ -1189,6 +1191,7 @@
         transform: rotate(-18deg);
         transform-origin: 60% 30%;
     }
+    @media (min-width: 768px) { .finger-demo { width: 11rem; } }
     @keyframes finger-cross {
         0%   { right: 4%;   opacity: 0; transform: translateY(14px) scale(1.08); }
         20%  { right: 4%;   opacity: 1; transform: translateY(0) scale(1.08); animation-timing-function: ease-in; }
