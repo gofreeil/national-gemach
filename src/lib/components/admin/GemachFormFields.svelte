@@ -17,7 +17,7 @@
         gemach?: (Partial<Gemach> & { images?: string[] }) | null;
         categories: CategoryDef[];
         cities?: string[];
-        // admin=false → מסתיר את פקדי ההצמדה/סידור (עריכת בעלים)
+        // admin=false → טופס בעלים (בלי פקדי אדמין כמו הפעלת לוגו על המפה)
         admin?: boolean;
     } = $props();
 
@@ -705,23 +705,6 @@
         <span class="block text-sm font-bold text-gray-300 mb-1">תגים</span>
         <TagEditor bind:tags name="tags" />
     </div>
-
-    <!-- סידור והצמדה — פקדי אדמין בלבד (הבעלים לא רואה ולא משנה) -->
-    {#if admin}
-        <div>
-            <label for="f-order" class="block text-sm font-bold text-gray-300 mb-1">מיקום בסידור (קטן = מוקדם)</label>
-            <input id="f-order" name="order" type="number" step="1" defaultValue={gemach?.order ?? ''}
-                class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-right"
-                placeholder="ריק = לפי סדר ההוספה" />
-        </div>
-        <div class="flex items-end">
-            <label class="flex items-center gap-2 cursor-pointer select-none rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 w-full">
-                <input name="featured" type="checkbox" value="true" checked={gemach?.featured ?? false}
-                    class="h-5 w-5 rounded accent-amber-500" />
-                <span class="text-sm font-bold text-amber-200">📌 נעץ בראש דף הבית</span>
-            </label>
-        </div>
-    {/if}
 </div>
 
 <style>
