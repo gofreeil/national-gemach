@@ -9,6 +9,11 @@
 	let loading = $state<'google' | 'facebook' | 'credentials' | 'sso' | null>(null);
 	let err = $state<string | null>(null);
 
+	// האימייל שהוקלד נשלח לדף השחזור - לא צריך להקליד אותו פעמיים.
+	const forgotHref = $derived(
+		email.includes('@') ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'
+	);
+
 	// מוסיף welcome=back ליעד — מפעיל את מסך "ברוכים השבים" אחרי ההתחברות
 	function withWelcome(dest: string): string {
 		try {
@@ -99,6 +104,12 @@
 				{err ?? errorText(data.error ?? '')}
 				{#if !err && data.error && data.error !== 'sso_failed'}
 					<span class="mt-1 block text-xs text-red-400/60" dir="ltr">({data.error})</span>
+				{/if}
+				{#if err}
+					<ul class="mt-2 list-disc space-y-1 pr-5 text-right text-xs leading-relaxed text-gray-300">
+						<li>נרשמתם בעבר עם <strong>Google</strong> או <strong>Facebook</strong>? אז אין לכם סיסמה — היכנסו עם הכפתורים שלמעלה.</li>
+						<li>שכחתם את הסיסמה? <a href={forgotHref} class="font-bold text-purple-300 underline">שלחו לי קישור לבחירת סיסמה חדשה</a></li>
+					</ul>
 				{/if}
 			</div>
 		{/if}
@@ -212,6 +223,9 @@
 				autocomplete="current-password"
 				class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
 			/>
+			<div class="-mt-2 text-left">
+				<a href={forgotHref} class="text-sm text-purple-400 hover:text-purple-300">שכחתי סיסמה</a>
+			</div>
 			<button
 				type="submit"
 				disabled={loading === 'credentials'}
