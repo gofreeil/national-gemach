@@ -32,6 +32,8 @@ declare module '@auth/core/jwt' {
 		provider?: string;
 		phone?: string;
 		strapiJwt?: string;
+		/** מתי נמשכה תמונת הפרופיל מ-Strapi לאחרונה (userAvatar.ts) */
+		avatarAt?: number;
 	}
 }
 

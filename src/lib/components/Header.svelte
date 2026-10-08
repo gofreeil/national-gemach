@@ -8,13 +8,16 @@
         user = null,
         pendingCount = 0
     }: {
-        user?: { name: string; email: string } | null;
+        user?: { name: string; email: string; image?: string } | null;
         /** פריטים שממתינים לטיפול אדמין (פרסומות לאישור + תביעות בעלות +
          *  טיוטות גמ"חים) — 0 לכל מי שאינו אדמין. מסמן את תמונת הפרופיל
          *  בבועה אדומה עד שמישהו מהאדמינים מטפל. אותו מספר מוצג גם על
          *  האריחים בפאנל שבאזור האישי — מסונכרן. */
         pendingCount?: number;
     } = $props();
+
+    // תמונת הפרופיל לא נטענה (קישור שפג / חסום) → חוזרים לאות הראשונה
+    let avatarBroken = $state(false);
 
     let languages = [
         { name: "עברית", code: "he", flag: "il" },
@@ -42,6 +45,24 @@
         });
     });
 </script>
+
+<!-- אווטאר: תמונת הפרופיל אם יש, אחרת האות הראשונה של השם -->
+{#snippet avatar(size: string)}
+    {#if user?.image && !avatarBroken}
+        <img
+            src={user.image}
+            alt=""
+            width="24"
+            height="24"
+            decoding="async"
+            referrerpolicy="no-referrer"
+            onerror={() => (avatarBroken = true)}
+            class="{size} rounded-full object-cover"
+        />
+    {:else}
+        <span class="flex {size} items-center justify-center rounded-full login-grad font-bold" aria-hidden="true">{(user?.name || user?.email || '?').charAt(0).toUpperCase()}</span>
+    {/if}
+{/snippet}
 
 <header use:headerHeight
     class="site-header sticky top-0 z-50 shadow-lg backdrop-blur-lg"
@@ -130,7 +151,7 @@
                             ? `${pendingCount} פריטים ממתינים לטיפול`
                             : user.name || user.email}
                     >
-                        <span class="flex h-5 w-5 items-center justify-center rounded-full login-grad text-[10px]" aria-hidden="true">👤</span>
+                        {@render avatar("h-5 w-5 text-[10px]")}
                         {#if pendingCount > 0}
                             <span class="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-[#874b90]" aria-hidden="true">
                                 {pendingCount}
@@ -233,7 +254,7 @@
                         class="relative flex items-center gap-2 rounded-lg bg-[#1c2f5a] hover:bg-[#2a4379] px-3 py-2 text-sm font-bold text-white transition-colors"
                         title={pendingCount > 0 ? `${pendingCount} פריטים ממתינים לטיפול` : 'האזור האישי שלי'}
                     >
-                        <span class="flex h-6 w-6 items-center justify-center rounded-full login-grad text-xs">👤</span>
+                        {@render avatar("h-6 w-6 text-xs")}
                         <span class="hidden sm:inline max-w-[120px] truncate">{user.name || user.email}</span>
                         {#if pendingCount > 0}
                             <span class="absolute -top-1.5 -left-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-black leading-none text-white ring-2 ring-[#874b90]">

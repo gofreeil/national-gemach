@@ -51,7 +51,13 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		: [null, 0];
 
 	return {
-		user: { id: u.id, name: u.name ?? '', email: u.email ?? '' },
+		user: {
+			id: u.id,
+			name: u.name ?? '',
+			email: u.email ?? '',
+			// תמונת הפרופיל; בלעדיה ההדר מציג את האות הראשונה
+			image: u.image ?? ''
+		},
 		adminRole,
 		pinnedIds,
 		pendingCount,

@@ -13,6 +13,8 @@ export interface StrapiUser {
 	displayName?: string;
 	firstname?: string;
 	lastname?: string;
+	/** תמונת הפרופיל: קישור (Google/Facebook) או data:image שהועלה ידנית בקהילה */
+	avatar_url?: string | null;
 }
 
 /**

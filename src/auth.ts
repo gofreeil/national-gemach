@@ -11,6 +11,7 @@ import {
 	bestStrapiName,
 	friendlyName
 } from '$lib/server/strapiAuth';
+import { syncAvatar } from '$lib/server/userAvatar';
 
 const AUTH_SECRET          = process.env.AUTH_SECRET          ?? '';
 const AUTH_GOOGLE_ID       = process.env.AUTH_GOOGLE_ID       ?? '';
@@ -129,6 +130,8 @@ export const { handle, signIn, signOut } = !AUTH_SECRET
 					if (user && (user as { strapiJwt?: string }).strapiJwt) {
 						token.strapiJwt = (user as { strapiJwt?: string }).strapiJwt;
 					}
+					// תמונת הפרופיל לאווטאר בהדר — מ-avatar_url שב-Strapi המשותף (גם בכניסת SSO/סיסמה)
+					await syncAvatar(token, token.strapiJwt, getStrapiMe);
 					return token;
 				},
 				session({ session, token }) {
