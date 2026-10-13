@@ -21,6 +21,12 @@
 	// הכרטיס והקישור נשארים ב-SSR, ורק ה-img נדחה, כדי לא לפגוע בסריקה.
 	let adImagesReady = $state(false);
 
+	// רשת ביטחון: הדגל נדלק גם אם המגירה נפתחה ממסלול שאינו הלשונית (דיפ-לינק,
+	// כפתור עתידי במקום אחר). בלי זה מסלול כזה היה פותח מגירה עם ריבועים ריקים.
+	$effect(() => {
+		if (open) adImagesReady = true;
+	});
+
 	function closeAll() {
 		open = false;
 		collapsed = false;
@@ -206,9 +212,9 @@
 	<!-- Drawer -->
 	<div class="drawer"
 		role="dialog"
-		aria-modal="true"
+		aria-modal={open}
 		aria-label="האזור האישי וההטבות מהקהילה הארצית"
-		aria-hidden={!open}
+		inert={!open || undefined}
 		ontouchstart={onDrawerTouchStart}
 		ontouchend={onDrawerTouchEnd}
 	>
@@ -269,10 +275,11 @@
 					     שנמצאים מתחת לגלילה ברשימה. -->
 					{#if adImagesReady}
 					<img
-						src={ad.image}
+						src={ad.thumb}
 						alt={ad.title}
 						class="benefit-img"
 						loading="lazy"
+						fetchpriority="low"
 						decoding="async"
 					/>
 					{/if}
