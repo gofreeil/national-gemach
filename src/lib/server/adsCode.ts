@@ -161,3 +161,46 @@ export async function notifyOwnerCodeUse(info: {
         console.warn('adsCode: owner notification failed', err instanceof Error ? err.message : err);
     }
 }
+
+/**
+ * התראה על עריכה ישירה של מודעה קיימת בידי המפרסם (PUT /api/ads/[id]).
+ * העריכה לא עוברת תור אישור — מודעה מאושרת מתעדכנת באתר מיד — ולכן
+ * בלי ההודעה הזו תוכן חדש עלה לאוויר ואיש מהצוות לא ידע עליו.
+ * best-effort: כל כשל נבלע, העריכה עצמה כבר נשמרה.
+ */
+export async function notifyAdminsAdEdited(info: {
+    adTitle: string;
+    previousTitle?: string;
+    status: string;
+    editorName?: string | null;
+    editorEmail?: string | null;
+}): Promise<void> {
+    try {
+        const receivers = await resolveAdminUserIds();
+        if (receivers.length === 0) {
+            console.warn('adsCode: no notify recipient resolved — skipping ad-edit notification');
+            return;
+        }
+        const who = info.editorEmail
+            ? `${info.editorName || 'ללא שם'} (${info.editorEmail})`
+            : (info.editorName || 'משתמש לא מזוהה');
+        const content =
+            `✏️ מפרסם ערך מודעה קיימת — ${SITE_NAME}\n` +
+            `פרסומת: "${info.adTitle}"\n` +
+            (info.previousTitle && info.previousTitle !== info.adTitle
+                ? `כותרת קודמת: "${info.previousTitle}"\n`
+                : '') +
+            `מי ערך: ${who}\n` +
+            (info.status === 'approved'
+                ? `המודעה מאושרת — השינוי כבר מוצג באתר, בלי אישור נוסף.\n`
+                : info.status === 'pending'
+                  ? `המודעה עדיין ממתינה לאישור.\n`
+                  : '') +
+            `לבדיקה: -gemach.gofreeil.com/admin/ads`;
+        await Promise.all(receivers.map(receiver =>
+            strapiPost('/api/messages', { data: { receiver, content, read: false } })
+        ));
+    } catch (err) {
+        console.warn('adsCode: ad-edit notification failed:', err instanceof Error ? err.message : err);
+    }
+}
