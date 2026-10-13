@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { failReason } from '$lib/server/strapiClient.js';
 import type { Actions, PageServerLoad } from './$types';
 import { getAdminContext, requireSuperAdmin } from '$lib/server/admin';
 import {
@@ -100,7 +101,7 @@ export const actions: Actions = {
             };
         } catch (err) {
             console.error('[admin/ads] approve failed:', err instanceof Error ? err.message : err);
-            return fail(502, { error: 'האישור נכשל - נסה שוב בעוד רגע' });
+            return fail(502, { error: `האישור נכשל: ${failReason(err)}` });
         }
     },
 
@@ -117,7 +118,7 @@ export const actions: Actions = {
             return { success: true, message: `נדחתה: ${ad.title}` };
         } catch (err) {
             console.error('[admin/ads] reject failed:', err instanceof Error ? err.message : err);
-            return fail(502, { error: 'הדחייה נכשלה - נסה שוב בעוד רגע' });
+            return fail(502, { error: `הדחייה נכשלה: ${failReason(err)}` });
         }
     },
 
@@ -183,7 +184,7 @@ export const actions: Actions = {
             return { success: true, message: `הורדה מהאתר: ${ad.title}` };
         } catch (err) {
             console.error('[admin/ads] unapprove failed:', err instanceof Error ? err.message : err);
-            return fail(502, { error: 'ההורדה נכשלה - נסה שוב בעוד רגע' });
+            return fail(502, { error: `ההורדה נכשלה: ${failReason(err)}` });
         }
     },
 
@@ -200,7 +201,7 @@ export const actions: Actions = {
             r = await setAdDuration(id, days);
         } catch (e) {
             console.warn('[admin/ads] setDuration failed:', e instanceof Error ? e.message : e);
-            return fail(502, { error: 'קציבת התקופה נכשלה - נסה שוב בעוד רגע' });
+            return fail(502, { error: `קציבת התקופה נכשלה: ${failReason(e)}` });
         }
         if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
         const suffix = r.daysLeft < 0 ? ' - התקופה כבר חלפה, הפרסומת ירדה מהאתר' : '';
@@ -222,7 +223,7 @@ export const actions: Actions = {
             r = await setAdExpiry(id, d.toISOString());
         } catch (e) {
             console.warn('[admin/ads] setExpiry failed:', e instanceof Error ? e.message : e);
-            return fail(502, { error: 'קביעת התאריך נכשלה - נסה שוב בעוד רגע' });
+            return fail(502, { error: `קביעת התאריך נכשלה: ${failReason(e)}` });
         }
         if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
         const suffix = r.daysLeft < 0 ? ' - התאריך שנקבע כבר עבר, הפרסומת ירדה מהאתר' : '';
@@ -240,7 +241,7 @@ export const actions: Actions = {
             r = await pauseAd(id);
         } catch (e) {
             console.warn('[admin/ads] pause failed:', e instanceof Error ? e.message : e);
-            return fail(502, { error: 'ההשהיה נכשלה - נסה שוב בעוד רגע' });
+            return fail(502, { error: `ההשהיה נכשלה: ${failReason(e)}` });
         }
         if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
         return { success: true, message: `${r.title} הושהתה - ${r.daysLeft} ימים שמורים לה` };
@@ -257,7 +258,7 @@ export const actions: Actions = {
             r = await resumeAd(id);
         } catch (e) {
             console.warn('[admin/ads] resume failed:', e instanceof Error ? e.message : e);
-            return fail(502, { error: 'ההפעלה מחדש נכשלה - נסה שוב בעוד רגע' });
+            return fail(502, { error: `ההפעלה מחדש נכשלה: ${failReason(e)}` });
         }
         if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
         return { success: true, message: `${r.title} חזרה לאוויר - ${r.daysLeft} ימים, עד ${fmtDay(r.expiresAt)}` };
@@ -275,7 +276,7 @@ export const actions: Actions = {
             r = await moveApprovedAd(id, dir);
         } catch (e) {
             console.warn('[admin/ads] move failed:', e instanceof Error ? e.message : e);
-            return fail(502, { error: 'החלפת המקום נכשלה - נסה שוב בעוד רגע' });
+            return fail(502, { error: `החלפת המקום נכשלה: ${failReason(e)}` });
         }
         if (!r) return fail(400, { error: 'הפרסומת כבר בקצה הרשימה' });
         return { success: true, message: `${r.title} - מקום ${r.position} מתוך ${r.total}` };
@@ -292,7 +293,7 @@ export const actions: Actions = {
             r = await setAdSlot(id, Number(formData.get('slot')));
         } catch (e) {
             console.warn('[admin/ads] setSlot failed:', e instanceof Error ? e.message : e);
-            return fail(502, { error: 'העברת המקום נכשלה - נסה שוב בעוד רגע' });
+            return fail(502, { error: `העברת המקום נכשלה: ${failReason(e)}` });
         }
         if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
         return {
@@ -316,7 +317,7 @@ export const actions: Actions = {
             r = await addAdExtraSlot(id, raw === 'same' ? 'same' : Number(raw));
         } catch (e) {
             console.warn('[admin/ads] addExtraSlot failed:', e instanceof Error ? e.message : e);
-            return fail(502, { error: 'השכפול נכשל - נסה שוב בעוד רגע' });
+            return fail(502, { error: `השכפול נכשל: ${failReason(e)}` });
         }
         if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
         if (!r.ok) return fail(409, { error: r.error });
@@ -337,7 +338,7 @@ export const actions: Actions = {
             r = await removeAdExtraSlot(id, Number(formData.get('slot')));
         } catch (e) {
             console.warn('[admin/ads] removeExtraSlot failed:', e instanceof Error ? e.message : e);
-            return fail(502, { error: 'ביטול השכפול נכשל - נסה שוב בעוד רגע' });
+            return fail(502, { error: `ביטול השכפול נכשל: ${failReason(e)}` });
         }
         if (!r) return fail(404, { error: 'השכפול לא נמצא' });
         return { success: true, message: `השכפול של "${r.title}" במקום ${r.slot} בוטל` };
@@ -357,7 +358,7 @@ export const actions: Actions = {
             return { success: true, message: 'נמחקה לצמיתות' };
         } catch (err) {
             console.error('[admin/ads] remove failed:', err instanceof Error ? err.message : err);
-            return fail(502, { error: 'המחיקה נכשלה - נסה שוב בעוד רגע' });
+            return fail(502, { error: `המחיקה נכשלה: ${failReason(err)}` });
         }
     },
 

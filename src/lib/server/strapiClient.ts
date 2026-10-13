@@ -156,3 +156,29 @@ export async function strapiDelete<T = unknown>(path: string): Promise<T> {
     const text = await res.text();
     return (text ? JSON.parse(text) : {}) as T;
 }
+
+/**
+ * הסיבה שפעולה מול Strapi נכשלה, בעברית קצרה - להודעת השגיאה שהמנהל רואה,
+ * במקום "נסו שוב" שלא אומר כלום. מפענח את הודעות השגיאה של הקובץ הזה.
+ */
+export function failReason(err: unknown): string {
+    if (err instanceof StrapiContentTypeError) return 'האוסף לא קיים בשרת';
+    if (!(err instanceof Error)) return String(err);
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') return 'השרת לא הגיב בזמן';
+    if (err.message.includes('fetch failed')) return 'אין חיבור לשרת';
+    const m = err.message.match(/^\[Strapi\] [A-Z]+ \S+ → (\d{3})(?::\s*([\s\S]*))?$/);
+    if (!m) return err.message.slice(0, 160);
+    const status = Number(m[1]);
+    let detail = (m[2] ?? '').trim();
+    try {
+        detail = String(JSON.parse(detail)?.error?.message ?? detail);
+    } catch {
+        // גוף שאינו JSON - נשאר כטקסט
+    }
+    const d = detail ? ` (${detail.slice(0, 160)})` : '';
+    if (status === 401) return 'החיבור פג — התנתקו והתחברו מחדש';
+    if (status === 403) return `השרת דחה — אין הרשאה${d}`;
+    if (status === 404) return 'הרשומה לא נמצאה בשרת';
+    if (status === 413) return 'הנתונים גדולים מדי לשרת';
+    return `שגיאת שרת ${status}${d}`;
+}
