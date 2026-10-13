@@ -15,6 +15,12 @@
 	let open = $state(false);
 	let collapsed = $state(false);
 
+	// תמונות הפרסומות נכנסות ל-DOM רק אחרי שהגולש נגע בלשונית. loading="lazy"
+	// לבדו לא הספיק: המגירה הסגורה יושבת ב-left שלילי *צמוד* לקצה המסך, בתוך
+	// מרווח הטעינה-מראש של כרום, כך שכל התמונות ירדו בכל טעינת דף בנייד.
+	// הכרטיס והקישור נשארים ב-SSR, ורק ה-img נדחה, כדי לא לפגוע בסריקה.
+	let adImagesReady = $state(false);
+
 	function closeAll() {
 		open = false;
 		collapsed = false;
@@ -64,6 +70,7 @@
 	});
 
 	function onTabTouchStart(e: TouchEvent) {
+		adImagesReady = true;
 		tabTouchStartX = e.touches[0].clientX;
 		tabTouchStartY = e.touches[0].clientY;
 		tabDragStartClientY = e.touches[0].clientY;
@@ -161,6 +168,7 @@
 	}
 
 	function onTabClick() {
+		adImagesReady = true;
 		if (tabSwipeHandled) {
 			tabSwipeHandled = false;
 			return;
@@ -256,6 +264,10 @@
 				onclick={closeAll}
 			>
 				<div class="benefit-img-wrap">
+					<!-- ראה adImagesReady. הריבוע 88px שמסביב קבוע, ולכן אין קפיצת
+					     תצוגה כשהתמונה נכנסת; loading="lazy" מדלג בנוסף על הכרטיסים
+					     שנמצאים מתחת לגלילה ברשימה. -->
+					{#if adImagesReady}
 					<img
 						src={ad.image}
 						alt={ad.title}
@@ -263,6 +275,7 @@
 						loading="lazy"
 						decoding="async"
 					/>
+					{/if}
 				</div>
 				<div class="benefit-body">
 					<p class="benefit-title">{ad.title}</p>
