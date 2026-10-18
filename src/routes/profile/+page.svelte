@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { signOut } from '@auth/sveltekit/client';
 	import { adminTiles, type AdminNavRole } from '$lib/adminNav';
+	import AdCardPreview from '$lib/components/AdCardPreview.svelte';
 	import VisitorStatsCard from '$lib/components/VisitorStatsCard.svelte';
 	import { statusView, needsRenewal, type AdStatusKind } from '$lib/adOwner';
 
@@ -15,6 +16,20 @@
 	}
 
 	let { data, form } = $props();
+
+	// תצוגה מקדימה של הפרסומת כפי שהיא מוצגת בטור (כמו במסך הניהול):
+	// ריחוף על הכותרת ב"הפרסומות שלי" (דסקטופ) = הכרטיס צף לידה
+	let hoverAd = $state<{ ad: any; x: number; y: number } | null>(null);
+	const PREVIEW_W = 144,
+		PREVIEW_H = 490; // מידות הכרטיס האמיתי בטור (144px + יחס 144/450)
+	function showAdPreview(e: MouseEvent, ad: any) {
+		// מסך מגע - אין ריחוף אמיתי; ההקשה פותחת את דף הנכס עם הפרסומת המלאה
+		if (window.matchMedia('(hover: none)').matches) return;
+		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		const y = Math.max(8, Math.min(window.innerHeight - PREVIEW_H - 8, r.top + r.height / 2 - PREVIEW_H / 2));
+		const x = Math.max(8, r.left - PREVIEW_W - 16);
+		hoverAd = { ad, x, y };
+	}
 
 	// באנר "הוסיפו נייד" — מוצג כל עוד אין למשתמש נייד מאומת, ונעלם לתמיד
 	// אחרי אימות (needPhone מה-load). phoneBusy מונע לחיצה כפולה בשליחה.
@@ -234,7 +249,13 @@
 									class="block rounded-xl border border-[#3b5794] bg-[#1c2f5a] px-3 py-2 transition-colors hover:bg-[#2a4379]"
 								>
 									<span class="flex items-center justify-between gap-2">
-										<span class="truncate text-sm font-bold text-white">{ad.title}</span>
+										<!-- svelte-ignore a11y_no_static_element_interactions -->
+										<span
+											class="truncate text-sm font-bold text-white underline decoration-dotted underline-offset-4"
+											onmouseenter={(e) => showAdPreview(e, ad)}
+											onmouseleave={() => (hoverAd = null)}
+											title="תצוגה מקדימה של הפרסומת כפי שהיא מוצגת באתר">{ad.title}</span
+										>
 										<span class="flex-shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold {TONE[sv.tone]}">{sv.label}</span>
 									</span>
 									<span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-400">
@@ -469,3 +490,10 @@
 		{/if}
 	</div>
 </div>
+
+<!-- תצוגה מקדימה צפה בריחוף על כותרת ב"הפרסומות שלי" (דסקטופ בלבד) -->
+{#if hoverAd}
+	<div class="pointer-events-none fixed z-40 hidden drop-shadow-2xl md:block" style="left:{hoverAd.x}px; top:{hoverAd.y}px">
+		<AdCardPreview ad={hoverAd.ad} />
+	</div>
+{/if}

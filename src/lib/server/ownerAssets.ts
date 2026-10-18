@@ -32,6 +32,10 @@ export interface OwnerAdView {
     gradient: string;
     mainImage: string;
     mainImageFit: { x: number; y: number; z: number };
+    /** לתצוגה המקדימה של הכרטיס באזור האישי (ריחוף על הכותרת) */
+    cta: string;
+    logo: string;
+    adStyle: unknown;
     submittedAt: string;
     editedAt: string | null;
     expiresAt: string | null;
@@ -90,6 +94,9 @@ export async function getOwnerAssets(user: OwnerSessionLike): Promise<OwnerAsset
             gradient: a.gradient,
             mainImage: a.mainImage,
             mainImageFit: a.mainImageFit,
+            cta: a.cta,
+            logo: a.logo,
+            adStyle: a.adStyle,
             submittedAt: a.submittedAt,
             editedAt: a.editedAt,
             expiresAt: a.expiresAt,
