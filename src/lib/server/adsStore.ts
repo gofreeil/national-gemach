@@ -102,6 +102,8 @@ export interface SubmittedAd {
     replacesTitle?: string;
     /** מי החליפה אותה. מודעה מסומנת כך היא היסטוריה ולא מועמדת להחלפה נוספת */
     supersededBy?: string;
+    /** באשפה: נמחקה במסך הניהול ואפשר לשחזר אותה (ראה trashAd) */
+    deletedAt?: string;
     /** מודעה נוספת שנקנתה בכוונה - האישור לא מוריד את מה שכבר רץ למפרסם */
     standalone?: boolean;
     /** כרטיס מוצר מחנות החירות (מסונכרן מקהילה בשכונה, extra_fields.shop_product) */
@@ -225,6 +227,8 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         replacesAdId: typeof x.replaces_ad_id === 'string' ? x.replaces_ad_id : undefined,
         replacesTitle: typeof x.replaces_title === 'string' ? x.replaces_title : undefined,
         supersededBy: typeof x.superseded_by === 'string' ? x.superseded_by : undefined,
+        // באשפה — מחיקה רכה: הפריט נשאר כ-rejected והמצב הקודם נשמר לשחזור
+        deletedAt: typeof x.deleted_at === 'string' && x.deleted_at ? x.deleted_at : undefined,
         standalone: x.standalone === true,
         shop: typeof x.shop_product === 'string' && x.shop_product !== '',
     };
@@ -238,6 +242,23 @@ function byDisplayOrder(a: SubmittedAd, b: SubmittedAd): number {
     const bo = b.slotOrder ?? Number.MAX_SAFE_INTEGER;
     if (ao !== bo) return ao - bo;
     return Date.parse(a.submittedAt || '') - Date.parse(b.submittedAt || '');
+}
+
+/**
+ * מסנן גרסאות שהוחלפו: מי שסומנה superseded_by, וגם מי שיש לה ברשימה
+ * יורשת מאושרת (עדכון שלה שכבר אושר) — גם אם סימון ההחלפה לא נכתב, למשל
+ * כשה-PUT של ההורדה נכשל אחרי שהאישור כבר עבר. בלי זה אותה פרסומת הופיעה
+ * פעמיים: הגרסה החדשה "באוויר" והישנה "פג התוקף", באותו מקום בטור.
+ * גרסה שהיורשת שלה עדיין ממתינה נשארת ברשימה — האישור צריך למצוא אותה.
+ */
+function withoutReplaced(list: SubmittedAd[], { keepDeleted = false } = {}): SubmittedAd[] {
+    const replaced = new Set(
+        list
+            .filter((a) => a.status === 'approved' && a.replacesAdId && !a.supersededBy)
+            .map((a) => a.replacesAdId as string),
+    );
+    // גם מה שבאשפה מסונן — חוץ ממסך הניהול שמציג אותה (keepDeleted)
+    return list.filter((a) => !a.supersededBy && !replaced.has(a.id) && (keepDeleted || !a.deletedAt));
 }
 
 // ---------- קאש קצר לרשימת המאושרות ----------
@@ -617,9 +638,10 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
             'pagination[pageSize]': '25',
         });
         const now = Date.now();
-        const approvedAll = (res.data ?? [])
-            .map(fromStrapi)
-            .filter((a): a is SubmittedAd => Boolean(a));
+        // גרסה שהוחלפה בעדכון מאושר לא מוצגת לצד היורשת שלה
+        const approvedAll = withoutReplaced(
+            (res.data ?? []).map(fromStrapi).filter((a): a is SubmittedAd => Boolean(a)),
+        );
         // מספרי המקומות מחושבים על *כל* המאושרות — גם מושהית/פגה שומרת את
         // מקומה (המשבצת שלה מוצגת כפנויה עד שתחזור). חישוב בזיכרון בלבד:
         // נתיב קריאה לא כותב ל-Strapi.
@@ -722,9 +744,8 @@ export async function listForOwner(keys: Set<string>): Promise<SubmittedAd[]> {
         sort: 'createdAt:desc',
         'pagination[pageSize]': '100',
     });
-    return (res.data ?? [])
-        .map(fromStrapi)
-        .filter((a): a is SubmittedAd => Boolean(a))
+    // גרסה שהוחלפה בעדכון מאושר יורדת מהרשימה — הפרסומת מופיעה פעם אחת
+    return withoutReplaced((res.data ?? []).map(fromStrapi).filter((a): a is SubmittedAd => Boolean(a)))
         .filter((a) => isAdOwner(keys, a));
 }
 
@@ -777,13 +798,18 @@ export async function updateAdContent(
 }
 
 /** כל המודעות למסך האדמין (ממתינות + מאושרות + נדחות). */
-export async function listAllForAdmin(): Promise<SubmittedAd[]> {
+export async function listAllForAdmin({ withDeleted = false } = {}): Promise<SubmittedAd[]> {
     const res = await strapiGet<{ data: StrapiItem[] }>('/api/items', {
         'filters[category][$eq]': AD_CATEGORY,
         sort: 'createdAt:desc',
         'pagination[pageSize]': '100',
     });
-    return (res.data ?? []).map(fromStrapi).filter((a): a is SubmittedAd => Boolean(a));
+    // גרסה שהוחלפה בעדכון מאושר לא מוצגת: היא לא "נדחתה" ולא ממתינה —
+    // היא ההיסטוריה של פרסומת שכבר רצה על האתר בגרסה חדשה יותר.
+    // withDeleted = גם מה שבאשפה — למסך הניהול בלבד; חישובי המקומות בלעדיה
+    return withoutReplaced((res.data ?? []).map(fromStrapi).filter((a): a is SubmittedAd => Boolean(a)), {
+        keepDeleted: withDeleted,
+    });
 }
 
 /** עדכון extra_fields תוך שמירה על השדות הקיימים. */
@@ -914,12 +940,93 @@ export async function rejectAd(
  *  התוקף מתאפס כדי שהמשבצת תתפנה מיד ולא תיתפס ע"י מודעה שכבר לא באוויר. */
 export async function unapproveAd(id: string, decidedBy = ''): Promise<void> {
     await mergeExtra(id, {
-        decided_at: '',
+        // null ולא '' — Strapi פוסל מחרוזת ריקה בשדה datetime; fromStrapi
+        // ממילא קורא null כ"אין תאריך"
+        decided_at: null,
         decided_by: decidedBy,
-        expires_at: '',
+        expires_at: null,
         rejection_reason: '',
     }, 'pending');
     invalidateAdsCache();
+}
+
+// ---------- אשפה: מחיקה רכה, שחזור, ופגות תוקף לחידוש ----------
+
+/** "מחק" במסך הניהול — לאשפה ולא לצמיתות: המודעה יורדת מהאתר (status1
+ *  rejected) ונעלמת מכל הרשימות, אבל התוכן שלה נשמר ואפשר לשחזר אותה.
+ *  המצב הקודם נשמר ב-extra_fields (deleted_status), יחד עם המקום והתוקף. */
+export async function trashAd(id: string): Promise<{ title: string } | null> {
+    const ad = await getAd(id);
+    if (!ad) return null;
+    if (!ad.deletedAt) {
+        await mergeExtra(id, { deleted_at: new Date().toISOString(), deleted_status: ad.status }, 'rejected');
+        invalidateAdsCache();
+    }
+    return { title: ad.title };
+}
+
+/** שחזור מהאשפה למצב שלפני המחיקה. מאושרת חוזרת לאוויר אם התוקף שלה עוד
+ *  לא עבר; אם עבר — היא מופיעה באשפה כפגה, לחידוש. */
+export async function restoreAd(id: string): Promise<{ title: string } | null> {
+    const res = await strapiGet<{ data: StrapiItem }>(`/api/items/${encodeURIComponent(id)}`);
+    const row = res.data;
+    if (!row || row.category !== AD_CATEGORY) return null;
+    const x = { ...((row.extra_fields ?? {}) as Record<string, unknown>) };
+    if (typeof x.deleted_at !== 'string' || !x.deleted_at) return null;
+    const prev = x.deleted_status;
+    const status: AdStatus = prev === 'approved' || prev === 'rejected' ? prev : 'pending';
+    delete x.deleted_at;
+    delete x.deleted_status;
+    await strapiPut(`/api/items/${encodeURIComponent(id)}`, {
+        data: { status1: toItemStatus(status), extra_fields: x },
+    });
+    invalidateAdsCache();
+    return { title: row.label ?? '' };
+}
+
+/** שורה באשפה של מסך הניהול. למחוקות מצורפים נתוני הכרטיס לתצוגה
+ *  המקדימה; פגות התוקף כבר נמצאות ב-data.approved של הדף. */
+export interface TrashItem {
+    id: string;
+    title: string;
+    advertiserName: string;
+    kind: 'deleted' | 'expired';
+    at: string;
+    subtitle?: string;
+    cta?: string;
+    gradient?: string;
+    logo?: string;
+    mainImage?: string;
+    mainImageFit?: AdImageFit;
+    adStyle?: AdStyle | null;
+}
+
+/** האשפה: מה שנמחק (לשחזור) ומאושרות שפג תוקפן (לחידוש), החדשות בראש.
+ *  list = listAllForAdmin({ withDeleted: true }). */
+export function computeTrash(list: SubmittedAd[]): TrashItem[] {
+    const now = Date.now();
+    return list
+        .filter((a) => a.deletedAt
+            || (a.status === 'approved' && !a.paused && !!a.expiresAt && Date.parse(a.expiresAt) <= now))
+        .map((a): TrashItem => ({
+            id: a.id,
+            title: a.title,
+            advertiserName: a.submittedBy?.name || a.submittedBy?.email || '-',
+            kind: a.deletedAt ? 'deleted' : 'expired',
+            at: a.deletedAt || a.expiresAt,
+            ...(a.deletedAt
+                ? {
+                      subtitle: a.subtitle,
+                      cta: a.cta,
+                      gradient: a.gradient,
+                      logo: a.logo,
+                      mainImage: a.mainImage,
+                      mainImageFit: a.mainImageFit,
+                      adStyle: a.adStyle,
+                  }
+                : {}),
+        }))
+        .sort((x, y) => (Date.parse(y.at) || 0) - (Date.parse(x.at) || 0));
 }
 
 /** מחיקה לצמיתות (ניקוי מודעות ישנות במסך האדמין). */
@@ -1285,7 +1392,7 @@ export async function unrejectAd(id: string): Promise<{ title: string } | null> 
     if (!ad) return null;
     await mergeExtra(id, {
         rejection_reason: '',
-        decided_at: '',
+        decided_at: null,
         decided_by: '',
     }, 'pending');
     invalidateAdsCache();

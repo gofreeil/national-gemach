@@ -9,6 +9,9 @@ import {
     unrejectAd,
     unapproveAd,
     removeAd,
+    trashAd,
+    restoreAd,
+    computeTrash,
     updateAdFields,
     computeAdsStats,
     computeSchedules,
@@ -41,8 +44,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 
     let all: Awaited<ReturnType<typeof listAllForAdmin>> = [];
     let backendUnavailable = false;
+    // האשפה: מה שנמחק (לשחזור) ומאושרות שפג תוקפן (לחידוש)
+    let trash: ReturnType<typeof computeTrash> = [];
     try {
-        all = await listAllForAdmin();
+        const everything = await listAllForAdmin({ withDeleted: true });
+        trash = computeTrash(everything);
+        all = everything.filter((a) => !a.deletedAt);
     } catch (err) {
         console.error('[admin/ads] load failed:', err instanceof Error ? err.message : err);
         backendUnavailable = true;
@@ -59,6 +66,7 @@ export const load: PageServerLoad = async ({ locals }) => {
         .sort((x, y) => (x.slot ?? Number.MAX_SAFE_INTEGER) - (y.slot ?? Number.MAX_SAFE_INTEGER));
 
     return {
+        trash,
         pending,
         approved,
         stats: computeAdsStats(all),
@@ -344,8 +352,42 @@ export const actions: Actions = {
         return { success: true, message: `השכפול של "${r.title}" במקום ${r.slot} בוטל` };
     },
 
-    // מחיקה לצמיתות שמורה לסופר-אדמין; אדמין שמונה מוריד מהאתר ולא מוחק
+    // "מחק" = לאשפה (אפשר לשחזר). שמור לסופר-אדמין; אדמין שמונה מוריד מהאתר
     remove: async ({ request, locals }) => {
+        const { role } = await getAdminContext(locals);
+        requireSuperAdmin(role);
+        const formData = await request.formData();
+        const id = formData.get('id') as string;
+        if (!id) return fail(400, { error: 'חסר מזהה' });
+        try {
+            const r = await trashAd(id);
+            if (!r) return fail(404, { error: 'הפרסומת לא נמצאה' });
+            return { success: true, message: `"${r.title}" הועברה לאשפה — אפשר לשחזר אותה משם` };
+        } catch (err) {
+            console.error('[admin/ads] remove failed:', err instanceof Error ? err.message : err);
+            return fail(502, { error: `המחיקה נכשלה: ${failReason(err)}` });
+        }
+    },
+
+    // שחזור מהאשפה — למצב שלפני המחיקה (המקום בטור והתוקף נשמרו)
+    restore: async ({ request, locals }) => {
+        const { role } = await getAdminContext(locals);
+        requireSuperAdmin(role);
+        const formData = await request.formData();
+        const id = formData.get('id') as string;
+        if (!id) return fail(400, { error: 'חסר מזהה' });
+        try {
+            const r = await restoreAd(id);
+            if (!r) return fail(404, { error: 'הפרסומת לא נמצאה באשפה' });
+            return { success: true, message: `"${r.title}" שוחזרה ✅` };
+        } catch (err) {
+            console.error('[admin/ads] restore failed:', err instanceof Error ? err.message : err);
+            return fail(502, { error: `השחזור נכשל: ${failReason(err)}` });
+        }
+    },
+
+    // ריקון מהאשפה — מחיקה לצמיתות, בלי דרך חזרה
+    purge: async ({ request, locals }) => {
         const { role } = await getAdminContext(locals);
         requireSuperAdmin(role);
         const formData = await request.formData();
@@ -357,7 +399,7 @@ export const actions: Actions = {
             await removeAd(id);
             return { success: true, message: 'נמחקה לצמיתות' };
         } catch (err) {
-            console.error('[admin/ads] remove failed:', err instanceof Error ? err.message : err);
+            console.error('[admin/ads] purge failed:', err instanceof Error ? err.message : err);
             return fail(502, { error: `המחיקה נכשלה: ${failReason(err)}` });
         }
     },
