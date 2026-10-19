@@ -708,6 +708,15 @@
                                         class="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-500/40 text-blue-200 font-black text-sm hover:bg-blue-500/30">
                                     ✏️ ערוך
                                 </button>
+                                {#if isSuperAdmin}
+                                    <!-- עריכה מלאה (סופר-אדמין) = אותו מסלול של המפרסם: דשבורד הנכס →
+                                         הבונה → שמירה במקום. הבעלות, הסטטוס והתוקף נשארים -->
+                                    <a href={`/advertise/manage/${ad.id}`}
+                                       class="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-500/40 text-blue-200 font-black text-sm hover:bg-blue-500/30"
+                                       title="פתיחת דשבורד הנכס ומשם עריכה מלאה בבונה">
+                                        🎨 ערוך בבונה
+                                    </a>
+                                {/if}
                                 <form method="POST" action="?/unapprove" use:enhance>
                                     <input type="hidden" name="id" value={ad.id} />
                                     <button type="submit"

@@ -3,12 +3,14 @@ import type { PageServerLoad } from './$types';
 import { getAd, isAdOwner } from '$lib/server/adsStore';
 import { getAdStats, type AdStats } from '$lib/server/adStats';
 import { ownerCandidateKeys } from '$lib/server/ownership';
+import { resolveRole } from '$lib/server/admin';
 import { planFor } from '$lib/adPlans';
 
 const STATS_DAYS = 14;
 
 // דף ניהול הנכס של המפרסם: מדדים, עריכה מחדש וחידוש הפרסום.
-// רק מי ששלח את המודעה רואה אותה (אימות מול submitted_by בכל טעינה).
+// רק מי ששלח את המודעה רואה אותה (אימות מול submitted_by בכל טעינה) —
+// וגם סופר-אדמין, שמגיע לכאן מכפתור "ערוך בבונה" במסך ניהול הפרסומות.
 export const load: PageServerLoad = async ({ params, locals, url }) => {
     const session = await locals.auth();
     if (!session?.user) {
@@ -17,7 +19,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 
     const ad = await getAd(params.id);
     if (!ad) throw error(404, 'הפרסומת לא נמצאה');
-    if (!isAdOwner(ownerCandidateKeys(session.user), ad)) {
+    if (!isAdOwner(ownerCandidateKeys(session.user), ad) && (await resolveRole(session.user)) !== 'super_admin') {
         throw error(403, 'רק מי שהעלה את הפרסומת יכול לנהל אותה. אם זו הפרסומת שלך — התחברו עם החשבון שממנו נשלחה.');
     }
 
