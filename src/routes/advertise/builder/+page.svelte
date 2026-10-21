@@ -3,6 +3,7 @@
     import { browser } from "$app/environment";
     import { goto } from "$app/navigation";
     import { adImgFit, AD_ZOOM_MIN, AD_ZOOM_MAX } from "$lib/adImageFit";
+    import { logoClearance } from "$lib/logoClearance";
     import { normalizePlanDays } from "$lib/adPlans";
     import {
         AD_EFFECTIVE_LIMIT, MAIN_IMAGE_MAX_BYTES,
@@ -1388,7 +1389,7 @@
                                             {/if}
                                             <div class="pro-diag" style:background={gradient}></div>
                                             <div class="pro-title-wrap mobile">
-                                                <p class="pro-sub">{subtitle || "משפט קצר / סלוגן"}</p>
+                                                <p class="pro-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{subtitle || "משפט קצר / סלוגן"}</p>
                                             </div>
                                             <div class="close-countdown">5</div>
                                         </div>
@@ -1411,7 +1412,7 @@
                                 onfocus={() => (hoverPreview = true)}
                                 onblur={() => (hoverPreview = false)}
                             >
-                                <div class="pro-img-wrap clean-card-img">
+                                <div class="pro-img-wrap clean-card-img" use:logoClearance={[title, subtitle, logo, logoFreeX, logoFreeY, logoPosition, diagHeight, titleOffsetY]}>
                                     {#if mainImage}
                                         <img src={mainImage} alt={title} class="ad-img" style:opacity={showHover ? 0 : 1} style:object-position="{mainImageObjectX}% {mainImageObjectY}%" use:adImgFit={mainImageFit} />
                                     {:else}
@@ -1419,10 +1420,10 @@
                                     {/if}
                                     <div class="pro-diag" style:background={gradient} style:opacity={showHover ? 0 : 1}></div>
                                     <div class="pro-title-top" style:opacity={showHover ? 0 : 1} style:transform="translateY({titleOffsetY}px)">
-                                        <h3 class="pro-title" style:color={titleColor}>{title || "כותרת הפרסומת"}</h3>
+                                        <h3 class="pro-title" style:color={titleColor}><span class="logo-avoid" aria-hidden="true"></span>{title || "כותרת הפרסומת"}</h3>
                                     </div>
                                     <div class="pro-title-wrap" style:opacity={showHover ? 0 : 1}>
-                                        <p class="pro-sub">{subtitle || "משפט קצר / סלוגן"}</p>
+                                        <p class="pro-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{subtitle || "משפט קצר / סלוגן"}</p>
                                     </div>
                                     <div class="hover-overlay" style:opacity={showHover ? 1 : 0}>
                                         <h3 class="hover-title">{title || "הכותרת"}</h3>
@@ -1435,6 +1436,7 @@
                                         <img
                                             src={logo}
                                             alt="לוגו"
+                                            data-ad-logo
                                             class="ad-logo ad-logo-draggable"
                                             class:circle={logoShape === "circle"}
                                             class:pos-left={!logoFree && logoPosition === "left"}
@@ -1505,7 +1507,7 @@
                 <div class="live-demo-card">
                     <p class="live-demo-label">👁 דמו חי</p>
                     <div class="live-demo-frame" dir="rtl">
-                        <div class="pro-img-wrap live-demo-img-wrap">
+                        <div class="pro-img-wrap live-demo-img-wrap" use:logoClearance={[title, subtitle, logo, logoFreeX, logoFreeY, logoPosition, diagHeight, titleOffsetY]}>
                             {#if mainImage}
                                 <img
                                     src={mainImage}
@@ -1525,14 +1527,14 @@
                             <div class="pro-diag" style:background={gradient} style:opacity={activeStep === "hover" ? 0 : 1}></div>
                             <div class="pro-title-top" style:transform="translateY({titleOffsetY}px)" style:opacity={activeStep === "hover" ? 0 : 1}>
                                 {#if title}
-                                    <h3 class="pro-title" style:color={titleColor}>{title}</h3>
+                                    <h3 class="pro-title" style:color={titleColor}><span class="logo-avoid" aria-hidden="true"></span>{title}</h3>
                                 {:else}
                                     <div class="placeholder-dashed placeholder-line">הכותרת - שלב 3</div>
                                 {/if}
                             </div>
                             <div class="pro-title-wrap" style:opacity={activeStep === "hover" ? 0 : 1}>
                                 {#if subtitle}
-                                    <p class="pro-sub">{subtitle}</p>
+                                    <p class="pro-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{subtitle}</p>
                                 {:else}
                                     <div class="placeholder-dashed placeholder-line small">הסלוגן - שלב 5</div>
                                 {/if}
@@ -1542,6 +1544,7 @@
                                 <img
                                     src={logo}
                                     alt="לוגו"
+                                    data-ad-logo
                                     class="ad-logo ad-logo-draggable"
                                     class:circle={logoShape === "circle"}
                                     class:pos-left={!logoFree && logoPosition === "left"}
@@ -2811,10 +2814,15 @@
     /* השורה הראשונה של הסלוגן מתקצרת בעקבות האלכסון */
     .pro-sub::before {
         content: "";
+        display: var(--logo-avoid-tri, block);
         float: left;
         width: 28%;
         height: 1.35em;
         shape-outside: polygon(0 0, 100% 0, 0 100%);
+    }
+    /* ה-float שגורם לטקסט לעקוף את הלוגו - מוצג ומוצב רק ע"י logoClearance */
+    .logo-avoid {
+        display: none;
     }
     .ad-logo {
         position: absolute;

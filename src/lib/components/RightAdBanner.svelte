@@ -7,6 +7,7 @@
         parseAdStyle, legacyAdStyle, adStyleVars, logoAnchorClass, logoFreeStyle, logoCornerSide,
         type AdStyle,
     } from "$lib/adStyle";
+    import { logoClearance } from "$lib/logoClearance";
     import type { ApprovedAd } from "$lib/adSlots";
 
     // העיצוב שהמפרסם קבע בבילדר הוא מה שמוצג כאן — אותו מודול משותף
@@ -90,7 +91,7 @@
                     class="h-[490px] flex flex-col rounded-2xl overflow-hidden shadow-lg transition-transform hover:scale-105 group relative"
                     style={adStyleVars(st)}
                 >
-                    <div class="flex-1 relative overflow-hidden bg-black/30">
+                    <div class="flex-1 relative overflow-hidden bg-black/30" use:logoClearance={item.ad}>
                         {#if item.ad.mainImage}
                             <!-- בריחוף העכבר התמונה נמוגה ומפנה מקום לתוכן שהמפרסם כתב -->
                             <!-- המיקום/זום שנבחרו בבילדר מוחלים גם כאן — הדמו הוא מה שרואים -->
@@ -114,11 +115,11 @@
                              class:has-corner-logo-right={cornerSide === 'right'}
                              class:has-corner-logo-left={cornerSide === 'left'}
                              style="transform: translateY({st.titleOffsetY}px);">
-                            <h3 class="promo-title" style="color: {st.titleColor};">{item.ad.title}</h3>
+                            <h3 class="promo-title" style="color: {st.titleColor};"><span class="logo-avoid" aria-hidden="true"></span>{item.ad.title}</h3>
                         </div>
                         {#if item.ad.subtitle}
                             <div class="promo-sub-wrap transition-opacity duration-700 group-hover:opacity-0">
-                                <p class="promo-sub">{item.ad.subtitle}</p>
+                                <p class="promo-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{item.ad.subtitle}</p>
                             </div>
                         {/if}
                         {#if item.ad.logo}
@@ -127,6 +128,7 @@
                                 alt=""
                                 loading="lazy"
                                 decoding="async"
+                                data-ad-logo
                                 class="promo-logo {logoAnchorClass(st, 'promo')} {st.logoShape === 'circle' ? 'promo-logo-circle' : ''}
                                        transition-opacity duration-700 group-hover:opacity-0"
                                 style={logoFreeStyle(st)}
@@ -327,10 +329,15 @@
     /* השורה הראשונה של הסלוגן מתקצרת בעקבות האלכסון */
     .promo-sub::before {
         content: "";
+        display: var(--logo-avoid-tri, block);
         float: left;
         width: 28%;
         height: 1.35em;
         shape-outside: polygon(0 0, 100% 0, 0 100%);
+    }
+    /* ה-float שגורם לטקסט לעקוף את הלוגו - מוצג ומוצב רק ע"י logoClearance */
+    .logo-avoid {
+        display: none;
     }
     .promo-logo {
         position: absolute;
