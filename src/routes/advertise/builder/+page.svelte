@@ -2,7 +2,14 @@
     import { onMount } from "svelte";
     import { browser } from "$app/environment";
     import { goto } from "$app/navigation";
+    import { _ } from "svelte-i18n";
     import { adImgFit, AD_ZOOM_MIN, AD_ZOOM_MAX } from "$lib/adImageFit";
+    import {
+        bandCorners, logoCornerSide,
+        DEFAULT_SUB_FONT_SIZE, SUB_FONT_SIZE_MIN, SUB_FONT_SIZE_MAX,
+        DEFAULT_SUB_LINE_HEIGHT, SUB_LINE_HEIGHT_MIN, SUB_LINE_HEIGHT_MAX,
+    } from "$lib/adStyle";
+    import { adGradientPaint } from "$lib/adGradient";
     import { logoClearance } from "$lib/logoClearance";
     import { normalizePlanDays } from "$lib/adPlans";
     import {
@@ -12,7 +19,9 @@
     } from "$lib/adPayloadBudget";
 
     // בונה הפרסומות - פורט מקבוצות רכישה (במקור מ"קהילה בשכונה") והותאם לגמ"ח הארצי:
-    // עברית בלבד, CSS רגיל (בלי Tailwind), גרדיאנטים כמחרוזות CSS.
+    // CSS רגיל, גרדיאנטים כמחרוזות CSS. כלי עיצוב הכרטיס, התצוגה החיה,
+    // הטווחים וברירות המחדל, והשפות (svelte-i18n) זהים לבילדר של קהילה
+    // בשכונה - כך שפרסומת שעוצבה באחד מהם נראית אותו דבר בשני האתרים.
 
     let { data } = $props();
 
@@ -272,6 +281,10 @@
     let titleColor = $state("#ffffff");
     let titleOffsetY = $state(0);
     let subtitle = $state("");
+    // טיפוגרפיית תת-הכותרת (שלב 5) - גודל, רווח בין שורות ויישור
+    let subFontSize = $state(DEFAULT_SUB_FONT_SIZE);
+    let subLineHeight = $state(DEFAULT_SUB_LINE_HEIGHT);
+    let subAlign = $state(/** @type {import('$lib/adStyle').SubAlign} */ ("right"));
     let hoverText = $state("");
     let cta = $state("הקלק לפרטים והזמנות");
     // גרדיאנט כמחרוזת CSS - תואם לשדה color של adsData.js באתר הזה
@@ -362,14 +375,41 @@
         return () => window.removeEventListener("resize", onResize);
     });
 
-    // גובה הפס האלכסוני - משתני CSS גלובליים שכל התצוגות משתמשות בהם
+    // גובה הפס האלכסוני + טיפוגרפיית תת-הכותרת - משתני CSS גלובליים שכל
+    // התצוגות משתמשות בהם. bandCorners הוא אותו חישוב שהאתר מריץ
+    // (adStyle.ts), כך שהרצועה שהמפרסם מכוון כאן היא בדיוק זו שתתפרסם.
     $effect(() => {
         if (!browser) return;
-        const topLeft = Math.max(0, Math.min(100, 100 - diagHeight));
-        const topRight = Math.max(0, topLeft - 10);
-        document.documentElement.style.setProperty("--diag-top-left", `${topLeft}%`);
-        document.documentElement.style.setProperty("--diag-top-right", `${topRight}%`);
+        const { left, right } = bandCorners(diagHeight);
+        document.documentElement.style.setProperty("--diag-top-left", `${left}%`);
+        document.documentElement.style.setProperty("--diag-top-right", `${right}%`);
+        // אותם משתנים שהאתר מקבל מ-adStyleVars — כאן הם על ה-root כדי שכל
+        // התצוגות בבילדר (דמו חי, מחשב, נייד) יתעדכנו יחד
+        document.documentElement.style.setProperty("--sub-size", `${subFontSize}rem`);
+        document.documentElement.style.setProperty("--sub-lh", String(subLineHeight));
+        document.documentElement.style.setProperty("--sub-align", subAlign);
     });
+
+    // העיצוב שנוסע עם המודעה - אותו מבנה AdStyle שקהילה בשכונה שומרת
+    let adStyle = $derived({
+        logoShape,
+        logoAnchor: logoPosition,
+        logoX: logoFreeX,
+        logoY: logoFreeY,
+        bandHeight: diagHeight,
+        titleOffsetY,
+        titleColor,
+        subFontSize,
+        subLineHeight,
+        subAlign,
+    });
+
+    // לוגו בפינה העליונה - הכותרת שומרת לו מקום, באותו כלל של האתר
+    let titleCornerSide = $derived(logoCornerSide(adStyle, Boolean(logo)));
+
+    // צבע הרצועה (אלכסון) והכפתור - מצוירים בדיוק כמו בכרטיס באתר
+    let bandPaint = $derived(adGradientPaint(gradient, "br"));
+    let stripPaint = $derived(adGradientPaint(gradient, "r"));
 
     /**
      * @param {HTMLElement | null} el
@@ -458,15 +498,7 @@
             // העיצוב שנקבע כאן נוסע עם המודעה עד לאתר. בלעדיו המודעה
             // שהתפרסמה נבנתה מחדש מברירות המחדל: הלוגו קפץ מהמקום שאליו
             // נגרר, הרצועה חזרה לגובה הבסיסי והכותרת איבדה את צבעה.
-            adStyle: {
-                logoShape,
-                logoAnchor: logoPosition,
-                logoX: logoFreeX,
-                logoY: logoFreeY,
-                bandHeight: diagHeight,
-                titleOffsetY,
-                titleColor,
-            },
+            adStyle: { ...adStyle },
             landing: {
                 headline: landingHeadline,
                 pitch: landingPitch,
@@ -502,7 +534,7 @@
     async function processImageFile(file, target) {
         if (!file) return;
         if (!file.type.startsWith("image/")) {
-            alert("נא להעלות קובץ תמונה");
+            alert($_("advertise.b_upload_image_file"));
             return;
         }
         uploadIssue = { zone: "", msg: "" };
@@ -519,8 +551,7 @@
         if (!fit.ok) {
             uploadIssue = {
                 zone: target,
-                msg: `אין מקום לתמונה הזו — המודעה כולה מוגבלת במשקל, וגם אחרי דחיסה היא חורגת. `
-                    + `הסירו או החליפו תמונה אחרת (הכבדה ביותר: ${heaviestImageLabel(candidate) || "—"}) ונסו שוב.`,
+                msg: $_("advertise.b_upload_no_room", { values: { v: heaviestImageLabel(candidate) || "—" } }),
             };
             return; // המצב הקיים לא נגעו בו — אפשר להמשיך לעבוד
         }
@@ -631,41 +662,50 @@
 
     // ===== פלטת צבעים - גרדיאנטים כמחרוזות CSS =====
     const palettes = [
-        { id: "amber",    label: "ענבר",       cls: "linear-gradient(135deg, #f59e0b, #ea580c)" },
-        { id: "orange",   label: "כתום",       cls: "linear-gradient(135deg, #f97316, #ef4444)" },
-        { id: "yellow",   label: "צהוב",       cls: "linear-gradient(135deg, #facc15, #f59e0b)" },
-        { id: "red",      label: "אדום",       cls: "linear-gradient(135deg, #dc2626, #db2777)" },
-        { id: "rose",     label: "ורוד עז",    cls: "linear-gradient(135deg, #f43f5e, #c026d3)" },
-        { id: "crimson",  label: "בורדו",      cls: "linear-gradient(135deg, #be123c, #7f1d1d)" },
-        { id: "fuchsia",  label: "פוקסיה",     cls: "linear-gradient(135deg, #d946ef, #9333ea)" },
-        { id: "purple",   label: "סגול",       cls: "linear-gradient(135deg, #9333ea, #db2777)" },
-        { id: "violet",   label: "סגול כהה",   cls: "linear-gradient(135deg, #7c3aed, #4338ca)" },
-        { id: "indigo",   label: "אינדיגו",    cls: "linear-gradient(135deg, #4f46e5, #2563eb)" },
-        { id: "blue",     label: "כחול",       cls: "linear-gradient(135deg, #2563eb, #0891b2)" },
-        { id: "sky",      label: "תכלת",       cls: "linear-gradient(135deg, #38bdf8, #3b82f6)" },
-        { id: "teal",     label: "טורקיז",     cls: "linear-gradient(135deg, #14b8a6, #0891b2)" },
-        { id: "emerald",  label: "אזמרגד",     cls: "linear-gradient(135deg, #10b981, #0f766e)" },
-        { id: "green",    label: "ירוק",       cls: "linear-gradient(135deg, #16a34a, #059669)" },
-        { id: "lime",     label: "ליים",       cls: "linear-gradient(135deg, #a3e635, #22c55e)" },
-        { id: "slate",    label: "אפור",       cls: "linear-gradient(135deg, #64748b, #374151)" },
-        { id: "dark",     label: "כהה",        cls: "linear-gradient(135deg, #1f2937, #0f172a)" },
-        { id: "peach",    label: "אפרסק",      cls: "linear-gradient(135deg, #fdba74, #f472b6)" },
-        { id: "mint",     label: "מנטה",       cls: "linear-gradient(135deg, #6ee7b7, #2dd4bf)" },
-        { id: "gold",     label: "זהב",        cls: "linear-gradient(135deg, #eab308, #b45309)" },
-        { id: "midnight", label: "חצות",       cls: "linear-gradient(135deg, #334155, #1e3a8a)" },
+        { id: "amber",    labelKey: "p_amber",       cls: "linear-gradient(135deg, #f59e0b, #ea580c)" },
+        { id: "orange",   labelKey: "p_orange",       cls: "linear-gradient(135deg, #f97316, #ef4444)" },
+        { id: "yellow",   labelKey: "p_yellow",       cls: "linear-gradient(135deg, #facc15, #f59e0b)" },
+        { id: "red",      labelKey: "p_red",       cls: "linear-gradient(135deg, #dc2626, #db2777)" },
+        { id: "rose",     labelKey: "p_rose",    cls: "linear-gradient(135deg, #f43f5e, #c026d3)" },
+        { id: "crimson",  labelKey: "p_crimson",      cls: "linear-gradient(135deg, #be123c, #7f1d1d)" },
+        { id: "fuchsia",  labelKey: "p_fuchsia",     cls: "linear-gradient(135deg, #d946ef, #9333ea)" },
+        { id: "purple",   labelKey: "p_purple",       cls: "linear-gradient(135deg, #9333ea, #db2777)" },
+        { id: "violet",   labelKey: "p_violet",   cls: "linear-gradient(135deg, #7c3aed, #4338ca)" },
+        { id: "indigo",   labelKey: "p_indigo",    cls: "linear-gradient(135deg, #4f46e5, #2563eb)" },
+        { id: "blue",     labelKey: "p_blue",       cls: "linear-gradient(135deg, #2563eb, #0891b2)" },
+        { id: "sky",      labelKey: "p_sky",       cls: "linear-gradient(135deg, #38bdf8, #3b82f6)" },
+        { id: "teal",     labelKey: "p_teal",     cls: "linear-gradient(135deg, #14b8a6, #0891b2)" },
+        { id: "emerald",  labelKey: "p_emerald",     cls: "linear-gradient(135deg, #10b981, #0f766e)" },
+        { id: "green",    labelKey: "p_green",       cls: "linear-gradient(135deg, #16a34a, #059669)" },
+        { id: "lime",     labelKey: "p_lime",       cls: "linear-gradient(135deg, #a3e635, #22c55e)" },
+        { id: "slate",    labelKey: "p_slate",       cls: "linear-gradient(135deg, #64748b, #374151)" },
+        { id: "dark",     labelKey: "p_dark",        cls: "linear-gradient(135deg, #1f2937, #0f172a)" },
+        { id: "peach",    labelKey: "p_peach",      cls: "linear-gradient(135deg, #fdba74, #f472b6)" },
+        { id: "mint",     labelKey: "p_mint",       cls: "linear-gradient(135deg, #6ee7b7, #2dd4bf)" },
+        { id: "gold",     labelKey: "p_gold",        cls: "linear-gradient(135deg, #eab308, #b45309)" },
+        { id: "midnight", labelKey: "p_midnight",       cls: "linear-gradient(135deg, #334155, #1e3a8a)" },
     ];
 
     const titleColors = [
-        { c: "#ffffff", label: "לבן" },
-        { c: "#fbbf24", label: "זהב" },
-        { c: "#fde047", label: "צהוב" },
-        { c: "#fb923c", label: "כתום" },
-        { c: "#f87171", label: "אדום" },
-        { c: "#f9a8d4", label: "ורוד" },
-        { c: "#c4b5fd", label: "סגול" },
-        { c: "#67e8f9", label: "תכלת" },
-        { c: "#86efac", label: "ירוק" },
-        { c: "#0f172a", label: "שחור" },
+        { c: "#ffffff", labelKey: "c_white" },
+        { c: "#fbbf24", labelKey: "c_gold" },
+        { c: "#fde047", labelKey: "c_yellow" },
+        { c: "#fb923c", labelKey: "c_orange" },
+        { c: "#f87171", labelKey: "c_red" },
+        { c: "#f9a8d4", labelKey: "c_pink" },
+        { c: "#c4b5fd", labelKey: "c_purple" },
+        { c: "#67e8f9", labelKey: "c_cyan" },
+        { c: "#86efac", labelKey: "c_green" },
+        { c: "#0f172a", labelKey: "c_black" },
+    ];
+
+    // יישור תת-הכותרת (שלב 5) - אותן ארבע אפשרויות של קהילה בשכונה
+    /** @type {Array<{ id: import('$lib/adStyle').SubAlign, labelKey: string, icon: string }>} */
+    const subAlignOptions = [
+        { id: "right",   labelKey: "b_s5_align_right",   icon: "➡" },
+        { id: "center",  labelKey: "b_s5_align_center",  icon: "↔" },
+        { id: "left",    labelKey: "b_s5_align_left",    icon: "⬅" },
+        { id: "justify", labelKey: "b_s5_align_justify", icon: "☰" },
     ];
 
     // ===== תצוגה מקדימה =====
@@ -744,10 +784,13 @@
                     titleColor = d.titleColor ?? "#ffffff";
                     titleOffsetY = typeof d.titleOffsetY === "number" ? d.titleOffsetY : 0;
                     subtitle = d.subtitle ?? "";
+                    subFontSize = typeof d.subFontSize === "number" ? d.subFontSize : DEFAULT_SUB_FONT_SIZE;
+                    subLineHeight = typeof d.subLineHeight === "number" ? d.subLineHeight : DEFAULT_SUB_LINE_HEIGHT;
+                    subAlign = (d.subAlign === "center" || d.subAlign === "left" || d.subAlign === "justify") ? d.subAlign : "right";
                     hoverText = d.hoverText ?? "";
                     cta = d.cta || "הקלק לפרטים והזמנות";
-                    gradient = d.gradient ?? gradient;
-                    diagHeight = typeof d.diagHeight === "number" ? d.diagHeight : 12;
+                    gradient = d.gradient || gradient;
+                    diagHeight = typeof d.diagHeight === "number" ? d.diagHeight : 25;
                     landingHeadline = d.landingHeadline ?? "";
                     landingPitch = d.landingPitch ?? "";
                     landingExtended = d.landingExtended ?? "";
@@ -799,7 +842,7 @@
             logo, logoOriginal, hasCircleCrop, logoShape, logoPosition, logoPositionExplicit,
             logoFreeX, logoFreeY,
             mainImage, mainImageObjectX, mainImageObjectY, mainImageZoom, title, titleColor, titleOffsetY,
-            subtitle, hoverText, cta, gradient, diagHeight,
+            subtitle, subFontSize, subLineHeight, subAlign, hoverText, cta, gradient, diagHeight,
             landingHeadline, landingPitch, landingExtended, landingImage, landingAdvantages,
             uniqueness, phone, whatsapp, website, email, address, hours, products,
         };
@@ -812,7 +855,7 @@
     });
 
     function resetDraft() {
-        if (!confirm("לאפס את הטיוטה ולהתחיל מחדש?")) return;
+        if (!confirm($_("advertise.b_reset_confirm"))) return;
         try { localStorage.removeItem(LS_KEY); } catch {}
         location.reload();
     }
@@ -826,10 +869,10 @@
     let cardMissing = $derived.by(() => {
         /** @type {string[]} */
         const out = [];
-        if (!mainImage) out.push("התמונה הראשית (שלב 1)");
-        if (!title.trim()) out.push("הכותרת (שלב 3)");
-        if (!subtitle.trim()) out.push("הסלוגן (שלב 5)");
-        if (!hoverText.trim()) out.push("הטקסט בריחוף (שלב 6)");
+        if (!mainImage) out.push($_("advertise.b_miss_image"));
+        if (!title.trim()) out.push($_("advertise.b_miss_title"));
+        if (!subtitle.trim()) out.push($_("advertise.b_miss_sub"));
+        if (!hoverText.trim()) out.push($_("advertise.b_miss_hover"));
         return out;
     });
     let canLeaveToLanding = $derived(cardMissing.length === 0 && !overweight);
@@ -877,33 +920,35 @@
     function buildDraftSummary() {
         /** @type {string[]} */
         const parts = [];
-        if (title) parts.push(`כותרת: "${title}"`);
-        if (subtitle) parts.push(`סלוגן: "${subtitle}"`);
-        if (mainImage) parts.push("יש תמונה ראשית");
-        if (logo) parts.push("יש לוגו");
-        if (hoverText) parts.push(`טקסט ריחוף: "${hoverText.slice(0, 60)}${hoverText.length > 60 ? "…" : ""}"`);
+        if (title) parts.push($_("advertise.b_d_title", { values: { v: title } }));
+        if (subtitle) parts.push($_("advertise.b_d_subtitle", { values: { v: subtitle } }));
+        if (mainImage) parts.push($_("advertise.b_d_main_image"));
+        if (logo) parts.push($_("advertise.b_d_logo"));
+        if (hoverText) parts.push($_("advertise.b_d_hover", { values: { v: `${hoverText.slice(0, 60)}${hoverText.length > 60 ? "…" : ""}` } }));
+        if (gradient) parts.push($_("advertise.b_d_gradient", { values: { v: gradient } }));
+        if (titleColor && titleColor !== "#ffffff") parts.push($_("advertise.b_d_title_color", { values: { v: titleColor } }));
         return parts.join(" · ");
     }
     function submitHelp() {
         const problem = helpProblem.trim();
         const contact = helpContact.trim();
         if (problem.length < 5) {
-            helpError = "נא לתאר את הבעיה (לפחות כמה מילים)";
+            helpError = $_("advertise.b_err_describe");
             return;
         }
         const isLoggedIn = Boolean(data?.layoutUser?.email || data?.layoutUser?.name);
         if (!isLoggedIn && !contact) {
-            helpError = "נא להשאיר דרך ליצירת קשר";
+            helpError = $_("advertise.b_err_contact_way");
             return;
         }
         helpError = "";
-        const identity = contact || data?.layoutUser?.email || data?.layoutUser?.name || "אנונימי";
+        const identity = contact || data?.layoutUser?.email || data?.layoutUser?.name || $_("advertise.b_anonymous");
         const draftSummary = buildDraftSummary();
         const waText =
-            `שלום! אני צריך/ה עזרה בעיצוב הפרסומת באתר הגמ"ח הארצי 🆘\n\n` +
+            `${$_("advertise.b_wa_help_msg_site")}\n\n` +
             `🧑 ${identity}\n\n` +
-            `הבעיה:\n"${problem}"` +
-            (draftSummary ? `\n\nמצב הטיוטה: ${draftSummary}` : "");
+            `${$_("advertise.b_the_problem")}\n"${problem}"` +
+            (draftSummary ? `\n\n${$_("advertise.b_draft_state")} ${draftSummary}` : "");
         const waUrl = `https://wa.me/${ADMIN_WA_NUMBER}?text=${encodeURIComponent(waText)}`;
         window.open(waUrl, "_blank", "noopener,noreferrer");
         helpOpen = false;
@@ -922,16 +967,14 @@
         <!-- הודעה צפה: תמונה נדחסה אוטומטית -->
         {#if compressNotice.visible}
             <div class="compress-toast" role="status" aria-live="polite">
-                <button type="button" class="compress-toast-close" onclick={dismissCompressNotice} aria-label="סגור הודעה">✕</button>
+                <button type="button" class="compress-toast-close" onclick={dismissCompressNotice} aria-label={$_("advertise.b_close_notice")}>✕</button>
                 <div class="compress-toast-body">
                     <span class="compress-toast-icon">🪄</span>
                     <div>
-                        <p class="ct-title">התמונה כווצה אוטומטית</p>
+                        <p class="ct-title">{$_("advertise.b_ct_title")}</p>
                         <p class="ct-text">
-                            כדי שהמודעה כולה תעמוד במשקל שהשרת מקבל, התמונה
-                            ({fmtWeight(compressNotice.originalBytes)}) כווצה
-                            ל-<strong>{fmtWeight(compressNotice.finalBytes)}</strong>.
-                            <br />אם האיכות לא מספיקה - נסו תמונה קלה או פשוטה יותר.
+                            {$_("advertise.b_ct_weight", { values: { from: fmtWeight(compressNotice.originalBytes) } })}<strong>{fmtWeight(compressNotice.finalBytes)}</strong>.
+                            <br />{$_("advertise.b_ct_quality")}
                         </p>
                     </div>
                 </div>
@@ -941,10 +984,10 @@
         <!-- כותרת -->
         <div class="b-hero">
             <div class="b-hero-icon">🎨</div>
-            <h1 class="b-hero-title">{editId ? "עריכת הפרסומת שלי" : "בונה הפרסומות"}</h1>
+            <h1 class="b-hero-title">{editId ? $_("advertise.b_title_edit") : $_("advertise.b_title")}</h1>
             <p class="b-hero-sub">
-                מעצבים את הפרסומת שלכם צעד-צעד - בדיוק כפי שתיראה באתר.
-                <br />כל שינוי נשמר אוטומטית.
+                {$_("advertise.b_hero_design")}
+                <br />{$_("advertise.b_hero_2")}
             </p>
 
             <!-- נפתח מדשבורד הנכס: בסיום מחליפים את המודעה הקיימת, בלי תשלום -->
@@ -952,10 +995,10 @@
                 <div class="b-edit-mode">
                     <span class="b-cd-icon">✏️</span>
                     <div>
-                        <p class="b-cd-title">עריכה של מודעה קיימת</p>
+                        <p class="b-cd-title">{$_("advertise.b_edit_title")}</p>
                         <p class="b-cd-text">
-                            השינויים יחליפו את המודעה שכבר באתר — התקופה והתשלום נשארים כמו שהם.
-                            <a href="/advertise/manage/{editId}">חזרה לדשבורד הנכס</a>
+                            {$_("advertise.b_edit_body")}
+                            <a href="/advertise/manage/{editId}">{$_("advertise.b_edit_back")}</a>
                         </p>
                     </div>
                 </div>
@@ -966,11 +1009,11 @@
                 <div class="b-countdown">
                     <span class="b-cd-icon">⏰</span>
                     <div>
-                        <p class="b-cd-title">יום העריכה החינמי פעיל</p>
+                        <p class="b-cd-title">{$_("advertise.b_cd_title")}</p>
                         <p class="b-cd-text">
-                            נותרו <strong>{fmtCountdown(freeMsRemaining)}</strong>
-                            שעות לסיום העריכה בחינם. <strong>כדאי לסיים היום!</strong>
-                            הפרסום ירוץ עד {fmtDateShort(new Date(paidAt.getTime() + planDays * 24 * 60 * 60 * 1000))}.
+                            {$_("advertise.b_cd_left")} <strong>{fmtCountdown(freeMsRemaining)}</strong>
+                            {$_("advertise.b_cd_mid")} <strong>{$_("advertise.b_cd_finish")}</strong>
+                            {$_("advertise.b_cd_end", { values: { date: fmtDateShort(new Date(paidAt.getTime() + planDays * 24 * 60 * 60 * 1000)) } })}
                         </p>
                     </div>
                 </div>
@@ -978,8 +1021,8 @@
                 <div class="b-expired">
                     <span class="b-cd-icon">⌛</span>
                     <div>
-                        <p class="b-cd-title red">יום העריכה החינמי הסתיים</p>
-                        <p class="b-cd-text">אפשר עדיין לערוך ולשלוח - צרו קשר אם צריך עזרה.</p>
+                        <p class="b-cd-title red">{$_("advertise.b_exp_title")}</p>
+                        <p class="b-cd-text">{$_("advertise.b_exp_body_open")}</p>
                     </div>
                 </div>
             {/if}
@@ -988,15 +1031,13 @@
             <div class="b-autosave">
                 <span class="b-cd-icon">💾</span>
                 <div>
-                    <p class="b-as-title">הטיוטה נשמרת אוטומטית</p>
-                    <p class="b-cd-text">
-                        אפשר לצאת מהדף ולחזור - כל מה שהזנתם מחכה לכם כאן.
-                    </p>
+                    <p class="b-as-title">{$_("advertise.b_autosave_title")}</p>
+                    <p class="b-cd-text">{$_("advertise.b_autosave_here")}</p>
                 </div>
             </div>
 
             <div class="b-reset-row">
-                <button type="button" onclick={resetDraft} class="b-reset">🗑 איפוס הטיוטה והתחלה מחדש</button>
+                <button type="button" onclick={resetDraft} class="b-reset">{$_("advertise.b_reset")}</button>
             </div>
         </div>
 
@@ -1005,25 +1046,33 @@
             <div class="builder-steps">
 
                 <!-- =================== שלב 1: תמונה ראשית =================== -->
-                <section bind:this={stepRefs.image} class="step-card">
+                <!-- לחיצה על הכרטיס היא קיצור עכבר בלבד; משתמש מקלדת מגיע לשלב ע"י Tab
+                     לתוך הפקדים שבו, ולכן נוסף onfocusin שמדליק את אותו שלב -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <section
+                    bind:this={stepRefs.image}
+                    class="step-card"
+                    onclick={() => activeStep === "image" || (activeStep = "image")}
+                    onfocusin={() => activeStep === "image" || (activeStep = "image")}
+                >
                     <div class="step-head" class:step-title-light={litFlags.image.title}>
                         <span class="step-num" class:step-num-light={litFlags.image.num}>1</span>
-                        <h2>העלו את התמונה הראשית</h2>
+                        <h2>{$_("advertise.b_s1_title")}</h2>
                         {#if activeStep === "image"}
                             <span class="tutorial-finger" aria-hidden="true">👇</span>
                         {/if}
                     </div>
-                    <p class="step-help">זו התמונה הגדולה שממלאת את הפרסומת. בחרו תמונה איכותית שמייצגת את העסק.</p>
+                    <p class="step-help">{$_("advertise.b_s1_help")}</p>
 
                     <div class="step1-grid">
                         <div class="tips-box">
-                            <p class="tips-title">💡 טיפים לתמונה מנצחת</p>
+                            <p class="tips-title">{$_("advertise.b_tips_title")}</p>
                             <ul>
-                                <li>📸 תמונה חדה ומוארת היטב</li>
-                                <li>🎯 מוקד אחד ברור - מוצר, מנה או חזית העסק</li>
-                                <li>🌈 צבעים חיים בולטים יותר בפיד</li>
-                                <li>📐 המודעה נחתכת לגובה בדסקטופ ולרוחב בנייד - עדיף תמונה מרובעת והעיקר במרכז</li>
-                                <li>🚫 בלי טקסט על התמונה - הטקסט מתווסף בהמשך</li>
+                                <li>{$_("advertise.b_tip1")}</li>
+                                <li>{$_("advertise.b_tip2")}</li>
+                                <li>{$_("advertise.b_tip3")}</li>
+                                <li>{$_("advertise.b_tip4")}</li>
                             </ul>
                         </div>
 
@@ -1036,20 +1085,20 @@
                             ondrop={(e) => handleDrop(e, "main", (v) => (isDraggingMain = v))}
                         >
                             {#if mainImage}
-                                <img src={mainImage} alt="התמונה הראשית" style:object-fit="cover" style:object-position="{mainImageObjectX}% {mainImageObjectY}%" use:adImgFit={mainImageFit} />
-                                <button type="button" class="remove-x" onclick={(e) => { e.preventDefault(); clearImage("main"); }} aria-label="הסר תמונה">✕</button>
-                                <button type="button" class="crop-arrow up" onclick={(e) => { e.preventDefault(); nudgeMainImage("up"); }} aria-label="הזז למעלה">▲</button>
-                                <button type="button" class="crop-arrow down" onclick={(e) => { e.preventDefault(); nudgeMainImage("down"); }} aria-label="הזז למטה">▼</button>
-                                <button type="button" class="crop-arrow left" onclick={(e) => { e.preventDefault(); nudgeMainImage("left"); }} aria-label="הזז שמאלה">◀</button>
-                                <button type="button" class="crop-arrow right" onclick={(e) => { e.preventDefault(); nudgeMainImage("right"); }} aria-label="הזז ימינה">▶</button>
-                                <button type="button" class="crop-reset" onclick={(e) => { e.preventDefault(); mainImageObjectX = 50; mainImageObjectY = 50; mainImageZoom = 1; }} aria-label="איפוס מיקום וזום">⊙</button>
-                                <button type="button" class="crop-zoom zoom-in" onclick={(e) => { e.preventDefault(); zoomMainImage("in"); }} aria-label="זום פנימה">＋</button>
-                                <button type="button" class="crop-zoom zoom-out" onclick={(e) => { e.preventDefault(); zoomMainImage("out"); }} aria-label="זום החוצה">－</button>
+                                <img src={mainImage} alt={$_("advertise.b_main_image_alt")} style:object-fit="cover" style:object-position="{mainImageObjectX}% {mainImageObjectY}%" use:adImgFit={mainImageFit} />
+                                <button type="button" class="remove-x" onclick={(e) => { e.preventDefault(); clearImage("main"); }} aria-label={$_("advertise.b_remove_image")}>✕</button>
+                                <button type="button" class="crop-arrow up" onclick={(e) => { e.preventDefault(); nudgeMainImage("up"); }} aria-label={$_("advertise.b_nudge_up")}>▲</button>
+                                <button type="button" class="crop-arrow down" onclick={(e) => { e.preventDefault(); nudgeMainImage("down"); }} aria-label={$_("advertise.b_nudge_down")}>▼</button>
+                                <button type="button" class="crop-arrow left" onclick={(e) => { e.preventDefault(); nudgeMainImage("left"); }} aria-label={$_("advertise.b_nudge_left")}>◀</button>
+                                <button type="button" class="crop-arrow right" onclick={(e) => { e.preventDefault(); nudgeMainImage("right"); }} aria-label={$_("advertise.b_nudge_right")}>▶</button>
+                                <button type="button" class="crop-reset" onclick={(e) => { e.preventDefault(); mainImageObjectX = 50; mainImageObjectY = 50; mainImageZoom = 1; }} aria-label={$_("advertise.b_reset_pos")}>⊙</button>
+                                <button type="button" class="crop-zoom zoom-in" onclick={(e) => { e.preventDefault(); zoomMainImage("in"); }} aria-label={$_("advertise.b_zoom_in")}>＋</button>
+                                <button type="button" class="crop-zoom zoom-out" onclick={(e) => { e.preventDefault(); zoomMainImage("out"); }} aria-label={$_("advertise.b_zoom_out")}>－</button>
                             {:else}
                                 <div class="upload-empty">
                                     <div class="upload-emoji">📸</div>
-                                    <p class="upload-main">{isDraggingMain ? "שחררו כאן! ✨" : "לחצו או גררו תמונה לכאן"}</p>
-                                    <p class="upload-note">תמונות גדולות יכווצו אוטומטית</p>
+                                    <p class="upload-main">{isDraggingMain ? $_("advertise.b_drop_here") : $_("advertise.b_click_or_drag")}</p>
+                                    <p class="upload-note">{$_("advertise.b_upload_note")}</p>
                                 </div>
                             {/if}
                             <input type="file" accept="image/*" onchange={(e) => handleImage(e, "main")} class="hidden-input" />
@@ -1059,9 +1108,9 @@
                         <p class="upload-issue" role="alert">⛔ {uploadIssue.msg}</p>
                     {/if}
                     {#if mainImage}
-                        <p class="crop-hint">אפשר למרכז עם החיצים ולהתקרב/להתרחק עם ＋/－ - התוצאה מוצגת בדמו החי</p>
+                        <p class="crop-hint">{$_("advertise.b_crop_hint")}</p>
                         <div class="step-nav-row">
-                            <button type="button" class="step-nav-btn" onclick={() => advance("logo")}>סיימתי למרכז - לשלב הבא ←</button>
+                            <button type="button" class="step-nav-btn" onclick={() => advance("logo")}>{$_("advertise.b_done_centering")}</button>
                         </div>
                     {/if}
                 </section>
@@ -1070,12 +1119,12 @@
                 <section bind:this={stepRefs.logo} class="step-card">
                     <div class="step-head" class:step-title-light={litFlags.logo.title}>
                         <span class="step-num" class:step-num-light={litFlags.logo.num}>2</span>
-                        <h2>לוגו העסק (לא חובה)</h2>
+                        <h2>{$_("advertise.b_s2_title")}</h2>
                         {#if activeStep === "logo"}
                             <span class="tutorial-finger" aria-hidden="true">👇</span>
                         {/if}
                     </div>
-                    <p class="step-help">הלוגו מופיע בפינת הפרסומת - <strong class="amber-strong">מומלץ</strong> אך אפשר לדלג.</p>
+                    <p class="step-help">{$_("advertise.b_s2_help_pre")} <strong class="amber-strong">{$_("advertise.b_s2_help_strong")}</strong> {$_("advertise.b_s2_help_post")}</p>
 
                     <div class="logo-row">
                         <div class="logo-upload-col">
@@ -1088,46 +1137,46 @@
                                 ondrop={(e) => handleDrop(e, "logo", (v) => (isDraggingLogo = v))}
                             >
                                 {#if logo}
-                                    <img src={logo} alt="לוגו" />
-                                    <button type="button" class="remove-x" onclick={(e) => { e.preventDefault(); clearImage("logo"); }} aria-label="הסר לוגו">✕</button>
+                                    <img src={logo} alt={$_("advertise.b_logo_alt")} />
+                                    <button type="button" class="remove-x" onclick={(e) => { e.preventDefault(); clearImage("logo"); }} aria-label={$_("advertise.b_remove_logo")}>✕</button>
                                 {:else}
                                     <div class="upload-sm-empty">
                                         <div class="upload-sm-emoji">{isDraggingLogo ? "✨" : "🏷️"}</div>
-                                        <p>{isDraggingLogo ? "שחררו!" : "העלו לוגו"}</p>
+                                        <p>{isDraggingLogo ? $_("advertise.b_release") : $_("advertise.b_upload_logo")}</p>
                                     </div>
                                 {/if}
                                 <input type="file" accept="image/*" onchange={(e) => handleImage(e, "logo")} class="hidden-input" />
                             </label>
                             {#if logo && logoShape === "circle" && hasCircleCrop}
-                                <button type="button" onclick={openCropper} class="edit-crop-link">עריכת החיתוך</button>
+                                <button type="button" onclick={openCropper} class="edit-crop-link">{$_("advertise.b_edit_crop")}</button>
                             {/if}
                         </div>
 
                         {#if logo}
                             <div class="logo-controls">
                                 <div>
-                                    <p class="control-label">צורת החיתוך</p>
+                                    <p class="control-label">{$_("advertise.b_crop_shape")}</p>
                                     <div class="seg-group">
-                                        <button type="button" onclick={chooseSquare} class="seg-btn" class:active={logoShape === "square"}>⬜ מרובע</button>
-                                        <button type="button" onclick={chooseCircle} class="seg-btn" class:active={logoShape === "circle"}>⚪ עגול</button>
+                                        <button type="button" onclick={chooseSquare} class="seg-btn" class:active={logoShape === "square"}>{$_("advertise.b_square")}</button>
+                                        <button type="button" onclick={chooseCircle} class="seg-btn" class:active={logoShape === "circle"}>{$_("advertise.b_circle")}</button>
                                     </div>
                                 </div>
                                 <div>
-                                    <p class="control-label">מיקום הלוגו</p>
+                                    <p class="control-label">{$_("advertise.b_logo_pos")}</p>
                                     <div class="seg-group">
-                                        <button type="button" onclick={() => setLogoAnchor("right")} class="seg-btn" class:active={!logoFree && logoPosition === "right"}>ימין</button>
-                                        <button type="button" onclick={() => setLogoAnchor("left")} class="seg-btn" class:active={!logoFree && logoPosition === "left"}>שמאל</button>
-                                        <button type="button" onclick={() => setLogoAnchor("cta")} class="seg-btn" class:active={!logoFree && logoPosition === "cta"}>למטה</button>
+                                        <button type="button" onclick={() => setLogoAnchor("right")} class="seg-btn" class:active={!logoFree && logoPosition === "right"}>{$_("advertise.b_pos_right")}</button>
+                                        <button type="button" onclick={() => setLogoAnchor("left")} class="seg-btn" class:active={!logoFree && logoPosition === "left"}>{$_("advertise.b_pos_left")}</button>
+                                        <button type="button" onclick={() => setLogoAnchor("cta")} class="seg-btn" class:active={!logoFree && logoPosition === "cta"}>{$_("advertise.b_pos_bottom")}</button>
                                     </div>
                                 </div>
                             </div>
                             <!-- מיקום חופשי: גוררים את הלוגו על התצוגה החיה לכל מקום -->
                             <div class="logo-drag-row">
-                                <p class="logo-drag-hint">🖐️ אפשר גם לגרור את הלוגו בתצוגה החיה לכל מקום במודעה</p>
+                                <p class="logo-drag-hint"><span aria-hidden="true">🖐️</span> {$_("advertise.b_logo_drag_hint")}</p>
                                 {#if logoFree}
                                     <span class="logo-drag-pos">
                                         <span class="logo-drag-badge">{logoFreeX}% · {logoFreeY}%</span>
-                                        <button type="button" class="logo-drag-reset" onclick={resetLogoPosition}>למיקום ברירת המחדל</button>
+                                        <button type="button" class="logo-drag-reset" onclick={resetLogoPosition}>{$_("advertise.b_logo_pos_reset")}</button>
                                     </span>
                                 {/if}
                             </div>
@@ -1139,21 +1188,24 @@
                     {/if}
 
                     <div class="step-nav-row">
-                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("logo"))}>→ שלב אחורה</button>
+                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("logo"))}>{$_("advertise.b_prev_step")}</button>
                         <button type="button" class="step-nav-btn" onclick={() => advance("title")}>
-                            {logo ? "לשלב הבא ←" : "דילוג על הלוגו ←"}
+                            {logo ? $_("advertise.b_next_step") : $_("advertise.b_skip_step")}
                         </button>
                     </div>
 
                     <!-- ===== מודל חיתוך עגול ===== -->
                     {#if cropOpen}
-                        <div class="crop-modal-bg" role="dialog" aria-modal="true" aria-label="חיתוך הלוגו לעיגול">
+                        <div class="crop-modal-bg" role="dialog" aria-modal="true" aria-label={$_("advertise.b_crop_modal_aria")}>
                             <div class="crop-modal">
                                 <div class="crop-modal-head">
-                                    <h3>חיתוך עגול ללוגו</h3>
-                                    <button type="button" class="crop-modal-x" onclick={cancelCrop} aria-label="סגור">✕</button>
+                                    <h3>{$_("advertise.b_crop_title")}</h3>
+                                    <button type="button" class="crop-modal-x" onclick={cancelCrop} aria-label={$_("advertise.close")}>✕</button>
                                 </div>
-                                <p class="crop-help">גררו את התמונה למיקום הרצוי, והשתמשו בגלגלת או במחוון לזום.</p>
+                                <p class="crop-help">{$_("advertise.b_crop_help")}</p>
+                                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                                <!-- משטח גרירה לחיתוך. אין לו מקבילת מקלדת ישירה, אבל אותה
+                                     פעולה זמינה במחוון הזום שמתחתיו -->
                                 <div
                                     class="crop-stage"
                                     onpointerdown={cropPointerDown}
@@ -1164,7 +1216,7 @@
                                 >
                                     <img
                                         src={logoOriginal}
-                                        alt="לוגו"
+                                        alt={$_("advertise.b_logo_alt")}
                                         class="crop-img"
                                         draggable="false"
                                         style:transform="translate({cropOffsetX}px, {cropOffsetY}px) scale({cropZoom})"
@@ -1172,13 +1224,13 @@
                                     <div class="crop-circle-mask"></div>
                                 </div>
                                 <div class="crop-controls">
-                                    <span class="crop-zoom-label">זום</span>
-                                    <input type="range" min="0.3" max="4" step="0.01" bind:value={cropZoom} class="crop-zoom-slider" aria-label="רמת הזום" />
+                                    <span class="crop-zoom-label">{$_("advertise.b_zoom")}</span>
+                                    <input type="range" min="0.3" max="4" step="0.01" bind:value={cropZoom} class="crop-zoom-slider" aria-label={$_("advertise.b_zoom_level")} />
                                     <span class="crop-zoom-val">{Math.round(cropZoom * 100)}%</span>
                                 </div>
                                 <div class="crop-actions">
-                                    <button type="button" class="crop-btn-cancel" onclick={cancelCrop}>ביטול</button>
-                                    <button type="button" class="crop-btn-confirm" onclick={confirmCrop}>אישור החיתוך ✓</button>
+                                    <button type="button" class="crop-btn-cancel" onclick={cancelCrop}>{$_("advertise.b_cancel")}</button>
+                                    <button type="button" class="crop-btn-confirm" onclick={confirmCrop}>{$_("advertise.b_confirm_crop")}</button>
                                 </div>
                             </div>
                         </div>
@@ -1189,13 +1241,13 @@
                 <section bind:this={stepRefs.title} class="step-card">
                     <div class="step-head" class:step-title-light={litFlags.title.title}>
                         <span class="step-num" class:step-num-light={litFlags.title.num}>3</span>
-                        <h2>כותרת הפרסומת</h2>
+                        <h2>{$_("advertise.b_s3_title")}</h2>
                         {#if activeStep === "title"}
                             <span class="tutorial-finger" aria-hidden="true">👇</span>
                         {/if}
 
-                        <div class="title-color-rail" aria-label="בחירת צבע הכותרת">
-                            <span class="title-color-label">צבע:</span>
+                        <div class="title-color-rail" aria-label={$_("advertise.b_title_color_aria")}>
+                            <span class="title-color-label">{$_("advertise.b_pick_title_color")}</span>
                             {#each titleColors as p}
                                 <button
                                     type="button"
@@ -1203,18 +1255,18 @@
                                     class="title-color-dot"
                                     class:selected={titleColor === p.c}
                                     style:background={p.c}
-                                    title={p.label}
-                                    aria-label={p.label}
+                                    title={$_(`advertise.${p.labelKey}`)}
+                                    aria-label={$_(`advertise.${p.labelKey}`)}
                                     aria-pressed={titleColor === p.c}
                                 ></button>
                             {/each}
-                            <label class="title-color-custom" title="צבע מותאם אישית">
-                                <input type="color" bind:value={titleColor} aria-label="בחירת צבע מותאם" />
+                            <label class="title-color-custom" title={$_("advertise.b_custom_color")}>
+                                <input type="color" bind:value={titleColor} aria-label={$_("advertise.b_custom_color_pick")} />
                                 <span>🎨</span>
                             </label>
                         </div>
                     </div>
-                    <p class="step-help">שם העסק או המסר המרכזי - קצר וקליט (עד 40 תווים).</p>
+                    <p class="step-help">{$_("advertise.b_s3_help")}</p>
 
                     <input
                         type="text"
@@ -1222,24 +1274,24 @@
                         maxlength="40"
                         onfocus={() => activeStep === "title" || (activeStep = "title")}
                         onblur={() => title.trim() && commitField("title")}
-                        placeholder="למשל: פיצה של אמא"
+                        placeholder={$_("advertise.b_s3_ph")}
                         class="text-input"
                     />
                     <div class="char-count">{title.length}/40</div>
 
                     <div class="slider-block">
                         <div class="slider-head">
-                            <p>מיקום הכותרת <span class="amber-strong">{titleOffsetY > 0 ? `+${titleOffsetY}` : titleOffsetY}px</span></p>
-                            <button type="button" onclick={() => (titleOffsetY = 0)} class="slider-reset">איפוס</button>
+                            <p>{$_("advertise.b_title_pos")} <span class="amber-strong">{titleOffsetY > 0 ? `+${titleOffsetY}` : titleOffsetY}px</span></p>
+                            <button type="button" onclick={() => (titleOffsetY = 0)} class="slider-reset">{$_("advertise.b_reset_word")}</button>
                         </div>
-                        <input type="range" min="-20" max="60" step="1" bind:value={titleOffsetY} class="range-input" aria-label="מיקום אנכי של הכותרת" />
-                        <div class="slider-labels"><span>למעלה</span><span>למטה</span></div>
+                        <input type="range" min="-20" max="60" step="1" bind:value={titleOffsetY} class="range-input" aria-label={$_("advertise.b_title_pos_aria")} />
+                        <div class="slider-labels"><span>{$_("advertise.b_up")}</span><span>{$_("advertise.b_down")}</span></div>
                     </div>
 
                     <div class="step-nav-row">
-                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("title"))}>→ שלב אחורה</button>
+                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("title"))}>{$_("advertise.b_prev_step")}</button>
                         {#if title}
-                            <button type="button" class="step-nav-btn" onclick={() => commitField("title")}>לשלב הבא ←</button>
+                            <button type="button" class="step-nav-btn" onclick={() => commitField("title")}>{$_("advertise.b_next_step")}</button>
                         {/if}
                     </div>
                 </section>
@@ -1248,24 +1300,25 @@
                 <section bind:this={stepRefs.gradient} class="step-card">
                     <div class="step-head" class:step-title-light={litFlags.gradient.title}>
                         <span class="step-num" class:step-num-light={litFlags.gradient.num}>4</span>
-                        <h2>צבע הפס והכפתור</h2>
+                        <h2>{$_("advertise.b_s4_title")}</h2>
                         {#if activeStep === "gradient"}
                             <span class="tutorial-finger" aria-hidden="true">👇</span>
                         {/if}
                     </div>
-                    <p class="step-help">הצבע של הפס האלכסוני על התמונה ושל כפתור הקריאה לפעולה.</p>
+                    <p class="step-help">{$_("advertise.b_s4_help")}</p>
 
-                    <p class="control-label">צבע הפס</p>
-                    <div class="color-rail" aria-label="בחירת צבע הפס">
+                    <p class="control-label">{$_("advertise.b_band_color")}</p>
+                    <div class="color-rail" aria-label={$_("advertise.b_band_color_aria")}>
                         {#each palettes as p}
+                            {@const paint = adGradientPaint(p.cls, "br")}
                             <button
                                 type="button"
                                 onclick={() => (gradient = p.cls)}
-                                class="color-dot"
+                                class="color-dot {paint.cls}"
                                 class:selected={gradient === p.cls}
-                                style:background={p.cls}
-                                title={p.label}
-                                aria-label={p.label}
+                                style={paint.style}
+                                title={$_(`advertise.${p.labelKey}`)}
+                                aria-label={$_(`advertise.${p.labelKey}`)}
                                 aria-pressed={gradient === p.cls}
                             ></button>
                         {/each}
@@ -1273,15 +1326,15 @@
 
                     <div class="slider-block">
                         <div class="slider-head">
-                            <p>גובה הפס <span class="amber-strong">{diagHeight}%</span> מהתמונה</p>
+                            <p>{$_("advertise.b_band_height")} <span class="amber-strong">{diagHeight}%</span> {$_("advertise.b_of_image_height")}</p>
                         </div>
-                        <input type="range" min="5" max="50" step="1" bind:value={diagHeight} class="range-input" aria-label="גובה הפס האלכסוני" />
-                        <div class="slider-labels"><span>נמוך</span><span>גבוה</span></div>
+                        <input type="range" min="5" max="50" step="1" bind:value={diagHeight} class="range-input" aria-label={$_("advertise.b_band_height_aria")} />
+                        <div class="slider-labels"><span>{$_("advertise.b_band_low")}</span><span>{$_("advertise.b_band_high")}</span></div>
                     </div>
 
                     <div class="step-nav-row">
-                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("gradient"))}>→ שלב אחורה</button>
-                        <button type="button" class="step-nav-btn" onclick={() => advance("subtitle")}>ממשיכים לשלב הבא ←</button>
+                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("gradient"))}>{$_("advertise.b_prev_step")}</button>
+                        <button type="button" class="step-nav-btn" onclick={() => advance("subtitle")}>{$_("advertise.b_continue_next")}</button>
                     </div>
                 </section>
 
@@ -1289,12 +1342,12 @@
                 <section bind:this={stepRefs.subtitle} class="step-card">
                     <div class="step-head" class:step-title-light={litFlags.subtitle.title}>
                         <span class="step-num" class:step-num-light={litFlags.subtitle.num}>5</span>
-                        <h2>משפט קצר / סלוגן</h2>
+                        <h2>{$_("advertise.b_s5_title")}</h2>
                         {#if activeStep === "subtitle"}
                             <span class="tutorial-finger" aria-hidden="true">👇</span>
                         {/if}
                     </div>
-                    <p class="step-help">מופיע על הפס הצבעוני בתחתית הפרסומת (עד 70 תווים).</p>
+                    <p class="step-help">{$_("advertise.b_s5_help")}</p>
 
                     <input
                         type="text"
@@ -1302,31 +1355,90 @@
                         maxlength="70"
                         onfocus={() => activeStep === "subtitle" || (activeStep = "subtitle")}
                         onblur={() => subtitle.trim() && commitField("subtitle")}
-                        placeholder="למשל: משלוחים חינם עד הבית בכל הארץ"
+                        placeholder={$_("advertise.b_s5_ph")}
                         class="text-input"
                     />
                     <div class="char-count">{subtitle.length}/70</div>
 
+                    <!-- טיפוגרפיה של תת-הכותרת: גודל, רווח בין שורות ויישור. הערכים
+                         נוסעים עם המודעה דרך adStyle, ולכן מה שנראה כאן הוא מה שיתפרסם. -->
+                    <div class="sub-type-panel">
+                        <p class="sub-type-title">{$_("advertise.b_s5_type_title")}</p>
+
+                        <div class="sub-type-row">
+                            <span class="sub-type-label">{$_("advertise.b_s5_size")}</span>
+                            <input type="range" class="sub-type-range"
+                                   min={SUB_FONT_SIZE_MIN} max={SUB_FONT_SIZE_MAX} step="0.02"
+                                   bind:value={subFontSize}
+                                   aria-label={$_("advertise.b_s5_size")}
+                                   oninput={() => activeStep === "subtitle" || (activeStep = "subtitle")} />
+                            <span class="sub-type-value">{subFontSize.toFixed(2)}</span>
+                        </div>
+
+                        <div class="sub-type-row">
+                            <span class="sub-type-label">{$_("advertise.b_s5_line_height")}</span>
+                            <input type="range" class="sub-type-range"
+                                   min={SUB_LINE_HEIGHT_MIN} max={SUB_LINE_HEIGHT_MAX} step="0.05"
+                                   bind:value={subLineHeight}
+                                   aria-label={$_("advertise.b_s5_line_height")}
+                                   oninput={() => activeStep === "subtitle" || (activeStep = "subtitle")} />
+                            <span class="sub-type-value">{subLineHeight.toFixed(2)}</span>
+                        </div>
+
+                        <div class="sub-type-row">
+                            <span class="sub-type-label">{$_("advertise.b_s5_align")}</span>
+                            <div class="sub-type-aligns">
+                                {#each subAlignOptions as opt}
+                                    <button type="button"
+                                            onclick={() => (subAlign = opt.id)}
+                                            title={$_(`advertise.${opt.labelKey}`)}
+                                            aria-pressed={subAlign === opt.id}
+                                            class="sub-type-align-btn"
+                                            class:is-active={subAlign === opt.id}>
+                                        <span aria-hidden="true">{opt.icon}</span>
+                                        <span class="sub-type-align-text">{$_(`advertise.${opt.labelKey}`)}</span>
+                                    </button>
+                                {/each}
+                            </div>
+                        </div>
+
+                        <button type="button" class="sub-type-reset"
+                                onclick={() => { subFontSize = DEFAULT_SUB_FONT_SIZE; subLineHeight = DEFAULT_SUB_LINE_HEIGHT; subAlign = "right"; }}>
+                            {$_("advertise.b_s5_type_reset")}
+                        </button>
+                    </div>
+
                     <div class="step-nav-row">
-                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("subtitle"))}>→ שלב אחורה</button>
+                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("subtitle"))}>{$_("advertise.b_prev_step")}</button>
                         {#if subtitle}
-                            <button type="button" class="step-nav-btn" onclick={() => commitField("subtitle")}>לשלב הבא ←</button>
+                            <button type="button" class="step-nav-btn" onclick={() => commitField("subtitle")}>{$_("advertise.b_next_step")}</button>
                         {/if}
                     </div>
                 </section>
 
                 <!-- =================== שלב 6: טקסט בריחוף =================== -->
-                <section bind:this={stepRefs.hover} class="step-card">
+                <!-- כמו בשלב 1: קיצור עכבר, ומקבילה למקלדת דרך onfocusin -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <section
+                    bind:this={stepRefs.hover}
+                    class="step-card"
+                    onclick={(e) => {
+                        if (e.target instanceof Element && e.target.closest("button, a, input, textarea")) return;
+                        if (activeStep !== "hover") activeStep = "hover";
+                    }}
+                    onfocusin={() => { if (activeStep !== "hover") activeStep = "hover"; }}
+                >
                     <div class="step-head" class:step-title-light={litFlags.hover.title}>
                         <span class="step-num" class:step-num-light={litFlags.hover.num}>6</span>
-                        <h2>טקסט בריחוף העכבר</h2>
+                        <h2>{$_("advertise.b_s6_title")}</h2>
                         {#if activeStep === "hover"}
                             <span class="tutorial-finger" aria-hidden="true">👇</span>
                         {/if}
                     </div>
                     <p class="step-help">
-                        כשגולש מרחף עם העכבר מעל הפרסומת - התמונה מתחלפת בטקסט הזה.
-                        <br /><strong class="amber-strong">זה המקום למכור:</strong> מה מקבלים, למה דווקא אתם (עד 90 תווים).
+                        {$_("advertise.b_s6_help1")}
+                        <br /><strong class="amber-strong">{$_("advertise.b_s6_help_strong")}</strong> {$_("advertise.b_s6_help2")}
                     </p>
 
                     <!-- התיבה גדלה לפי התוכן (autoGrow): גובה קבוע חתך את השורות
@@ -1338,15 +1450,15 @@
                         rows="3"
                         onfocus={() => activeStep === "hover" || (activeStep = "hover")}
                         onblur={() => hoverText.trim() && commitField("hover")}
-                        placeholder="למשל: 20% הנחה לחברי הקבוצה על כל התפריט!"
+                        placeholder={$_("advertise.b_s6_ph")}
                         class="text-input"
                     ></textarea>
                     <div class="char-count">{hoverText.length}/90</div>
 
                     <div class="step-nav-row">
-                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("hover"))}>→ שלב אחורה</button>
+                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("hover"))}>{$_("advertise.b_prev_step")}</button>
                         {#if hoverText}
-                            <button type="button" class="step-nav-btn" onclick={() => commitField("hover")}>לשלב הבא ←</button>
+                            <button type="button" class="step-nav-btn" onclick={() => commitField("hover")}>{$_("advertise.b_next_step")}</button>
                         {/if}
                     </div>
                 </section>
@@ -1355,17 +1467,17 @@
                 <section bind:this={stepRefs.preview} class="step-card">
                     <div class="step-head" class:step-title-light={litFlags.preview.title}>
                         <span class="step-num" class:step-num-light={litFlags.preview.num}>7</span>
-                        <h2>תצוגה מקדימה</h2>
+                        <h2>{$_("advertise.b_s7_title")}</h2>
                         {#if activeStep === "preview"}
                             <span class="tutorial-finger" aria-hidden="true">👇</span>
                         {/if}
                     </div>
-                    <p class="step-help">כך תיראה הפרסומת שלכם באתר. עברו עם העכבר על הכרטיס כדי לראות את צד הריחוף.</p>
+                    <p class="step-help">{$_("advertise.b_preview_help")}</p>
 
                     <div class="preview-toggle-row">
                         <div class="seg-group">
-                            <button type="button" onclick={() => (previewMode = "mobile")} class="seg-btn" class:active={previewMode === "mobile"}>📱 נייד</button>
-                            <button type="button" onclick={() => (previewMode = "desktop")} class="seg-btn" class:active={previewMode === "desktop"}>💻 מחשב</button>
+                            <button type="button" onclick={() => (previewMode = "mobile")} class="seg-btn" class:active={previewMode === "mobile"}>{$_("advertise.b_mobile")}</button>
+                            <button type="button" onclick={() => (previewMode = "desktop")} class="seg-btn" class:active={previewMode === "desktop"}>{$_("advertise.b_desktop")}</button>
                         </div>
                     </div>
 
@@ -1377,29 +1489,29 @@
                                     <div class="mobile-popup">
                                         <div class="popup-title-row">
                                             {#if logo}
-                                                <img src={logo} alt="לוגו" class="popup-logo-above" class:circle={logoShape === "circle"} />
+                                                <img src={logo} alt={$_("advertise.b_logo_alt")} class="popup-logo-above" class:circle={logoShape === "circle"} />
                                             {/if}
-                                            <h3 class="popup-title-above" style:color={titleColor}>{title || "כותרת הפרסומת"}</h3>
+                                            <h3 class="popup-title-above" style:color={titleColor}>{title || $_("advertise.b_s3_title")}</h3>
                                         </div>
                                         <div class="popup-img pro-img-wrap">
                                             {#if mainImage}
                                                 <img src={mainImage} alt={title} style:object-position="{mainImageObjectX}% {mainImageObjectY}%" use:adImgFit={mainImageFit} />
                                             {:else}
-                                                <div class="img-placeholder">התמונה הראשית</div>
+                                                <div class="img-placeholder">{$_("advertise.b_main_image_alt")}</div>
                                             {/if}
-                                            <div class="pro-diag" style:background={gradient}></div>
+                                            <div class="pro-diag {bandPaint.cls}" style={bandPaint.style}></div>
                                             <div class="pro-title-wrap mobile">
-                                                <p class="pro-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{subtitle || "משפט קצר / סלוגן"}</p>
+                                                <p class="pro-sub">{subtitle || $_("advertise.b_s5_title")}</p>
                                             </div>
                                             <div class="close-countdown">5</div>
                                         </div>
                                         <div class="popup-body">
-                                            <button type="button" class="popup-cta" style:background={gradient}>← {cta}</button>
+                                            <button type="button" class="popup-cta {stripPaint.cls}" style={stripPaint.style}>← {cta}</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <p class="preview-caption">כך תיראה הפרסומת בנייד - חלונית שנפתחת לגולש</p>
+                            <p class="preview-caption">{$_("advertise.b_mobile_caption_popup")}</p>
                         </div>
                     {:else}
                         <div class="preview-frame">
@@ -1412,22 +1524,25 @@
                                 onfocus={() => (hoverPreview = true)}
                                 onblur={() => (hoverPreview = false)}
                             >
-                                <div class="pro-img-wrap clean-card-img" use:logoClearance={[title, subtitle, logo, logoFreeX, logoFreeY, logoPosition, diagHeight, titleOffsetY]}>
+                                <div class="pro-img-wrap clean-card-img" use:logoClearance={[title, subtitle, logo, logoFreeX, logoFreeY, logoPosition, diagHeight, titleOffsetY, subFontSize, subLineHeight, subAlign]}>
                                     {#if mainImage}
                                         <img src={mainImage} alt={title} class="ad-img" style:opacity={showHover ? 0 : 1} style:object-position="{mainImageObjectX}% {mainImageObjectY}%" use:adImgFit={mainImageFit} />
                                     {:else}
-                                        <div class="img-placeholder">התמונה שלך</div>
+                                        <div class="img-placeholder">{$_("advertise.b_img_placeholder")}</div>
                                     {/if}
-                                    <div class="pro-diag" style:background={gradient} style:opacity={showHover ? 0 : 1}></div>
-                                    <div class="pro-title-top" style:opacity={showHover ? 0 : 1} style:transform="translateY({titleOffsetY}px)">
-                                        <h3 class="pro-title" style:color={titleColor}><span class="logo-avoid" aria-hidden="true"></span>{title || "כותרת הפרסומת"}</h3>
+                                    <div class="pro-diag {bandPaint.cls}" style={bandPaint.style} style:opacity={showHover ? 0 : 1}></div>
+                                    <div class="pro-title-top"
+                                         class:has-corner-logo-right={titleCornerSide === "right"}
+                                         class:has-corner-logo-left={titleCornerSide === "left"}
+                                         style:opacity={showHover ? 0 : 1} style:transform="translateY({titleOffsetY}px)">
+                                        <h3 class="pro-title" style:color={titleColor}><span class="logo-avoid" aria-hidden="true"></span>{title || $_("advertise.b_s3_title")}</h3>
                                     </div>
                                     <div class="pro-title-wrap" style:opacity={showHover ? 0 : 1}>
-                                        <p class="pro-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{subtitle || "משפט קצר / סלוגן"}</p>
+                                        <p class="pro-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{subtitle || $_("advertise.b_ph_slogan")}</p>
                                     </div>
                                     <div class="hover-overlay" style:opacity={showHover ? 1 : 0}>
-                                        <h3 class="hover-title">{title || "הכותרת"}</h3>
-                                        <p class="hover-text">{hoverText || "הטקסט שמופיע בריחוף העכבר"}</p>
+                                        <h3 class="hover-title">{title || $_("advertise.b_ph_title_short")}</h3>
+                                        <p class="hover-text">{hoverText || $_("advertise.b_ph_hover")}</p>
                                     </div>
                                     {#if logo}
                                         <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
@@ -1435,7 +1550,7 @@
                                              לו מקבילת מקלדת מלאה (חיצים מזיזים אותו) ולכן זה תקין נגישותית -->
                                         <img
                                             src={logo}
-                                            alt="לוגו"
+                                            alt={$_("advertise.b_logo_alt")}
                                             data-ad-logo
                                             class="ad-logo ad-logo-draggable"
                                             class:circle={logoShape === "circle"}
@@ -1447,7 +1562,7 @@
                                             draggable="false"
                                             role="button"
                                             tabindex="0"
-                                            aria-label="לוגו — אפשר לגרור אותו למקום אחר במודעה"
+                                            aria-label={$_("advertise.b_logo_drag_aria")}
                                             onpointerdown={logoPointerDown}
                                             onpointermove={logoPointerMove}
                                             onpointerup={logoPointerUp}
@@ -1456,58 +1571,68 @@
                                         />
                                     {/if}
                                 </div>
-                                <div class="promo-cta" style:background={gradient}>
+                                <div class="promo-cta {stripPaint.cls}" style={stripPaint.style}>
                                     <p>{cta}</p>
                                 </div>
                             </div>
-                            <p class="preview-caption">כך תיראה הפרסומת במחשב - בעמודת הפרסומות שלצד התוכן</p>
+                            <p class="preview-caption">{$_("advertise.b_desktop_caption")}</p>
                         </div>
                     {/if}
 
                     <div class="step-nav-row">
-                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("preview"))}>→ שלב אחורה</button>
-                        <div class="help-wrap">
-                            <button type="button" onclick={openHelp} class="help-btn" aria-label="בקשת עזרה בעיצוב">
+                        <button type="button" class="step-nav-btn" onclick={() => advance(prevOf("preview"))}>{$_("advertise.b_prev_step")}</button>
+                        <div class="relative group">
+                            <button type="button" onclick={openHelp} class="help-btn" aria-label={$_("advertise.b_help_btn_aria")}>
                                 <span aria-hidden="true">😩</span>
-                                <span>אני מסתבך! צריך עזרה</span>
+                                <span>{$_("advertise.b_help_btn")}</span>
                                 <span aria-hidden="true">🆘</span>
                             </button>
+                            <span role="tooltip"
+                                  class="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-gray-900/95 px-3 py-2 text-sm font-bold text-amber-200 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                {$_("advertise.b_help_tooltip")}
+                            </span>
                         </div>
-                        <button type="button" class="step-nav-btn" onclick={goToLandingEditor} disabled={movingToLanding || !canLeaveToLanding}>
-                            {#if movingToLanding}
-                                ⏳ עוברים לדף הנחיתה...
-                            {:else}
-                                נראה מעולה 👍 לשלב הבא ←
-                            {/if}
-                        </button>
+                        <div class="relative group">
+                            <button type="button" class="step-nav-btn" onclick={goToLandingEditor} disabled={movingToLanding || !canLeaveToLanding}>
+                                {#if movingToLanding}
+                                    <span aria-hidden="true">⏳</span>
+                                    {$_("advertise.b_moving_landing")}
+                                {:else}
+                                    {$_("advertise.b_looks_great")} <span aria-hidden="true">👍</span> {$_("advertise.b_to_next")} <span aria-hidden="true">←</span>
+                                {/if}
+                            </button>
+                            <span role="tooltip"
+                                  class="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-gray-900/95 px-3 py-2 text-sm font-bold text-amber-200 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                {$_("advertise.b_next_tooltip")}
+                            </span>
+                        </div>
                     </div>
 
                     <!-- החסימה מוסברת כאן, בשלב עצמו — לא מגלים בדף הבא שחסר משהו -->
                     {#if !canLeaveToLanding}
                         <div class="step-block-note" role="alert">
                             {#if cardMissing.length > 0}
-                                <p>⛔ אי אפשר להמשיך עדיין — חסר: <strong>{cardMissing.join(", ")}</strong>.</p>
+                                <p>⛔ {$_("advertise.b_block_missing")} <strong>{cardMissing.join(", ")}</strong>.</p>
                             {/if}
                             {#if overweight}
                                 <p>
-                                    ⚖️ המודעה כבדה מדי ({fmtWeight(adWeightBytes)} מתוך {fmtWeight(AD_EFFECTIVE_LIMIT)} מותרים) —
-                                    הקטינו או הסירו תמונה{#if heaviestLabel}&nbsp;(הכבדה ביותר: <strong>{heaviestLabel}</strong>){/if}.
+                                    ⚖️ {$_("advertise.b_overweight", { values: { w: fmtWeight(adWeightBytes), max: fmtWeight(AD_EFFECTIVE_LIMIT) } })}{#if heaviestLabel}&nbsp;{$_("advertise.b_heaviest_pre")} <strong>{heaviestLabel}</strong>){/if}.
                                 </p>
                             {/if}
                         </div>
                     {:else if adWeightBytes > AD_EFFECTIVE_LIMIT * 0.7}
-                        <p class="weight-pill">⚖️ משקל המודעה: {fmtWeight(adWeightBytes)} מתוך {fmtWeight(AD_EFFECTIVE_LIMIT)} מותרים</p>
+                        <p class="weight-pill">⚖️ {$_("advertise.b_weight_pill", { values: { w: fmtWeight(adWeightBytes), max: fmtWeight(AD_EFFECTIVE_LIMIT) } })}</p>
                     {/if}
                 </section>
 
             </div><!-- /.builder-steps -->
 
             <!-- ========== דמו חי - קופץ להתיישר עם השלב הפעיל ========== -->
-            <aside class="builder-demo" aria-label="דמו חי של הפרסומת" style:top="{demoTop}px">
+            <aside class="builder-demo" aria-label={$_("advertise.b_demo_aria")} style:top="{demoTop}px">
                 <div class="live-demo-card">
-                    <p class="live-demo-label">👁 דמו חי</p>
+                    <p class="live-demo-label">{$_("advertise.b_demo_label")}</p>
                     <div class="live-demo-frame" dir="rtl">
-                        <div class="pro-img-wrap live-demo-img-wrap" use:logoClearance={[title, subtitle, logo, logoFreeX, logoFreeY, logoPosition, diagHeight, titleOffsetY]}>
+                        <div class="pro-img-wrap live-demo-img-wrap" use:logoClearance={[title, subtitle, logo, logoFreeX, logoFreeY, logoPosition, diagHeight, titleOffsetY, subFontSize, subLineHeight, subAlign]}>
                             {#if mainImage}
                                 <img
                                     src={mainImage}
@@ -1520,30 +1645,33 @@
                             {:else}
                                 <div class="placeholder-dashed placeholder-img" style:opacity={activeStep === "hover" ? 0 : 1}>
                                     <div class="placeholder-icon">📸</div>
-                                    <p>התמונה הראשית</p>
-                                    <p class="placeholder-hint">שלב 1</p>
+                                    <p>{$_("advertise.b_main_image_alt")}</p>
+                                    <p class="placeholder-hint">{$_("advertise.b_step_n", { values: { n: 1 } })}</p>
                                 </div>
                             {/if}
-                            <div class="pro-diag" style:background={gradient} style:opacity={activeStep === "hover" ? 0 : 1}></div>
-                            <div class="pro-title-top" style:transform="translateY({titleOffsetY}px)" style:opacity={activeStep === "hover" ? 0 : 1}>
+                            <div class="pro-diag {bandPaint.cls}" style={bandPaint.style} style:opacity={activeStep === "hover" ? 0 : 1}></div>
+                            <div class="pro-title-top"
+                                 class:has-corner-logo-right={titleCornerSide === "right"}
+                                 class:has-corner-logo-left={titleCornerSide === "left"}
+                                 style:transform="translateY({titleOffsetY}px)" style:opacity={activeStep === "hover" ? 0 : 1}>
                                 {#if title}
                                     <h3 class="pro-title" style:color={titleColor}><span class="logo-avoid" aria-hidden="true"></span>{title}</h3>
                                 {:else}
-                                    <div class="placeholder-dashed placeholder-line">הכותרת - שלב 3</div>
+                                    <div class="placeholder-dashed placeholder-line">{$_("advertise.b_ph_title_step")}</div>
                                 {/if}
                             </div>
                             <div class="pro-title-wrap" style:opacity={activeStep === "hover" ? 0 : 1}>
                                 {#if subtitle}
                                     <p class="pro-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{subtitle}</p>
                                 {:else}
-                                    <div class="placeholder-dashed placeholder-line small">הסלוגן - שלב 5</div>
+                                    <div class="placeholder-dashed placeholder-line small">{$_("advertise.b_ph_slogan_step5")}</div>
                                 {/if}
                             </div>
                             {#if logo}
                                 <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
                                 <img
                                     src={logo}
-                                    alt="לוגו"
+                                    alt={$_("advertise.b_logo_alt")}
                                     data-ad-logo
                                     class="ad-logo ad-logo-draggable"
                                     class:circle={logoShape === "circle"}
@@ -1555,7 +1683,7 @@
                                     draggable="false"
                                     role="button"
                                     tabindex="0"
-                                    aria-label="לוגו — אפשר לגרור אותו למקום אחר במודעה"
+                                    aria-label={$_("advertise.b_logo_drag_aria")}
                                     onpointerdown={logoPointerDown}
                                     onpointermove={logoPointerMove}
                                     onpointerup={logoPointerUp}
@@ -1568,14 +1696,14 @@
                                     class:pos-left={logoPosition === "left"}
                                     class:pos-cta={logoPosition === "cta"}
                                     style:opacity={activeStep === "hover" ? 0 : 1}
-                                >לוגו<br />שלב 2</div>
+                                >{$_("advertise.b_logo_alt")}<br />{$_("advertise.b_step_n", { values: { n: 2 } })}</div>
                             {/if}
                             <div class="hover-overlay" style:opacity={activeStep === "hover" ? 1 : 0}>
-                                <h3 class="hover-title">{title || "הכותרת"}</h3>
-                                <p class="hover-text">{hoverText || "הטקסט שמופיע בריחוף"}</p>
+                                <h3 class="hover-title">{title || $_("advertise.b_ph_title_short")}</h3>
+                                <p class="hover-text">{hoverText || $_("advertise.b_ph_hover")}</p>
                             </div>
                         </div>
-                        <div class="promo-cta" style:background={gradient}>
+                        <div class="promo-cta {stripPaint.cls}" style={stripPaint.style}>
                             <p>{cta}</p>
                         </div>
                     </div>
@@ -1590,7 +1718,7 @@
 <!-- תג אדמין -->
 {#if accessGranted && isAdmin}
     <div class="admin-badge" dir="rtl">
-        <p>🛡️ מצב אדמין - גישה חופשית לבונה</p>
+        <p>🛡️ {$_("advertise.b_admin_badge_site")}</p>
     </div>
 {/if}
 
@@ -1608,20 +1736,20 @@
         <div class="help-modal" dir="rtl">
             <div class="help-modal-head">
                 <span class="help-modal-icon" aria-hidden="true">🆘</span>
-                <h2 id="help-modal-title">עזרה בעיצוב הפרסומת</h2>
-                <button type="button" class="help-close" onclick={closeHelp} aria-label="סגור">×</button>
+                <h2 id="help-modal-title">{$_("advertise.b_help_modal_title")}</h2>
+                <button type="button" class="help-close" onclick={closeHelp} aria-label={$_("advertise.close")}>×</button>
             </div>
 
-            <p class="help-intro">ספרו לנו מה מסתבך - נחזור אליכם ונעזור לסיים את העיצוב יחד.</p>
+            <p class="help-intro">{$_("advertise.b_help_intro_wa")}</p>
 
             <label class="help-field">
-                <span class="help-label">מה הבעיה? <span class="help-required">*</span></span>
+                <span class="help-label">{$_("advertise.b_help_problem")} <span class="help-required">*</span></span>
                 <textarea
                     id="help-problem-input"
                     bind:value={helpProblem}
                     maxlength="2000"
                     rows="5"
-                    placeholder="למשל: התמונה לא מסתדרת לי במרכז, או שאני לא בטוח איזה צבע לבחור..."
+                    placeholder={$_("advertise.b_help_problem_ph")}
                     class="help-textarea"
                 ></textarea>
                 <span class="help-counter">{helpProblem.length}/2000</span>
@@ -1629,13 +1757,13 @@
 
             {#if !data?.layoutUser?.email && !data?.layoutUser?.name}
                 <label class="help-field">
-                    <span class="help-label">איך ניצור איתך קשר? <span class="help-required">*</span></span>
-                    <input type="text" bind:value={helpContact} maxlength="200" placeholder="טלפון או אימייל" class="help-input" />
+                    <span class="help-label">{$_("advertise.b_help_contact")} <span class="help-required">*</span></span>
+                    <input type="text" bind:value={helpContact} maxlength="200" placeholder={$_("advertise.b_help_contact_ph")} class="help-input" />
                 </label>
             {:else}
                 <p class="help-identity">
                     <span aria-hidden="true">🧑</span>
-                    מזוהה כ-<strong>{data?.layoutUser?.name || data?.layoutUser?.email}</strong>
+                    {$_("advertise.b_identified_as")} <strong>{data?.layoutUser?.name || data?.layoutUser?.email}</strong>
                 </p>
             {/if}
 
@@ -1644,10 +1772,10 @@
             {/if}
 
             <div class="help-actions">
-                <button type="button" class="help-btn-secondary" onclick={closeHelp}>ביטול</button>
+                <button type="button" class="help-btn-secondary" onclick={closeHelp}>{$_("advertise.b_cancel")}</button>
                 <button type="button" class="help-btn-primary" onclick={submitHelp}>
                     <span aria-hidden="true">💬</span>
-                    שליחה ופתיחת וואטסאפ
+                    {$_("advertise.b_send_open_wa")}
                 </button>
             </div>
         </div>
@@ -1818,16 +1946,18 @@
     .b-reset:hover { color: #fcd34d; }
 
     /* ============== שתי עמודות + דמו קופץ ============== */
+    /* רוחב הטור: 144px (רוחב המשבצת האמיתי בטור הימני) + 11.2px ריפוד
+       ו-1px מסגרת בכל צד של הכרטיס = 168.4px, מעוגל ל-170px - כמו בקהילה בשכונה. */
     .builder-cols {
         position: relative;
-        padding-left: 156px; /* מקום לדמו (140px) + רווח */
+        padding-left: 186px; /* מקום לדמו (170px) + רווח */
     }
     .builder-steps { width: 100%; }
     .builder-demo {
         position: absolute;
         top: 0;
         left: 0;
-        width: 140px;
+        width: 170px;
         transition: top 700ms cubic-bezier(0.4, 0, 0.2, 1);
     }
     @media (max-width: 768px) {
@@ -1835,7 +1965,9 @@
         .builder-demo {
             position: static;
             width: 100%;
-            max-width: 240px;
+            /* גם בנייד התצוגה נשארת ברוחב האמיתי - משבצת רחבה יותר הייתה
+               מראה שבירת שורות אחרת לגמרי ממה שיתפרסם */
+            max-width: 170px;
             margin: 0 auto 1rem;
         }
     }
@@ -1846,8 +1978,8 @@
         position: absolute;
         top: 0.5rem;
         bottom: 0.5rem;
-        left: -156px;
-        width: 140px;
+        left: -186px;
+        width: 170px;
         border: 2px dashed rgba(251, 191, 36, 0.22);
         border-radius: 0.85rem;
         background: rgba(251, 191, 36, 0.025);
@@ -1870,8 +2002,12 @@
         text-align: center;
         margin: 0 0 0.5rem;
     }
+    /* 144px בדיוק - רוחב המשבצת בטור הימני (w-36). כשהתצוגה הייתה צרה
+       יותר הטקסט נשבר לשורות אחרות והמפרסם ראה מודעה שאינה זו שתתפרסם. */
     .live-demo-frame {
-        width: 100%;
+        width: 144px;
+        max-width: 100%;
+        margin-inline: auto;
         border-radius: 0.55rem;
         overflow: hidden;
         background: #0f172a;
@@ -2719,7 +2855,7 @@
     }
 
     .clean-card {
-        width: 140px;
+        width: 144px;   /* רוחב המשבצת האמיתי בטור הימני */
         border-radius: 0.6rem;
         overflow: hidden;
         background: #0f172a;
@@ -2783,13 +2919,20 @@
         transition: opacity 1500ms ease;
         pointer-events: none;
     }
+    /* לוגו בפינה העליונה יושב בגובה הכותרת, ולכן הכותרת שומרת לו מקום -
+       אחרת הוא מכסה את המילה האחרונה במשבצת של 144px. אותם כללים בדיוק
+       ב-RightAdBanner, כך שהכותרת נשברת אותו דבר בתצוגה ובאתר. */
+    .pro-title-top.has-corner-logo-right { padding-right: 46px; }
+    .pro-title-top.has-corner-logo-left  { padding-left: 46px; }
     .pro-title {
         color: white;
         font-weight: 900;
-        font-size: 0.95rem;
+        font-size: 1.15rem;
         line-height: 1.15;
         margin: 0;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.9);
+        text-align: center;
+        letter-spacing: 0.005em;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85), 0 1px 2px rgba(0, 0, 0, 0.95);
     }
     .pro-title-wrap {
         position: absolute;
@@ -2798,19 +2941,22 @@
         bottom: 0;
         padding: 0.55rem 0.7rem 1.1rem;
         z-index: 4;
-        text-align: right;
+        text-align: var(--sub-align, right);
         transition: opacity 1500ms ease;
     }
     .pro-title-wrap.mobile { padding: 0.65rem 0.85rem 1.25rem; }
+    /* גודל/רווח/יישור מגיעים מהמשתנים ש-adStyleVars מייצר (שלב 5) -
+       בדיוק אותו כלל שרץ ב-RightAdBanner באתר */
     .pro-sub {
         color: rgba(255, 255, 255, 0.95);
         font-weight: 600;
-        font-size: 0.7rem;
-        line-height: 1.3;
+        font-size: var(--sub-size, 0.88rem);
+        line-height: var(--sub-lh, 1.3);
         margin: 0;
         text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
     }
-    .pro-title-wrap.mobile .pro-sub { font-size: 0.9rem; }
+    /* בנייד המשבצת רחבה יותר, ולכן הטיפוגרפיה מוגדלת ביחס קבוע לבחירת המפרסם */
+    .pro-title-wrap.mobile .pro-sub { font-size: calc(var(--sub-size, 0.88rem) * 1.14); }
     /* השורה הראשונה של הסלוגן מתקצרת בעקבות האלכסון */
     .pro-sub::before {
         content: "";
@@ -2819,6 +2965,10 @@
         width: 28%;
         height: 1.35em;
         shape-outside: polygon(0 0, 100% 0, 0 100%);
+    }
+    .pro-title-wrap.mobile .pro-sub::before {
+        width: 32%;
+        height: 1.4em;
     }
     /* ה-float שגורם לטקסט לעקוף את הלוגו - מוצג ומוצב רק ע"י logoClearance */
     .logo-avoid {
@@ -2923,34 +3073,123 @@
         text-align: center;
         transition: opacity 1500ms ease;
         pointer-events: none;
-        z-index: 6;
+        z-index: 4;
     }
     .hover-title {
         color: white;
         font-weight: 700;
-        font-size: 0.85rem;
+        font-size: 0.95rem;
         margin: 0 0 0.4rem;
     }
     .hover-text {
         color: #e5e7eb;
-        font-size: 0.65rem;
+        font-size: 0.7rem;
         line-height: 1.4;
-        margin: 0;
+        margin: 0 0 0.4rem;
         font-weight: 700;
         /* pre-line - ירידות שורה שהמפרסם הקליד בשלב 6 נשמרות בתצוגה
            המקדימה (בלי זה HTML מכווץ כל \n לרווח והמשפט נשפך לשורה אחת) */
         white-space: pre-line;
     }
+    /* אותם מספרים של רצועת ה-CTA בטור הימני (p-2.5 / text-xs / leading-tight),
+       כדי שטקסט ארוך יישבר שם בדיוק כמו כאן */
     .promo-cta {
-        padding: 0.65rem;
+        padding: 0.625rem;
         text-align: center;
     }
     .promo-cta p {
         color: white;
         font-weight: 700;
-        font-size: 0.72rem;
-        line-height: 1.3;
+        font-size: 0.75rem;
+        line-height: 1.25;
         margin: 0;
+    }
+
+    /* ============== טיפוגרפיית תת-הכותרת (שלב 5) ============== */
+    .sub-type-panel {
+        margin-top: 0.85rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 0.9rem;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 0.75rem 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+    .sub-type-title {
+        margin: 0;
+        color: #fde68a;
+        font-weight: 900;
+        font-size: 0.85rem;
+    }
+    .sub-type-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+    }
+    .sub-type-label {
+        color: #d1d5db;
+        font-weight: 700;
+        font-size: 0.78rem;
+        min-width: 6.5rem;
+    }
+    .sub-type-range {
+        flex: 1 1 8rem;
+        min-width: 7rem;
+        accent-color: #f59e0b;
+    }
+    .sub-type-value {
+        color: white;
+        font-weight: 700;
+        font-size: 0.75rem;
+        min-width: 2.6rem;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+    .sub-type-aligns {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+        flex: 1 1 auto;
+    }
+    .sub-type-align-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.35rem 0.6rem;
+        border-radius: 0.6rem;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.05);
+        color: #d1d5db;
+        font-size: 0.72rem;
+        font-weight: 700;
+        font-family: inherit;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .sub-type-align-btn:hover { color: white; background: rgba(255, 255, 255, 0.1); }
+    .sub-type-align-btn.is-active {
+        background: #f59e0b;
+        border-color: #f59e0b;
+        color: black;
+    }
+    /* במסך צר נשארים האייקונים בלבד, כדי שארבע האפשרויות ייכנסו בשורה */
+    @media (max-width: 480px) {
+        .sub-type-align-text { display: none; }
+    }
+    .sub-type-reset {
+        align-self: flex-start;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #fcd34d;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        padding: 0;
+        font-family: inherit;
     }
     .img-placeholder {
         width: 100%;
@@ -3016,7 +3255,6 @@
     }
 
     /* ============== עזרה ============== */
-    .help-wrap { position: relative; }
     .help-btn {
         display: inline-flex;
         align-items: center;

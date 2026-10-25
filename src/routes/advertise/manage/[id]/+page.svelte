@@ -11,6 +11,7 @@
         RENEW_WARNING_DAYS, type AdStatusKind,
     } from '$lib/adOwner';
     import { adImgFit, parseAdImageFit } from '$lib/adImageFit';
+    import { parseAdStyle, DEFAULT_SUB_FONT_SIZE, DEFAULT_SUB_LINE_HEIGHT } from '$lib/adStyle';
 
     let { data } = $props();
     const ad = $derived(data.ad);
@@ -50,25 +51,35 @@
 
     function editInBuilder() {
         const adv = (lp.advantages ?? []) as string[];
+        // העיצוב שנשמר עם המודעה (גם מודעה שהופצה מקהילה בשכונה) חוזר לבונה
+        // במלואו - לוגו, רצועה, כותרת וטיפוגרפיית תת-הכותרת - כדי שעריכה לא
+        // תאבד דבר. מודעה ותיקה בלי עיצוב (null) נשארת על כללי ברירת המחדל
+        // של הבונה - אותם כללים שמעצבים אותה גם על האתר.
+        const st = parseAdStyle(ad.adStyle);
         const draft = {
             logo: ad.logo ?? '',
             logoOriginal: ad.logo ?? '',
-            hasCircleCrop: false,
-            logoShape: 'square',
-            logoPosition: 'right',
-            logoPositionExplicit: false,
+            hasCircleCrop: st?.logoShape === 'circle',
+            logoShape: st?.logoShape ?? 'square',
+            logoPosition: st?.logoAnchor ?? 'right',
+            logoPositionExplicit: Boolean(st),
+            logoFreeX: st?.logoX ?? null,
+            logoFreeY: st?.logoY ?? null,
             mainImage: ad.mainImage ?? '',
             mainImageObjectX: ad.mainImageFit?.x ?? 50,
             mainImageObjectY: ad.mainImageFit?.y ?? 50,
             mainImageZoom: ad.mainImageFit?.z ?? 1,
             title: ad.title ?? '',
-            titleColor: '#ffffff',
-            titleOffsetY: 0,
+            titleColor: st?.titleColor ?? '#ffffff',
+            titleOffsetY: st?.titleOffsetY ?? 0,
             subtitle: ad.subtitle ?? '',
+            subFontSize: st?.subFontSize ?? DEFAULT_SUB_FONT_SIZE,
+            subLineHeight: st?.subLineHeight ?? DEFAULT_SUB_LINE_HEIGHT,
+            subAlign: st?.subAlign ?? 'right',
             hoverText: ad.hoverText ?? '',
             cta: ad.cta ?? '',
             gradient: ad.gradient ?? '',
-            diagHeight: 12,
+            diagHeight: st?.bandHeight ?? 12,
             landingHeadline: lp.headline ?? '',
             landingPitch: lp.pitch ?? '',
             landingExtended: lp.extended ?? '',

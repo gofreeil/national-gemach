@@ -58,6 +58,11 @@
     let logo = $state("");
     let logoShape = $state(/** @type {'square' | 'circle'} */ ("square"));
     let gradient = $state("linear-gradient(135deg, #f59e0b, #ea580c)");
+    // העיצוב שנקבע בבילדר (לוגו, רצועה, כותרת, תת-כותרת) - אותו AdStyle
+    // שקהילה בשכונה שומרת. בלעדיו המודעה נשמרה בלי עיצוב והתפרסמה
+    // בברירות המחדל ולא כפי שעוצבה. השרת מנרמל אותו ב-parseAdStyle.
+    /** @type {Record<string, unknown> | null} */
+    let adStyle = $state(null);
 
     // ===== גרירת קבצים =====
     let isDraggingLandingImage = $state(false);
@@ -97,6 +102,7 @@
         return {
             title, subtitle, hoverText, cta, gradient,
             logo, mainImage, mainImageFit,
+            ...(adStyle ? { adStyle } : {}),
             landing: {
                 headline: landingHeadline,
                 pitch: landingPitch,
@@ -351,7 +357,19 @@
                     };
                     logo = d.logo ?? "";
                     logoShape = d.logoShape ?? "square";
-                    gradient = d.gradient ?? gradient;
+                    gradient = d.gradient || gradient;
+                    adStyle = {
+                        logoShape: d.logoShape ?? "square",
+                        logoAnchor: d.logoPosition ?? "right",
+                        logoX: typeof d.logoFreeX === "number" ? d.logoFreeX : null,
+                        logoY: typeof d.logoFreeY === "number" ? d.logoFreeY : null,
+                        bandHeight: d.diagHeight,
+                        titleOffsetY: d.titleOffsetY,
+                        titleColor: d.titleColor,
+                        subFontSize: d.subFontSize,
+                        subLineHeight: d.subLineHeight,
+                        subAlign: d.subAlign,
+                    };
                 }
             } catch {}
             // טיוטה ישנה שחורגת מהתקציב מכווצת מיד — לא מחכים לכישלון בסוף

@@ -1,4 +1,6 @@
-import { register, init } from 'svelte-i18n';
+import { register, init, addMessages } from 'svelte-i18n';
+import * as advertise from './translations/advertise';
+import * as components from './translations/components';
 
 register('he', () => Promise.resolve({
     site_title: "הגמח הארצי",
@@ -110,6 +112,14 @@ register('ru', () => Promise.resolve({
         other: "Другое"
     }
 }));
+
+// מילונים מודולריים (כמו ב"קהילה בשכונה") - בונה הפרסומות והטור הימני.
+// addMessages סינכרוני, ולכן המחרוזות זמינות כבר ברינדור השרת.
+for (const mod of [advertise, components]) {
+    addMessages('he', mod.he);
+    addMessages('en', mod.en);
+    addMessages('ru', mod.ru);
+}
 
 init({
     fallbackLocale: 'he',

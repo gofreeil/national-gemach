@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { _ } from "svelte-i18n";
     import { adSlots, loadApprovedAds } from "$lib/adSlots";
     import { markAdSeen, trackAdClick } from "$lib/adTrack";
     import { adImgFit, parseAdImageFit } from "$lib/adImageFit";
@@ -7,8 +8,14 @@
         parseAdStyle, legacyAdStyle, adStyleVars, logoAnchorClass, logoFreeStyle, logoCornerSide,
         type AdStyle,
     } from "$lib/adStyle";
+    import { adGradientPaint } from "$lib/adGradient";
     import { logoClearance } from "$lib/logoClearance";
     import type { ApprovedAd } from "$lib/adSlots";
+
+    // הכרטיס הזה הוא העתק של הכרטיס בטור הימני של "קהילה בשכונה" - אותן
+    // מידות, צורות, צבעים ושכבות - כדי שפרסומת שהופצה משם תיראה כאן
+    // בדיוק אותו דבר, בלי שום התאמה. ספציפי לאתר הזה נשארים רק: טעינת
+    // הלוח מ-adSlots, ספירת חשיפות/קליקים, שלד הטעינה וקישור המשבצת הפנויה.
 
     // העיצוב שהמפרסם קבע בבילדר הוא מה שמוצג כאן — אותו מודול משותף
     // (adStyle.ts) מנרמל אותו בשני הצדדים. מודעה שנשלחה לפני שהעיצוב
@@ -24,6 +31,12 @@
     let currentGroup = $state(0);
 
     let slots = $derived($adSlots);
+
+    // עד xl הטור הימני מוסתר. כשיש פרסומת אמיתית זה היה מעלים אותה ממסכי lg,
+    // ולכן במקרה כזה הטור נפתח כבר מ-lg (כמו טור הפרסומות והשותפים שממול).
+    let visibilityClass = $derived(
+        slots.some((s) => s.kind === "real") ? "hidden lg:block" : "hidden xl:block",
+    );
 
     // לוח 16 המקומות בסדר מספרי, בקבוצות עוקבות של 4 (1-4, 5-8, 9-12, 13-16):
     // מודעה שנקבעה למקום 5 מופיעה עם קבוצת 5-8, בין 6 ל-8. כל הכרטיסים
@@ -67,13 +80,13 @@
 
 <!-- RightAdBanner.svelte -->
 <aside
-    aria-label="פרסומות"
-    class="hidden xl:block w-36 flex-shrink-0 sticky top-4 h-fit pb-8 text-center"
+    aria-label={$_('components.rb_ads_aria')}
+    class="{visibilityClass} w-36 flex-shrink-0 sticky top-4 h-fit pb-8 text-center"
 >
     <h4
         class="text-xs font-bold text-amber-400 uppercase tracking-widest mb-2 px-2"
     >
-        תוכן שיווקי
+        {$_('components.rb_marketing_content')}
     </h4>
     <!-- כל הקבוצות שוכבות זו על זו באותו תא grid; ההחלפה היא מיזוג
          שקיפות איטי בין השכבות — בלי רגע ריק ובלי קפיצות תוכן. -->
@@ -82,85 +95,91 @@
         <div class="space-y-3 ads-group" class:active={gi === safeGroup}>
         {#each grp as item}
             {#if item.kind === 'real'}
-                {@const st = styleOf(item.ad)}
-                {@const cornerSide = logoCornerSide(st, Boolean(item.ad.logo))}
+                {@const ad = item.ad}
+                {@const st = styleOf(ad)}
+                {@const cornerSide = logoCornerSide(st, Boolean(ad.logo))}
+                {@const band = adGradientPaint(ad.gradient, 'br')}
+                {@const strip = adGradientPaint(ad.gradient, 'r')}
                 <!-- מודעה אמיתית מהבילדר — קליק מוביל לדף הנחיתה המקומי -->
                 <a
-                    href="/ads/{item.ad.id}"
-                    onclick={() => trackAdClick(item.ad.id)}
-                    class="h-[490px] flex flex-col rounded-2xl overflow-hidden shadow-lg transition-transform hover:scale-105 group relative"
+                    href="/ads/{ad.id}"
+                    onclick={() => trackAdClick(ad.id)}
+                    aria-label="{ad.title} – {ad.subtitle}"
+                    class="block overflow-hidden rounded-lg shadow-lg transition-transform hover:scale-105 group relative"
                     style={adStyleVars(st)}
                 >
-                    <div class="flex-1 relative overflow-hidden bg-black/30" use:logoClearance={item.ad}>
-                        {#if item.ad.mainImage}
-                            <!-- בריחוף העכבר התמונה נמוגה ומפנה מקום לתוכן שהמפרסם כתב -->
+                    <!-- aspect-[144/450] = בדיוק היחס שהבילדר מציג בתצוגה החיה
+                         (live-demo-img-wrap). המפרסם מכוון שם מיקום וזום על מסגרת
+                         צרה וגבוהה, ולכן חייבים לשמור את אותו יחס - אחרת החיתוך
+                         שהוא בחר נשבר. -->
+                    <!-- הכותרת ותת-הכותרת עוקפות את הלוגו בכל מיקום שלו (logoClearance) -->
+                    <div class="relative overflow-hidden w-full aspect-[144/450]" use:logoClearance={ad}>
+                        <div class="absolute inset-0 overflow-hidden">
                             <!-- המיקום/זום שנבחרו בבילדר מוחלים גם כאן — הדמו הוא מה שרואים -->
                             <img
-                                src={item.ad.mainImage}
-                                alt={item.ad.title}
+                                src={ad.mainImage}
+                                alt={ad.title}
                                 loading="lazy"
                                 decoding="async"
-                                class="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 group-hover:opacity-0"
-                                use:adImgFit={parseAdImageFit(item.ad.mainImageFit)}
+                                class="w-full h-full object-cover transition-opacity duration-[1500ms] group-hover:opacity-0"
+                                use:adImgFit={parseAdImageFit(ad.mainImageFit)}
                             />
-                        {/if}
-                        <!-- אותן שכבות בדיוק של הדמו החי בבילדר: רצועה אלכסונית
-                             בגובה שהמפרסם כיוון, כותרת למעלה בצבע ובמיקום שבחר,
-                             סלוגן מעל הרצועה, ולוגו בצורה ובמקום שקבע (כולל
-                             גרירה חופשית). קודם כל אלה נבנו כאן מחדש מברירות
-                             המחדל של האתר, והמודעה שהתפרסמה נראתה אחרת. -->
-                        <div class="promo-diag transition-opacity duration-700 group-hover:opacity-0"
-                             style="background: {item.ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}"></div>
-                        <div class="promo-title-top transition-opacity duration-700 group-hover:opacity-0"
-                             class:has-corner-logo-right={cornerSide === 'right'}
-                             class:has-corner-logo-left={cornerSide === 'left'}
-                             style="transform: translateY({st.titleOffsetY}px);">
-                            <h3 class="promo-title" style="color: {st.titleColor};"><span class="logo-avoid" aria-hidden="true"></span>{item.ad.title}</h3>
                         </div>
-                        {#if item.ad.subtitle}
-                            <div class="promo-sub-wrap transition-opacity duration-700 group-hover:opacity-0">
-                                <p class="promo-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{item.ad.subtitle}</p>
+                        <!-- כותרת, רצועה אלכסונית, תת-כותרת ולוגו - אותן שכבות בדיוק
+                             של התצוגה החיה בבילדר. -->
+                        <div
+                            class="promo-diag {band.cls} transition-opacity duration-[1500ms] group-hover:opacity-0"
+                            style={band.style}
+                        ></div>
+                        <div
+                            class="promo-title-top transition-opacity duration-[1500ms] group-hover:opacity-0"
+                            class:has-corner-logo-right={cornerSide === 'right'}
+                            class:has-corner-logo-left={cornerSide === 'left'}
+                            style="transform: translateY({st.titleOffsetY}px);"
+                        >
+                            <h3 class="promo-title" style="color: {st.titleColor};"><span class="logo-avoid" aria-hidden="true"></span>{ad.title}</h3>
+                        </div>
+                        {#if ad.subtitle}
+                            <div class="promo-sub-wrap transition-opacity duration-[1500ms] group-hover:opacity-0">
+                                <p class="promo-sub"><span class="logo-avoid" data-anchor="bottom" aria-hidden="true"></span>{ad.subtitle}</p>
                             </div>
                         {/if}
-                        {#if item.ad.logo}
+                        {#if ad.logo}
                             <img
-                                src={item.ad.logo}
+                                src={ad.logo}
                                 alt=""
                                 loading="lazy"
                                 decoding="async"
                                 data-ad-logo
                                 class="promo-logo {logoAnchorClass(st, 'promo')} {st.logoShape === 'circle' ? 'promo-logo-circle' : ''}
-                                       transition-opacity duration-700 group-hover:opacity-0"
+                                       transition-opacity duration-[1500ms] group-hover:opacity-0"
                                 style={logoFreeStyle(st)}
                             />
                         {/if}
-
-                        <!-- שכבת הריחוף: "טקסט הריחוף" מהבילדר — התוכן הנוסף
-                             שנועד למכור, בדיוק כמו בכרטיס של קהילה בשכונה -->
                         <div
-                            class="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-3 text-center opacity-0 transition-opacity duration-700 group-hover:opacity-100"
+                            class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-[1500ms] flex items-center justify-center bg-black/60 backdrop-blur-sm"
                         >
-                            <div>
-                                <h3 class="text-white font-black text-sm leading-tight mb-1">{item.ad.title}</h3>
-                                {#if item.ad.subtitle}
-                                    <p class="text-gray-200 text-[11px] leading-tight">{item.ad.subtitle}</p>
-                                {/if}
-                                {#if item.ad.hover}
-                                    <!-- pre-line: ירידות שורה שהמפרסם הקליד בשלב 6 נשמרות -->
-                                    <p class="mt-2 pt-2 border-t border-white/20 text-amber-200 text-[11px] font-bold leading-snug whitespace-pre-line">
-                                        {item.ad.hover}
-                                    </p>
-                                {/if}
+                            <div class="relative z-10 text-center px-3">
+                                <h3 class="text-white font-bold text-sm mb-1">{ad.title}</h3>
+                                <p class="text-gray-200 text-xs">{ad.subtitle}</p>
                             </div>
                         </div>
                     </div>
-                    <!-- כרטיס מוצר מהחנות - בלי רצועת המחיר ("₪.. · לצפייה בחנות") -->
-                    {#if !item.ad.shop}
-                    <div
-                        class="p-2.5 text-center"
-                        style="background: {item.ad.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)'}"
-                    >
-                        <p class="text-white font-bold text-xs leading-tight">{item.ad.cta || 'לפרטים'}</p>
+                    <!-- כרטיס מוצר מהחנות - בלי רצועת המחיר ("₪.. · לצפייה בחנות").
+                         גם פרסומת שטקסט הכפתור שלה נמחק מוצגת בלי רצועה -->
+                    {#if !ad.shop && ad.cta}
+                    <div class="relative group/cta {strip.cls} p-2.5 text-center" style={strip.style}>
+                        <p class="text-white font-bold text-xs leading-tight">{ad.cta || ad.title}</p>
+                        {#if ad.hover}
+                            <!-- pre-line + w-max: משפט בשורה אחת נשאר בשורה אחת, אבל ירידות שורה
+                                 שהמפרסם הקליד נשמרות, וטקסט ארוך נגמר ב-max-w במקום לגלוש -->
+                            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/cta:block
+                                         bg-gray-900 text-white text-xs font-bold rounded-lg px-3 py-1.5
+                                         whitespace-pre-line w-max max-w-[15rem] text-center
+                                         border border-white/10 shadow-xl pointer-events-none z-50">
+                                {ad.hover}
+                            </span>
+                        {/if}
                     </div>
                     {/if}
                 </a>
@@ -176,10 +195,10 @@
                 <!-- משבצת פנויה — כל הבאנר הוא קישור לדף הפרסום, לא רק כפתור "לפרטים" -->
                 <a
                     href={ad.href}
-                    aria-label="{ad.text} — {ad.description}: לדף הפרסום"
+                    aria-label="מקום פרסום פנוי — לחצו לפרטים על פרסום באתר"
                     class="h-[490px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed {ad.borderColor} {ad.bgColor} p-3 text-center transition-all {ad.hoverBorder} {ad.hoverBg} group duration-700 relative overflow-hidden"
                 >
-                    <!-- Ad Numbering -->
+                    <!-- מספר המקום הפנוי - בדיוק המספרים שלא נתפסו ע"י פרסומות -->
                     <div
                         class="absolute top-3 right-3 text-sm font-black text-white/60 bg-white/10 px-3 py-1 rounded-full border border-white/5 backdrop-blur-sm shadow-sm"
                     >
@@ -204,20 +223,20 @@
                                 <span
                                     class="text-2xl font-black {ad.textColor} {ad.hoverText} tracking-wider drop-shadow-sm"
                                 >
-                                    {ad.text}
+                                    {$_('components.rb_this_ad_space')}
                                 </span>
                                 <span
                                     class="text-base font-bold {ad.textColor} {ad.hoverText} opacity-90 drop-shadow-sm"
                                 >
-                                    - {ad.description}
+                                    {$_('components.rb_could_be_yours')}
                                 </span>
                             </div>
                         </div>
 
                         <span
-                            class="mb-4 z-10 rounded-full {ad.buttonColor} px-5 py-2 text-sm font-bold text-white shadow-xl transition-transform group-hover:scale-105"
+                            class="mb-4 z-10 rounded-full {ad.buttonColor} px-5 py-2 text-sm font-bold text-white shadow-xl transition-transform hover:scale-105"
                         >
-                            לפרטים
+                            {$_('components.rb_details')}
                         </span>
                     </div>
                 </a>
@@ -232,7 +251,8 @@
     /* מעבר עדין בין קבוצות הלוח: כל הקבוצות שוכבות זו על זו באותו תא
        grid, וההחלפה היא מיזוג שקיפות איטי (crossfade) - הקבוצה הנכנסת
        מופיעה בהדרגה בזמן שהיוצאת נמוגה. אין רגע שבו הטור ריק, אין הבזק
-       ואין שום תזוזה. */
+       ואין שום תזוזה. ה-visibility של השכבה היוצאת מתעכב עד סוף המיזוג
+       כדי שתדעך עד הסוף, ורק אז תצא מהמסמך הנגיש ומהפוקוס. */
     .ads-stage {
         display: grid;
     }
@@ -259,11 +279,41 @@
     }
 
     /* ============================================================
-       שכבות המודעה — העתק מדויק של הדמו החי בבילדר
-       (advertise/builder: .pro-diag / .pro-title-top / .pro-sub / .ad-logo).
-       המשתנים --diag-top-* מגיעים מהעיצוב ששמור עם המודעה עצמה, ולכן
-       לכל מודעה גובה רצועה משלה - בדיוק כפי שהמפרסם כיוון.
+       שכבות המודעה — העתק מדויק של הכרטיס בטור הימני של "קהילה בשכונה"
+       ושל התצוגה החיה בבילדר (.pro-diag / .pro-title-top / .pro-sub / .ad-logo).
+       המשתנים --diag-top-* ו---sub-* מגיעים מהעיצוב ששמור עם המודעה עצמה
+       (adStyleVars), ולכן לכל מודעה רצועה וטיפוגרפיה משלה - בדיוק כפי
+       שהמפרסם כיוון.
+       שמות המחלקות מתחילים ב-promo ולא ב-ad בכוונה: EasyList מכילה כלל
+       קוסמטי גנרי `##.ad-title` שמסתיר כל אלמנט עם המחלקה הזאת בכל אתר.
        ============================================================ */
+    .promo-title-top {
+        position: absolute;
+        inset-inline: 0;
+        top: 0;
+        z-index: 5;
+        padding: 0.55rem 0.7rem 0.85rem;
+        text-align: center;
+        background: linear-gradient(
+            180deg,
+            rgba(0, 0, 0, 0.78) 0%,
+            rgba(0, 0, 0, 0.45) 55%,
+            rgba(0, 0, 0, 0) 100%
+        );
+        pointer-events: none;
+    }
+    /* לוגו בפינה העליונה יושב באותו גובה של הכותרת. בלי שמירת המקום הזאת
+       הוא היה מכסה את המילה האחרונה - המשבצת רחבה 144px בלבד.
+       padding פיזי ולא inset-inline: הדף כולו RTL, והקצה הלוגי הפוך
+       לצד שבו הלוגו באמת נמצא. אותם כללים בדיוק קיימים בבילדר. */
+    .promo-title-top.has-corner-logo-right {
+        padding-right: 46px;
+    }
+    .promo-title-top.has-corner-logo-left {
+        padding-left: 46px;
+    }
+
+    /* הרצועה האלכסונית שמתחת לתמונה - אותו clip-path של .pro-diag בבילדר */
     .promo-diag {
         position: absolute;
         inset: 0;
@@ -275,58 +325,42 @@
         );
         opacity: 0.96;
         pointer-events: none;
-        z-index: 3;
     }
+    /* פס הברק הלבן שחוצה את האלכסון */
     .promo-diag::after {
         content: "";
         position: absolute;
         inset: 0;
-        background: linear-gradient(125deg, transparent 30%, rgba(255, 255, 255, 0.18) 45%, transparent 60%);
+        background: linear-gradient(
+            125deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.18) 45%,
+            transparent 60%
+        );
         pointer-events: none;
     }
-    .promo-title-top {
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 0;
-        padding: 0.55rem 0.7rem 0.85rem;
-        z-index: 4;
-        text-align: center;
-        background: linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.45) 55%, rgba(0, 0, 0, 0) 100%);
-        pointer-events: none;
-    }
-    /* לוגו בפינה העליונה יושב באותו גובה של הכותרת. בלי שמירת המקום הזאת
-       הוא מכסה לה את המילה האחרונה - המשבצת צרה. ריפוד פיזי ולא לוגי:
-       הדף כולו RTL, והקצה הלוגי הפוך לצד שבו הלוגו באמת נמצא. */
-    .promo-title-top.has-corner-logo-right { padding-right: 46px; }
-    .promo-title-top.has-corner-logo-left  { padding-left: 46px; }
-    .promo-title {
-        color: white;
-        font-weight: 900;
-        font-size: 0.95rem;
-        line-height: 1.15;
-        margin: 0;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), 0 1px 2px rgba(0, 0, 0, 0.9);
-    }
+    /* גודל/רווח/יישור מגיעים מ-adStyleVars — מה שהמפרסם כיוון בשלב 5.
+       ה-fallback הוא ברירת המחדל של הבילדר. */
     .promo-sub-wrap {
         position: absolute;
-        left: 0;
-        right: 0;
+        inset-inline: 0;
         bottom: 0;
-        padding: 0.55rem 0.7rem 1.1rem;
         z-index: 4;
-        text-align: right;
+        padding: 0.55rem 0.7rem 1.1rem;
+        text-align: var(--sub-align, right);
         pointer-events: none;
     }
     .promo-sub {
+        margin: 0;
         color: rgba(255, 255, 255, 0.95);
         font-weight: 600;
-        font-size: 0.7rem;
-        line-height: 1.3;
-        margin: 0;
+        font-size: var(--sub-size, 0.88rem);
+        line-height: var(--sub-lh, 1.3);
         text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
     }
-    /* השורה הראשונה של הסלוגן מתקצרת בעקבות האלכסון */
+    /* משולש בלתי-נראה שגורם לשורה הראשונה להתקצר לפי שיפוע האלכסון.
+       כשהלוגו בצד שמאל, logoClearance מחליף אותו ב-float משולב ומכבה
+       אותו דרך --logo-avoid-tri. */
     .promo-sub::before {
         content: "";
         display: var(--logo-avoid-tri, block);
@@ -335,24 +369,42 @@
         height: 1.35em;
         shape-outside: polygon(0 0, 100% 0, 0 100%);
     }
+    .promo-title {
+        margin: 0;
+        color: white;
+        font-weight: 900;
+        font-size: 1.15rem;
+        line-height: 1.15;
+        letter-spacing: 0.005em;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85), 0 1px 2px rgba(0, 0, 0, 0.95);
+    }
     /* ה-float שגורם לטקסט לעקוף את הלוגו - מוצג ומוצב רק ע"י logoClearance */
     .logo-avoid {
         display: none;
     }
     .promo-logo {
         position: absolute;
+        z-index: 6;
         width: 36px;
         height: 36px;
         border-radius: 6px;
         background: white;
         padding: 3px;
         object-fit: contain;
-        z-index: 5;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
     }
-    .promo-logo-circle { border-radius: 50%; }
-    .promo-logo-right { top: 6px; right: 6px; left: auto; }
-    .promo-logo-left  { top: 6px; left: 6px; right: auto; }
+    /* right/left פיזיים - כמו בבילדר. עם inset-inline-end הלוגו קפץ לצד
+       שמאל, כי הדף RTL והקצה הלוגי שם הוא שמאל. */
+    .promo-logo-right {
+        top: 6px;
+        right: 6px;
+        left: auto;
+    }
+    .promo-logo-left {
+        top: 6px;
+        left: 6px;
+        right: auto;
+    }
     /* עוגן "מעל ה-CTA": הלוגו רוכב על הפינה הימנית של הרצועה האלכסונית,
        מרכזו על --diag-top-right (18px = חצי מגובה הלוגו) */
     .promo-logo-cta {
@@ -361,6 +413,14 @@
         right: 6px;
         left: auto;
     }
-    /* מיקום חופשי שהמפרסם גרר - הקואורדינטות מגיעות ב-style inline */
-    .promo-logo-free { top: 0; left: 0; }
+    /* מיקום חופשי שהמפרסם גרר: הנקודה המדויקת מגיעה ב-style inline */
+    .promo-logo-free {
+        top: auto;
+        bottom: auto;
+        right: auto;
+        left: auto;
+    }
+    .promo-logo-circle {
+        border-radius: 50%;
+    }
 </style>

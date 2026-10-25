@@ -52,9 +52,9 @@ export const TITLE_OFFSET_MIN = -20;
 export const TITLE_OFFSET_MAX = 60;
 
 /** תת-הכותרת: הערכים שהיו קבועים ב-CSS לפני שהמפרסם קיבל שליטה עליהם */
-export const DEFAULT_SUB_FONT_SIZE = 0.7;
-export const SUB_FONT_SIZE_MIN = 0.5;
-export const SUB_FONT_SIZE_MAX = 1.3;
+export const DEFAULT_SUB_FONT_SIZE = 0.88;
+export const SUB_FONT_SIZE_MIN = 0.6;
+export const SUB_FONT_SIZE_MAX = 1.5;
 export const DEFAULT_SUB_LINE_HEIGHT = 1.3;
 export const SUB_LINE_HEIGHT_MIN = 0.9;
 export const SUB_LINE_HEIGHT_MAX = 2.2;
