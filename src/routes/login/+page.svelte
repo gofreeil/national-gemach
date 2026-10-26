@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { signIn } from '@auth/sveltekit/client';
 	import GuestDraftBanner from '$lib/components/GuestDraftBanner.svelte';
 
@@ -215,8 +216,7 @@
 				autocomplete="email"
 				class="w-full rounded-xl border border-[#3b5794] bg-[#1e293b] px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
 			/>
-			<input
-				type="password"
+			<PasswordInput
 				required
 				bind:value={password}
 				placeholder="סיסמה"
