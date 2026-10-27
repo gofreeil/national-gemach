@@ -363,11 +363,13 @@
                     adStyle = {
                         logoShape: d.logoShape ?? "square",
                         logoBg: d.logoBg,
+                        logoSize: d.logoSize,
                         logoAnchor: d.logoPosition ?? "right",
                         logoX: typeof d.logoFreeX === "number" ? d.logoFreeX : null,
                         logoY: typeof d.logoFreeY === "number" ? d.logoFreeY : null,
                         bandHeight: d.diagHeight,
                         titleOffsetY: d.titleOffsetY,
+                        titleFontSize: d.titleFontSize,
                         titleColor: d.titleColor,
                         subFontSize: d.subFontSize,
                         subLineHeight: d.subLineHeight,
