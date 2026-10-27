@@ -868,6 +868,53 @@
                                             </span>
                                         {/if}
                                     </form>
+                                    <!-- שכפל פרסומת (סופר-אדמין): אותה פרסומת גם במקומות נוספים - למשל
+                                         2 ו-6, כך שהיא נשארת באותו גובה ולא מתחלפת בסבב.
+                                         תג ⧉ = שכפול קיים; לחיצה עליו מבטלת אותו -->
+                                    {#if isSuperAdmin}
+                                        {@const dup = dupOptions(s)}
+                                        <div class="mt-1 flex flex-wrap items-center gap-1 max-w-[200px]">
+                                            {#each s.extraSlots ?? [] as n (n)}
+                                                <form method="POST" action="?/removeExtraSlot" use:enhance>
+                                                    <input type="hidden" name="id" value={s.id} />
+                                                    <input type="hidden" name="slot" value={n} />
+                                                    <button type="submit"
+                                                            class="inline-flex h-6 items-center gap-1 rounded-lg border border-black/20 px-1.5 text-[11px] font-black whitespace-nowrap hover:opacity-80"
+                                                            style="background:{slotOptionBg(n)};color:#111"
+                                                            title="שכפול במקום {n} (המשבצת ה{slotPosName(n)} בטור) - לחיצה מבטלת את השכפול">
+                                                        ⧉ {n} · {slotGroupLetter(n)}׳ <span class="text-red-700">✕</span>
+                                                    </button>
+                                                </form>
+                                            {/each}
+                                            {#if dup.same.length + dup.rest.length > 0}
+                                                <form class="flex-1 min-w-[110px]" method="POST" action="?/addExtraSlot" use:enhance>
+                                                    <input type="hidden" name="id" value={s.id} />
+                                                    <select name="slot" aria-label="שכפל פרסומת"
+                                                            onchange={(e) => e.currentTarget.form?.requestSubmit()}
+                                                            class="h-7 w-full rounded-lg border border-sky-500/40 bg-sky-500/15 px-1.5 text-[11px] font-black text-sky-200 focus:border-sky-400/60 focus:outline-none">
+                                                        <option value="" selected disabled>⧉ שכפל פרסומת</option>
+                                                        {#if dup.same.length > 1}
+                                                            <option value="same" style="background:#fff;color:#111;font-weight:700">
+                                                                ★ קבועה בכל הסבב ({dup.same.join(', ')})
+                                                            </option>
+                                                        {/if}
+                                                        {#if dup.same.length > 0}
+                                                            <optgroup label="★ אותו גובה בטור">
+                                                                {#each dup.same as n (n)}
+                                                                    <option value={n} style="background:{slotOptionBg(n)};color:#111">{n} · {slotPosName(n)}</option>
+                                                                {/each}
+                                                            </optgroup>
+                                                        {/if}
+                                                        <optgroup label="מקומות פנויים אחרים">
+                                                            {#each dup.rest as n (n)}
+                                                                <option value={n} style="background:{slotOptionBg(n)};color:#111">{n} · {slotPosName(n)}</option>
+                                                            {/each}
+                                                        </optgroup>
+                                                    </select>
+                                                </form>
+                                            {/if}
+                                        </div>
+                                    {/if}
                                 </td>
                                 <!-- פרסומת + מפרסם + סטטוס בתא אחד, מוערמים.
                                      ריחוף על הכותרת = תצוגה מקדימה צפה; הקשה = מודאל עם הכרטיס עצמו -->
@@ -900,13 +947,13 @@
                                 <!-- ניהול הפרסומת ישירות מהשורה: קציבת תקופה, השהיה, הורדה, מחיקה.
                                      רוחב מוגבל - הכפתורים נערמים בשתי שורות במקום להרחיב את הטבלה -->
                                 <td class="px-2 py-2">
-                                    <div class="flex flex-wrap items-center gap-1.5 max-w-[240px]">
+                                    <div class="grid grid-cols-3 gap-1 w-[210px]">
                                         <!-- פותח את חלון הקציבה: פרטי תשלום ותאריכים + שינוי תקופה/תפוגה.
                                              שמור לסופר-אדמין (כמו המחיקה) - אדמין רגיל לא רואה את הכפתור -->
                                         {#if canDelete}
                                             <button type="button"
                                                     onclick={() => durationModal = s}
-                                                    class="px-2.5 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-200 text-[11px] font-black hover:bg-blue-500/30 whitespace-nowrap"
+                                                    class="h-7 w-full inline-flex items-center justify-center px-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-200 text-[11px] font-black hover:bg-blue-500/30 whitespace-nowrap"
                                                     title="פרטי התקופה והתשלום + שינוי תקופה או תאריך תפוגה">
                                                 ⏱ קצוב
                                             </button>
@@ -916,7 +963,7 @@
                                             <form method="POST" action="?/resume" use:enhance>
                                                 <input type="hidden" name="id" value={s.id} />
                                                 <button type="submit"
-                                                        class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[11px] font-black hover:bg-emerald-500/30 whitespace-nowrap"
+                                                        class="h-7 w-full inline-flex items-center justify-center px-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[11px] font-black hover:bg-emerald-500/30 whitespace-nowrap"
                                                         title="הימים השמורים נספרים מהיום">
                                                     ▶ המשך
                                                 </button>
@@ -925,7 +972,7 @@
                                             <form method="POST" action="?/pause" use:enhance>
                                                 <input type="hidden" name="id" value={s.id} />
                                                 <button type="submit"
-                                                        class="px-2.5 py-1 rounded-lg bg-white/10 border border-white/20 text-gray-200 text-[11px] font-black hover:bg-white/20 whitespace-nowrap"
+                                                        class="h-7 w-full inline-flex items-center justify-center px-1 rounded-lg bg-white/10 border border-white/20 text-gray-200 text-[11px] font-black hover:bg-white/20 whitespace-nowrap"
                                                         title="יורדת מהאתר ושומרת את הימים שנותרו"
                                                         onclick={(e) => { if (!confirm('להשהות את הפרסומת? היא תרד מהאתר והימים שנותרו יישמרו לה.')) e.preventDefault(); }}>
                                                     ⏸ השהה
@@ -936,7 +983,7 @@
                                         <form method="POST" action="?/unapprove" use:enhance>
                                             <input type="hidden" name="id" value={s.id} />
                                             <button type="submit"
-                                                    class="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-200 text-[11px] font-black hover:bg-amber-500/25 whitespace-nowrap"
+                                                    class="h-7 w-full inline-flex items-center justify-center px-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-200 text-[11px] font-black hover:bg-amber-500/25 whitespace-nowrap"
                                                     title="חוזרת לתור האישורים"
                                                     onclick={(e) => { if (!confirm('להוריד את הפרסומת מהאתר ולהחזיר אותה לממתינות?')) e.preventDefault(); }}>
                                                 ⤴ הורד
@@ -947,58 +994,11 @@
                                             <form method="POST" action="?/remove" use:enhance>
                                                 <input type="hidden" name="id" value={s.id} />
                                                 <button type="submit"
-                                                        class="px-2.5 py-1 rounded-lg bg-red-600/20 border border-red-500/40 text-red-300 text-[11px] font-black hover:bg-red-600/30 whitespace-nowrap"
+                                                        class="h-7 w-full inline-flex items-center justify-center px-1 rounded-lg bg-red-600/20 border border-red-500/40 text-red-300 text-[11px] font-black hover:bg-red-600/30 whitespace-nowrap"
                                                         onclick={(e) => { if (!confirm(`להעביר את "${s.title}" לאשפה? אפשר לשחזר אותה משם.`)) e.preventDefault(); }}>
                                                     🗑 מחק
                                                 </button>
                                             </form>
-                                        {/if}
-                                        <!-- שכפל פרסומת (סופר-אדמין): אותה פרסומת גם במקומות נוספים - למשל
-                                             2 ו-6, כך שהיא נשארת באותו גובה ולא מתחלפת בסבב.
-                                             תג ⧉ = שכפול קיים; לחיצה עליו מבטלת אותו -->
-                                        {#if isSuperAdmin}
-                                            {@const dup = dupOptions(s)}
-                                            <div style="display: contents">
-                                                {#each s.extraSlots ?? [] as n (n)}
-                                                    <form method="POST" action="?/removeExtraSlot" use:enhance>
-                                                        <input type="hidden" name="id" value={s.id} />
-                                                        <input type="hidden" name="slot" value={n} />
-                                                        <button type="submit"
-                                                                class="inline-flex h-6 items-center gap-1 rounded-lg border border-black/20 px-1.5 text-[11px] font-black whitespace-nowrap hover:opacity-80"
-                                                                style="background:{slotOptionBg(n)};color:#111"
-                                                                title="שכפול במקום {n} (המשבצת ה{slotPosName(n)} בטור) - לחיצה מבטלת את השכפול">
-                                                            ⧉ {n} · {slotGroupLetter(n)}׳ <span class="text-red-700">✕</span>
-                                                        </button>
-                                                    </form>
-                                                {/each}
-                                                {#if dup.same.length + dup.rest.length > 0}
-                                                    <form method="POST" action="?/addExtraSlot" use:enhance>
-                                                        <input type="hidden" name="id" value={s.id} />
-                                                        <select name="slot" aria-label="שכפל פרסומת"
-                                                                onchange={(e) => e.currentTarget.form?.requestSubmit()}
-                                                                class="rounded-lg border border-sky-500/40 bg-sky-500/15 px-1.5 py-1 text-[11px] font-black text-sky-200 focus:border-sky-400/60 focus:outline-none">
-                                                            <option value="" selected disabled>⧉ שכפל פרסומת</option>
-                                                            {#if dup.same.length > 1}
-                                                                <option value="same" style="background:#fff;color:#111;font-weight:700">
-                                                                    ★ קבועה בכל הסבב ({dup.same.join(', ')})
-                                                                </option>
-                                                            {/if}
-                                                            {#if dup.same.length > 0}
-                                                                <optgroup label="★ אותו גובה בטור">
-                                                                    {#each dup.same as n (n)}
-                                                                        <option value={n} style="background:{slotOptionBg(n)};color:#111">{n} · {slotPosName(n)}</option>
-                                                                    {/each}
-                                                                </optgroup>
-                                                            {/if}
-                                                            <optgroup label="מקומות פנויים אחרים">
-                                                                {#each dup.rest as n (n)}
-                                                                    <option value={n} style="background:{slotOptionBg(n)};color:#111">{n} · {slotPosName(n)}</option>
-                                                                {/each}
-                                                            </optgroup>
-                                                        </select>
-                                                    </form>
-                                                {/if}
-                                            </div>
                                         {/if}
                                     </div>
                                 </td>
