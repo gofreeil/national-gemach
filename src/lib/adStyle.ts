@@ -26,6 +26,12 @@ export const LOGO_SIZE_MAX = 80;
 export const DEFAULT_TITLE_FONT_SIZE = 1.15;
 export const TITLE_FONT_SIZE_MIN = 0.8;
 export const TITLE_FONT_SIZE_MAX = 1.8;
+/** הלוגו בטקסט הריחוף: ברירות מחדל (כבוי; מרכז באחוזים; גודל בפיקסלים) */
+export const DEFAULT_HOVER_LOGO_X = 50;
+export const DEFAULT_HOVER_LOGO_Y = 22;
+export const DEFAULT_HOVER_LOGO_SIZE = 56;
+export const HOVER_LOGO_SIZE_MIN = 20;
+export const HOVER_LOGO_SIZE_MAX = 120;
 export type LogoAnchor = 'right' | 'left' | 'cta';
 /** יישור תת-הכותרת: ימין / מרכז / שמאל / מילוי רוחב */
 export type SubAlign = 'right' | 'center' | 'left' | 'justify';
@@ -35,6 +41,11 @@ export interface AdStyle {
     logoShape: LogoShape;
     logoBg: LogoBg;
     logoSize: number;
+    /** הצגת הלוגו גם על העכבר (בטקסט הריחוף), עם מיקום וגודל משלו */
+    hoverLogo: boolean;
+    hoverLogoX: number;
+    hoverLogoY: number;
+    hoverLogoSize: number;
     /** עוגן ברירת המחדל של הלוגו, כשאין לו מיקום חופשי */
     logoAnchor: LogoAnchor;
     /** מרכז הלוגו באחוזי המשבצת. null בשני הצירים = יושב על העוגן */
@@ -77,6 +88,10 @@ export const DEFAULT_AD_STYLE: AdStyle = {
     logoShape: 'square',
     logoBg: 'white',
     logoSize: DEFAULT_LOGO_SIZE,
+    hoverLogo: false,
+    hoverLogoX: DEFAULT_HOVER_LOGO_X,
+    hoverLogoY: DEFAULT_HOVER_LOGO_Y,
+    hoverLogoSize: DEFAULT_HOVER_LOGO_SIZE,
     logoAnchor: 'right',
     logoX: null,
     logoY: null,
@@ -113,6 +128,10 @@ export function parseAdStyle(raw: unknown): AdStyle | null {
     return {
         logoShape: o.logoShape === 'circle' ? 'circle' : 'square',
         logoBg: o.logoBg === 'black' || o.logoBg === 'clear' ? o.logoBg : 'white',
+        hoverLogo: o.hoverLogo === true,
+        hoverLogoX: clamp(num(o.hoverLogoX) ?? DEFAULT_HOVER_LOGO_X, 0, 100),
+        hoverLogoY: clamp(num(o.hoverLogoY) ?? DEFAULT_HOVER_LOGO_Y, 0, 100),
+        hoverLogoSize: clamp(num(o.hoverLogoSize) ?? DEFAULT_HOVER_LOGO_SIZE, HOVER_LOGO_SIZE_MIN, HOVER_LOGO_SIZE_MAX),
         logoSize: clamp(num(o.logoSize) ?? DEFAULT_LOGO_SIZE, LOGO_SIZE_MIN, LOGO_SIZE_MAX),
         logoAnchor: o.logoAnchor === 'left' ? 'left' : o.logoAnchor === 'cta' ? 'cta' : 'right',
         logoX: free ? clamp(x, 0, 100) : null,
@@ -186,6 +205,12 @@ export function logoSizeStyle(size: number): string {
 /** גודל הכותרת → style inline (ריק בגודל ברירת המחדל, כדי לא לדרוס את גדלי הנייד) */
 export function titleSizeStyle(size: number): string {
     return size === DEFAULT_TITLE_FONT_SIZE ? '' : `font-size:${size}rem;`;
+}
+
+/** מיקום וגודל הלוגו בטקסט הריחוף → style inline (מרכז הלוגו על הנקודה) */
+export function hoverLogoStyle(style: AdStyle, bg: string = ''): string {
+    return `position:absolute;left:${style.hoverLogoX}%;top:${style.hoverLogoY}%;width:${style.hoverLogoSize}px;height:${style.hoverLogoSize}px;transform:translate(-50%,-50%);object-fit:contain;`
+        + (style.logoShape === 'circle' ? 'border-radius:50%;' : 'border-radius:6px;') + bg;
 }
 
 /** מיקום חופשי → style inline. ריק כשהלוגו על העוגן */

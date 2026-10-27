@@ -1,10 +1,11 @@
 <script lang="ts">
     // "הנכסים שלי" — רשימת הפרסומות של המפרסם המחובר.
     // כל שורה: תצוגה מקדימה, סטטוס, ומדדי-על. הניהול המלא בדף הנכס.
-    import { statusView, fmtDate, needsRenewal, type AdStatusKind } from '$lib/adOwner';
+    import { statusView, fmtDate, needsRenewal, isExpired, type AdStatusKind } from '$lib/adOwner';
     import { adImgFit, parseAdImageFit } from '$lib/adImageFit';
+    import MyAdAdminActions from '$lib/components/MyAdAdminActions.svelte';
 
-    let { data } = $props();
+    let { data, form } = $props();
 
     const TONE: Record<string, string> = {
         amber: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
@@ -25,10 +26,24 @@
                 {data.gemachim.length} גמ"חים · {data.ads.length} פרסומות בחשבון {data.user.email}
             </p>
         </div>
-        <a href="/advertise" class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 shadow-md transition-colors hover:bg-[#2a4379] hover:text-white">
-            ➕ פרסומת חדשה
-        </a>
+        <div class="flex flex-wrap items-center gap-2">
+            {#if data.isAdmin}
+                <a href="/admin/ads" class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-1.5 text-sm font-bold text-emerald-200 shadow-md transition-colors hover:bg-emerald-500/20">
+                    🛠 לניהול הפרסומות
+                </a>
+            {/if}
+            <a href="/advertise" class="rounded-full border border-[#3b5794] bg-[#1c2f5a] px-3.5 py-1.5 text-sm font-bold text-gray-100 shadow-md transition-colors hover:bg-[#2a4379] hover:text-white">
+                ➕ פרסומת חדשה
+            </a>
+        </div>
     </div>
+
+    <!-- תוצאת קיצור ניהול (אישור/דחייה/השהיה...) — מעל הרשימה -->
+    {#if form?.message}
+        <p class="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-bold text-emerald-200">{form.message}</p>
+    {:else if form?.error}
+        <p class="mb-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-sm font-bold text-rose-200">{form.error}</p>
+    {/if}
 
     <!-- הגמ"חים שרשומים על שם המשתמש. אותו פריט Strapi נערך גם ב"קהילה
          בשכונה" — לכן העריכה כאן היא העריכה שם. -->
@@ -93,9 +108,10 @@
     {:else}
         <div class="flex flex-col gap-4">
             {#each data.ads as ad (ad.id)}
-                {@const sv = statusView(ad.status as AdStatusKind, ad.expiresAt)}
-                <article class="overflow-hidden rounded-2xl border border-[#3b5794] bg-[#16264d] transition-all hover:border-[#4c6cb0] hover:bg-[#1e3260]">
-                    <a href="/advertise/manage/{ad.id}" class="flex items-stretch gap-4 p-4">
+                {@const sv = statusView(ad.status as AdStatusKind, ad.expiresAt, ad.paused)}
+                {@const live = ad.status === 'approved' && !ad.paused && !isExpired('approved', ad.expiresAt)}
+                <article class="overflow-hidden rounded-2xl border border-[#3b5794] bg-[#16264d] transition-all hover:border-[#4c6cb0]">
+                    <a href="/advertise/manage/{ad.id}" class="flex items-stretch gap-4 p-4 transition-colors hover:bg-[#1e3260]">
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
                                 <h2 class="text-lg font-black leading-tight text-white">{ad.title}</h2>
@@ -107,7 +123,11 @@
                             {#if ad.subtitle}
                                 <p class="mt-1 line-clamp-2 text-sm text-gray-300">{ad.subtitle}</p>
                             {/if}
-                            <p class="mt-1 text-xs text-gray-400">{sv.hint}{ad.expiresAt ? ` · עד ${fmtDate(ad.expiresAt)}` : ''}</p>
+                            <p class="mt-1 text-xs text-gray-400">
+                                {sv.hint}{ad.expiresAt ? ` · עד ${fmtDate(ad.expiresAt)}` : ''}
+                                <!-- "עדכון ל..." רק כל עוד ממתינה — אחרי האישור היא *היא* הפרסומת -->
+                                {#if ad.status === 'pending' && ad.replacesTitle}· עדכון ל"{ad.replacesTitle}"{/if}
+                            </p>
 
                             <dl class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs">
                                 <div class="flex items-baseline gap-1.5">
@@ -142,6 +162,12 @@
                             {/if}
                         </div>
                     </a>
+                    <!-- שורת הפעולות מחוץ לקישור — טפסים לא יושבים בתוך <a> -->
+                    {#if data.isAdmin || live}
+                        <div class="border-t border-[#3b5794]/60 px-4 py-2">
+                            <MyAdAdminActions {ad} isAdmin={data.isAdmin} {live} />
+                        </div>
+                    {/if}
                 </article>
             {/each}
         </div>
