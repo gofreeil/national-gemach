@@ -5,7 +5,7 @@
     import { markAdSeen, trackAdClick } from "$lib/adTrack";
     import { adImgFit, parseAdImageFit } from "$lib/adImageFit";
     import {
-        parseAdStyle, legacyAdStyle, adStyleVars, logoAnchorClass, logoFreeStyle, logoCornerSide,
+        parseAdStyle, legacyAdStyle, adStyleVars, logoAnchorClass, logoFreeStyle, logoBgStyle, logoCornerSide,
         type AdStyle,
     } from "$lib/adStyle";
     import { adGradientPaint } from "$lib/adGradient";
@@ -153,7 +153,7 @@
                                 data-ad-logo
                                 class="promo-logo {logoAnchorClass(st, 'promo')} {st.logoShape === 'circle' ? 'promo-logo-circle' : ''}
                                        transition-opacity duration-[1500ms] group-hover:opacity-0"
-                                style={logoFreeStyle(st)}
+                                style={logoFreeStyle(st) + logoBgStyle(st.logoBg)}
                             />
                         {/if}
                         <div

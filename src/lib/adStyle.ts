@@ -16,6 +16,8 @@
 // ============================================================
 
 export type LogoShape = 'square' | 'circle';
+/** logo backdrop: white (default), black or clear */
+export type LogoBg = 'white' | 'black' | 'clear';
 export type LogoAnchor = 'right' | 'left' | 'cta';
 /** יישור תת-הכותרת: ימין / מרכז / שמאל / מילוי רוחב */
 export type SubAlign = 'right' | 'center' | 'left' | 'justify';
@@ -23,6 +25,7 @@ export type SubAlign = 'right' | 'center' | 'left' | 'justify';
 export interface AdStyle {
     /** ריבוע (פינות מעוגלות) או עיגול מלא */
     logoShape: LogoShape;
+    logoBg: LogoBg;
     /** עוגן ברירת המחדל של הלוגו, כשאין לו מיקום חופשי */
     logoAnchor: LogoAnchor;
     /** מרכז הלוגו באחוזי המשבצת. null בשני הצירים = יושב על העוגן */
@@ -61,6 +64,7 @@ export const SUB_LINE_HEIGHT_MAX = 2.2;
 
 export const DEFAULT_AD_STYLE: AdStyle = {
     logoShape: 'square',
+    logoBg: 'white',
     logoAnchor: 'right',
     logoX: null,
     logoY: null,
@@ -95,6 +99,7 @@ export function parseAdStyle(raw: unknown): AdStyle | null {
     const free = x !== null && y !== null;
     return {
         logoShape: o.logoShape === 'circle' ? 'circle' : 'square',
+        logoBg: o.logoBg === 'black' || o.logoBg === 'clear' ? o.logoBg : 'white',
         logoAnchor: o.logoAnchor === 'left' ? 'left' : o.logoAnchor === 'cta' ? 'cta' : 'right',
         logoX: free ? clamp(x, 0, 100) : null,
         logoY: free ? clamp(y, 0, 100) : null,
@@ -149,6 +154,13 @@ export function adStyleVars(style: AdStyle): string {
 export function logoAnchorClass(style: AdStyle, prefix: 'ad' | 'promo'): string {
     if (isLogoFree(style)) return `${prefix}-logo-free`;
     return `${prefix}-logo-${style.logoAnchor}`;
+}
+
+/** logo backdrop -> inline style (white is the CSS default, so empty) */
+export function logoBgStyle(bg: LogoBg): string {
+    if (bg === 'black') return 'background:#000;';
+    if (bg === 'clear') return 'background:transparent;box-shadow:none;';
+    return '';
 }
 
 /** מיקום חופשי → style inline. ריק כשהלוגו על העוגן */

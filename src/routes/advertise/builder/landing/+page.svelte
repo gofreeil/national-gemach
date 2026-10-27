@@ -57,6 +57,7 @@
     let mainImageFit = $state({ x: 50, y: 50, z: 1 });
     let logo = $state("");
     let logoShape = $state(/** @type {'square' | 'circle'} */ ("square"));
+    let logoBg = $state(/** @type {'white' | 'black' | 'clear'} */ ("white"));
     let gradient = $state("linear-gradient(135deg, #f59e0b, #ea580c)");
     // העיצוב שנקבע בבילדר (לוגו, רצועה, כותרת, תת-כותרת) - אותו AdStyle
     // שקהילה בשכונה שומרת. בלעדיו המודעה נשמרה בלי עיצוב והתפרסמה
@@ -357,9 +358,11 @@
                     };
                     logo = d.logo ?? "";
                     logoShape = d.logoShape ?? "square";
+                    logoBg = d.logoBg === "black" || d.logoBg === "clear" ? d.logoBg : "white";
                     gradient = d.gradient || gradient;
                     adStyle = {
                         logoShape: d.logoShape ?? "square",
+                        logoBg: d.logoBg,
                         logoAnchor: d.logoPosition ?? "right",
                         logoX: typeof d.logoFreeX === "number" ? d.logoFreeX : null,
                         logoY: typeof d.logoFreeY === "number" ? d.logoFreeY : null,
@@ -786,7 +789,7 @@
                             <div class="landing-hero-inner" class:has-media={!!(landingImage || mainImage)}>
                                 <div class="landing-hero-content">
                                     {#if logo}
-                                        <img src={logo} alt="לוגו" class="landing-logo" class:circle={logoShape === "circle"} />
+                                        <img src={logo} alt="לוגו" class="landing-logo" class:circle={logoShape === "circle"} style={logoBg === "black" ? "background:#000;" : logoBg === "clear" ? "background:transparent;" : ""} />
                                     {/if}
                                     <h1>{landingHeadline || title || "כותרת דף הנחיתה"}</h1>
                                     <p>{landingPitch || subtitle || "משפט הפתיחה יופיע כאן"}</p>

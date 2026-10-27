@@ -8,7 +8,7 @@
     // ============================================================
     import { adImgFit, parseAdImageFit } from '$lib/adImageFit';
     import {
-        parseAdStyle, legacyAdStyle, adStyleVars, logoAnchorClass, logoFreeStyle, logoCornerSide,
+        parseAdStyle, legacyAdStyle, adStyleVars, logoAnchorClass, logoFreeStyle, logoBgStyle, logoCornerSide,
     } from '$lib/adStyle';
     import { adGradientPaint } from '$lib/adGradient';
     import { logoClearance } from '$lib/logoClearance';
@@ -59,7 +59,7 @@
             <img src={ad.logo} alt="" loading="lazy" decoding="async"
                  data-ad-logo
                  class="promo-logo {logoAnchorClass(st, 'promo')} {st.logoShape === 'circle' ? 'promo-logo-circle' : ''}"
-                 style={logoFreeStyle(st)} />
+                 style={logoFreeStyle(st) + logoBgStyle(st.logoBg)} />
         {/if}
     </div>
     {#if ad.cta}
