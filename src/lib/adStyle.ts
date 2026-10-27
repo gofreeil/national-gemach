@@ -32,6 +32,10 @@ export const DEFAULT_HOVER_LOGO_Y = 22;
 export const DEFAULT_HOVER_LOGO_SIZE = 56;
 export const HOVER_LOGO_SIZE_MIN = 20;
 export const HOVER_LOGO_SIZE_MAX = 120;
+/** לוגו בדף הנחיתה: יישור, רקע וגודל משלו (null = ברירת המחדל של הדף) */
+export type LpLogoAlign = 'right' | 'center' | 'left';
+export const LP_LOGO_SIZE_MIN = 30;
+export const LP_LOGO_SIZE_MAX = 140;
 export type LogoAnchor = 'right' | 'left' | 'cta';
 /** יישור תת-הכותרת: ימין / מרכז / שמאל / מילוי רוחב */
 export type SubAlign = 'right' | 'center' | 'left' | 'justify';
@@ -41,6 +45,9 @@ export interface AdStyle {
     logoShape: LogoShape;
     logoBg: LogoBg;
     logoSize: number;
+    lpLogoAlign: LpLogoAlign;
+    lpLogoBg: LogoBg | null;
+    lpLogoSize: number | null;
     /** הצגת הלוגו גם על העכבר (בטקסט הריחוף), עם מיקום וגודל משלו */
     hoverLogo: boolean;
     hoverLogoX: number;
@@ -88,6 +95,9 @@ export const DEFAULT_AD_STYLE: AdStyle = {
     logoShape: 'square',
     logoBg: 'white',
     logoSize: DEFAULT_LOGO_SIZE,
+    lpLogoAlign: 'right',
+    lpLogoBg: null,
+    lpLogoSize: null,
     hoverLogo: false,
     hoverLogoX: DEFAULT_HOVER_LOGO_X,
     hoverLogoY: DEFAULT_HOVER_LOGO_Y,
@@ -132,6 +142,9 @@ export function parseAdStyle(raw: unknown): AdStyle | null {
         hoverLogoX: clamp(num(o.hoverLogoX) ?? DEFAULT_HOVER_LOGO_X, 0, 100),
         hoverLogoY: clamp(num(o.hoverLogoY) ?? DEFAULT_HOVER_LOGO_Y, 0, 100),
         hoverLogoSize: clamp(num(o.hoverLogoSize) ?? DEFAULT_HOVER_LOGO_SIZE, HOVER_LOGO_SIZE_MIN, HOVER_LOGO_SIZE_MAX),
+        lpLogoAlign: o.lpLogoAlign === 'center' || o.lpLogoAlign === 'left' ? o.lpLogoAlign : 'right',
+        lpLogoBg: o.lpLogoBg === 'white' || o.lpLogoBg === 'black' || o.lpLogoBg === 'clear' ? o.lpLogoBg : null,
+        lpLogoSize: num(o.lpLogoSize) === null ? null : clamp(num(o.lpLogoSize) as number, LP_LOGO_SIZE_MIN, LP_LOGO_SIZE_MAX),
         logoSize: clamp(num(o.logoSize) ?? DEFAULT_LOGO_SIZE, LOGO_SIZE_MIN, LOGO_SIZE_MAX),
         logoAnchor: o.logoAnchor === 'left' ? 'left' : o.logoAnchor === 'cta' ? 'cta' : 'right',
         logoX: free ? clamp(x, 0, 100) : null,
@@ -211,6 +224,15 @@ export function titleSizeStyle(size: number): string {
 export function hoverLogoStyle(style: AdStyle, bg: string = ''): string {
     return `position:absolute;left:${style.hoverLogoX}%;top:${style.hoverLogoY}%;width:${style.hoverLogoSize}px;height:${style.hoverLogoSize}px;transform:translate(-50%,-50%);object-fit:contain;`
         + (style.logoShape === 'circle' ? 'border-radius:50%;' : 'border-radius:6px;') + bg;
+}
+
+/** הלוגו בדף הנחיתה → style inline. הרקע יורש מ-logoBg כשלא נבחר אחר; הדף RTL, ולכן right הוא ההתחלה */
+export function lpLogoStyle(style: AdStyle): string {
+    const bg = logoBgStyle(style.lpLogoBg ?? style.logoBg);
+    const size = style.lpLogoSize ? `width:${style.lpLogoSize}px;height:${style.lpLogoSize}px;` : '';
+    const m = style.lpLogoAlign === 'center' ? 'margin-left:auto;margin-right:auto;'
+        : style.lpLogoAlign === 'left' ? 'margin-right:auto;margin-left:0;' : '';
+    return `display:block;${m}${size}${bg}`;
 }
 
 /** מיקום חופשי → style inline. ריק כשהלוגו על העוגן */

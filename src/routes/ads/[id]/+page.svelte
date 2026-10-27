@@ -3,6 +3,7 @@
     // עיצוב מינימליסטי: הכותרת, משפט הפתיחה והיתרונות יושבים *ליד* התמונה
     // ולא מתחתיה — כדי לחסוך גלילה. הגולש רואה את כל העיקר במסך הראשון.
     import { onMount } from 'svelte';
+    import { parseAdStyle, lpLogoStyle, DEFAULT_AD_STYLE } from '$lib/adStyle';
     import { trackAdLanding, trackAdLead } from '$lib/adTrack';
 
     let { data } = $props();
@@ -80,7 +81,7 @@
             <div class="al-copy">
                 {#if ad.logo}
                     <img src={ad.logo} alt="לוגו {ad.title}" width="88" height="88" decoding="async" class="al-logo" class:is-circle={logoCircle}
-                         style={ad.adStyle?.logoBg === 'black' ? 'background:#000' : ad.adStyle?.logoBg === 'clear' ? 'background:transparent;box-shadow:none' : ''} />
+                         style={lpLogoStyle(parseAdStyle(ad.adStyle) ?? DEFAULT_AD_STYLE)} />
                 {/if}
                 <h1>{lp.headline || ad.title}</h1>
                 {#if lp.pitch}

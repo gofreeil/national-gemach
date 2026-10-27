@@ -9,6 +9,7 @@
         shrinkAdPayload, heaviestImageLabel,
     } from "$lib/adPayloadBudget";
     import { getAdIntent, clearAdIntent } from "$lib/adIntent";
+    import { DEFAULT_AD_STYLE, lpLogoStyle } from "$lib/adStyle";
 
     // עורך דף הנחיתה + שליחה סופית - פורט מקבוצות רכישה (במקור מ"קהילה בשכונה").
     // חולק את אותה טיוטת localStorage עם ה-builder הראשי.
@@ -58,6 +59,11 @@
     let logo = $state("");
     let logoShape = $state(/** @type {'square' | 'circle'} */ ("square"));
     let logoBg = $state(/** @type {'white' | 'black' | 'clear'} */ ("white"));
+    // לוגו בדף הנחיתה: יישור, רקע וגודל משלו (null = ברירת המחדל של הדף)
+    let lpAlign = $state(/** @type {'right' | 'center' | 'left'} */ ("right"));
+    let lpBg = $state(/** @type {'white' | 'black' | 'clear' | null} */ (null));
+    let lpSize = $state(/** @type {number | null} */ (null));
+    const lpStyle = $derived({ ...DEFAULT_AD_STYLE, logoBg, lpLogoAlign: lpAlign, lpLogoBg: lpBg, lpLogoSize: lpSize });
     let gradient = $state("linear-gradient(135deg, #f59e0b, #ea580c)");
     // העיצוב שנקבע בבילדר (לוגו, רצועה, כותרת, תת-כותרת) - אותו AdStyle
     // שקהילה בשכונה שומרת. בלעדיו המודעה נשמרה בלי עיצוב והתפרסמה
@@ -103,7 +109,7 @@
         return {
             title, subtitle, hoverText, cta, gradient,
             logo, mainImage, mainImageFit,
-            ...(adStyle ? { adStyle } : {}),
+            ...(adStyle ? { adStyle: { ...adStyle, lpLogoAlign: lpAlign, lpLogoBg: lpBg, lpLogoSize: lpSize } } : {}),
             landing: {
                 headline: landingHeadline,
                 pitch: landingPitch,
@@ -780,6 +786,35 @@
                 </div>
             </section>
 
+            {#if logo}
+                <section class="step-card">
+                    <div class="flex flex-wrap items-center gap-3 text-xs">
+                        <span class="font-bold text-gray-300">לוגו בדף הנחיתה:</span>
+                        <div class="inline-flex rounded-lg border border-white/10 bg-black/20 p-1">
+                            <button type="button" onclick={() => (lpAlign = "right")}
+                                class="px-2.5 py-1 rounded-md font-bold transition-colors {lpAlign === "right" ? "bg-amber-500 text-black" : "text-gray-300 hover:text-white"}">ימין</button>
+                            <button type="button" onclick={() => (lpAlign = "center")}
+                                class="px-2.5 py-1 rounded-md font-bold transition-colors {lpAlign === "center" ? "bg-amber-500 text-black" : "text-gray-300 hover:text-white"}">מרכז</button>
+                            <button type="button" onclick={() => (lpAlign = "left")}
+                                class="px-2.5 py-1 rounded-md font-bold transition-colors {lpAlign === "left" ? "bg-amber-500 text-black" : "text-gray-300 hover:text-white"}">שמאל</button>
+                        </div>
+                        <div class="inline-flex rounded-lg border border-white/10 bg-black/20 p-1">
+                            <button type="button" onclick={() => (lpBg = "white")}
+                                class="px-2.5 py-1 rounded-md font-bold transition-colors {(lpBg ?? logoBg) === "white" ? "bg-amber-500 text-black" : "text-gray-300 hover:text-white"}">לבן</button>
+                            <button type="button" onclick={() => (lpBg = "black")}
+                                class="px-2.5 py-1 rounded-md font-bold transition-colors {(lpBg ?? logoBg) === "black" ? "bg-amber-500 text-black" : "text-gray-300 hover:text-white"}">שחור</button>
+                            <button type="button" onclick={() => (lpBg = "clear")}
+                                class="px-2.5 py-1 rounded-md font-bold transition-colors {(lpBg ?? logoBg) === "clear" ? "bg-amber-500 text-black" : "text-gray-300 hover:text-white"}">שקוף</button>
+                        </div>
+                        <div class="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/20 px-2 py-1">
+                            <button type="button" aria-label="-" class="w-6 h-6 rounded-md font-bold text-gray-300 bg-white/5" onclick={() => (lpSize = Math.max(30, (lpSize ?? 54) - 6))}>−</button>
+                            <input type="range" min="30" max="140" step="2" class="w-20 accent-amber-500" value={lpSize ?? 54} oninput={(e) => (lpSize = +e.currentTarget.value)} />
+                            <button type="button" aria-label="+" class="w-6 h-6 rounded-md font-bold text-gray-300 bg-white/5" onclick={() => (lpSize = Math.min(140, (lpSize ?? 54) + 6))}>+</button>
+                        </div>
+                    </div>
+                </section>
+            {/if}
+
             <!-- =================== תצוגה מקדימה =================== -->
             <section class="step-card">
                 <div class="step-head">
@@ -795,7 +830,7 @@
                             <div class="landing-hero-inner" class:has-media={!!(landingImage || mainImage)}>
                                 <div class="landing-hero-content">
                                     {#if logo}
-                                        <img src={logo} alt="לוגו" class="landing-logo" class:circle={logoShape === "circle"} style={logoBg === "black" ? "background:#000;" : logoBg === "clear" ? "background:transparent;" : ""} />
+                                        <img src={logo} alt="לוגו" class="landing-logo" class:circle={logoShape === "circle"} style={lpLogoStyle(lpStyle)} />
                                     {/if}
                                     <h1>{landingHeadline || title || "כותרת דף הנחיתה"}</h1>
                                     <p>{landingPitch || subtitle || "משפט הפתיחה יופיע כאן"}</p>
