@@ -289,6 +289,10 @@
     let title = $state("");
     let titleColor = $state("#ffffff");
     let titleFontSize = $state(1.15);
+    // לוגו בדף הנחיתה (נקבע בעמוד הנחיתה) - נשמר בטיוטה כדי שלא יתאפס בעריכה
+    let lpLogoAlign = $state(/** @type {"right" | "center" | "left"} */ ("right"));
+    let lpLogoBg = $state(/** @type {"white" | "black" | "clear" | null} */ (null));
+    let lpLogoSize = $state(/** @type {number | null} */ (null));
     let titleOffsetY = $state(0);
     let subtitle = $state("");
     // טיפוגרפיית תת-הכותרת (שלב 5) - גודל, רווח בין שורות ויישור
@@ -405,9 +409,9 @@
         logoShape,
         logoBg,
         logoSize,
-        lpLogoAlign: /** @type {'right'} */ ('right'),
-        lpLogoBg: null,
-        lpLogoSize: null,
+        lpLogoAlign,
+        lpLogoBg,
+        lpLogoSize,
         hoverLogo,
         hoverLogoX,
         hoverLogoY,
@@ -810,6 +814,9 @@
                     titleColor = d.titleColor ?? "#ffffff";
                     titleOffsetY = typeof d.titleOffsetY === "number" ? d.titleOffsetY : 0;
                     titleFontSize = typeof d.titleFontSize === "number" ? d.titleFontSize : 1.15;
+                    lpLogoAlign = d.lpLogoAlign === "center" || d.lpLogoAlign === "left" ? d.lpLogoAlign : "right";
+                    lpLogoBg = d.lpLogoBg === "white" || d.lpLogoBg === "black" || d.lpLogoBg === "clear" ? d.lpLogoBg : null;
+                    lpLogoSize = typeof d.lpLogoSize === "number" ? d.lpLogoSize : null;
                     subtitle = d.subtitle ?? "";
                     subFontSize = typeof d.subFontSize === "number" ? d.subFontSize : DEFAULT_SUB_FONT_SIZE;
                     subLineHeight = typeof d.subLineHeight === "number" ? d.subLineHeight : DEFAULT_SUB_LINE_HEIGHT;
@@ -868,7 +875,7 @@
         const snapshot = {
             logo, logoOriginal, hasCircleCrop, logoShape, logoBg, logoSize, logoPosition, logoPositionExplicit,
             logoFreeX, logoFreeY,
-            mainImage, mainImageObjectX, mainImageObjectY, mainImageZoom, title, titleColor, titleOffsetY, titleFontSize,
+            mainImage, mainImageObjectX, mainImageObjectY, mainImageZoom, title, titleColor, titleOffsetY, titleFontSize, lpLogoAlign, lpLogoBg, lpLogoSize,
             subtitle, subFontSize, subLineHeight, subAlign, hoverText, cta, gradient, diagHeight,
             landingHeadline, landingPitch, landingExtended, landingImage, landingAdvantages,
             uniqueness, phone, whatsapp, website, email, address, hours, products,
