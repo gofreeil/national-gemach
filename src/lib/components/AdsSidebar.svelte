@@ -13,9 +13,7 @@
         {#each ads as ad (ad.id)}
             <a
                 href={ad.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="{ad.title} – {ad.description} (נפתח בחלון חדש)"
+                aria-label="{ad.title} – {ad.description}"
                 class="block overflow-hidden rounded-lg shadow-lg transition-transform hover:scale-105 group relative"
             >
                 <div class="relative overflow-hidden" style="height: {ad.imageHeight ?? '160px'}">
