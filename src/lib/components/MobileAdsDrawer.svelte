@@ -70,8 +70,8 @@
 
 	$effect(() => {
 		if (typeof window !== 'undefined' && tabY === 0) {
-			// ברירת מחדל: החלק התחתון של המסך (4/5 מהגובה)
-			tabY = Math.round(window.innerHeight * 4 / 5);
+			// ברירת מחדל: החלק התחתון של המסך (62% מהגובה)
+			tabY = Math.round(window.innerHeight * 0.62);
 		}
 	});
 
