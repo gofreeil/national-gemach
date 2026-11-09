@@ -84,5 +84,19 @@ export const networkSites: NetworkSite[] = [
         href: 'https://shop.gofreeil.com/',
         image: '/images/shop.webp',
         color: 'from-emerald-600 to-teal-700'
+    },
+    {
+        id: 11,
+        title: 'פנויים פנויות',
+        href: 'https://singles.gofreeil.com/',
+        image: '/images/singles.webp',
+        color: 'from-rose-500 to-pink-600'
+    },
+    {
+        id: 12,
+        title: 'המומחים של העם',
+        href: 'https://experts.gofreeil.com/',
+        image: '/images/the-experts.webp',
+        color: 'from-sky-600 to-blue-700'
     }
 ];

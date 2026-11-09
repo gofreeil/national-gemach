@@ -691,7 +691,7 @@
                 <div class="text-xl md:text-2xl font-black text-purple-300 leading-tight">{cityCount}</div>
                 <div class="text-[11px] md:text-xs font-semibold text-gray-300 leading-tight">ערים</div>
             </div>
-            {#if data.visitors}
+            {#if data.visitors && data.visitors.count >= 100}
                 <div class="mx-auto h-px w-3/5 shrink-0 bg-[#3b5794]" aria-hidden="true"></div>
                 <div class="text-center">
                     <div class="text-xl md:text-2xl font-black text-green-300 leading-tight">{new Intl.NumberFormat('he-IL').format(data.visitors.count)}</div>
