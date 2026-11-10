@@ -286,6 +286,16 @@
     let mainImageZoom = $state(1);
     // ה-fit המאוחד שמוזרם לכל התצוגות (וגם נשלח עם המודעה בשליחה)
     let mainImageFit = $derived({ x: mainImageObjectX, y: mainImageObjectY, z: mainImageZoom });
+
+    // תמונה ייעודית לנייד: המשבצת בנייד רחבה ונמוכה, ובדסקטופ צרה וגבוהה
+    let mobileImage = $state("");
+    let mobileImageObjectX = $state(50);
+    let mobileImageObjectY = $state(50);
+    let mobileImageZoom = $state(1);
+    let mobileImageFit = $derived({ x: mobileImageObjectX, y: mobileImageObjectY, z: mobileImageZoom });
+    let previewMobileImage = $derived(mobileImage || mainImage);
+    let previewMobileFit = $derived(mobileImage ? mobileImageFit : mainImageFit);
+    let isDraggingMobile = $state(false);
     let title = $state("");
     let titleColor = $state("#ffffff");
     let titleFontSize = $state(1.15);
@@ -519,6 +529,8 @@
             title, subtitle, hoverText, cta, gradient,
             logo, mainImage,
             mainImageFit: { x: mainImageObjectX, y: mainImageObjectY, z: mainImageZoom },
+            mobileImage: mobileImage || undefined,
+            mobileImageFit: mobileImage ? { x: mobileImageObjectX, y: mobileImageObjectY, z: mobileImageZoom } : undefined,
             // העיצוב שנקבע כאן נוסע עם המודעה עד לאתר. בלעדיו המודעה
             // שהתפרסמה נבנתה מחדש מברירות המחדל: הלוגו קפץ מהמקום שאליו
             // נגרר, הרצועה חזרה לגובה הבסיסי והכותרת איבדה את צבעה.
@@ -540,6 +552,7 @@
     /** החלת תמונות שכווצו בחזרה על המצב (אחרי shrinkAdPayload) @param {any} p */
     function applyPayloadImages(p) {
         if (p.mainImage !== mainImage) mainImage = p.mainImage;
+        if (p.mobileImage && p.mobileImage !== mobileImage) mobileImage = p.mobileImage;
         if (p.logo !== logo) logo = p.logo;
         if (p.landing.image !== landingImage) landingImage = p.landing.image;
         let productsChanged = false;
@@ -553,7 +566,7 @@
 
     /**
      * @param {File | null | undefined} file
-     * @param {'main' | 'logo'} target
+     * @param {'main' | 'logo' | 'mobile'} target
      */
     async function processImageFile(file, target) {
         if (!file) return;
@@ -570,11 +583,12 @@
         // בדיקת התקציב הכולל: התמונה נכנסת רק אם כל המודעה נשארת מתחת לתקרה
         const candidate = buildPayloadSnapshot();
         if (target === "main") candidate.mainImage = url;
+        else if (target === "mobile") candidate.mobileImage = url;
         else candidate.logo = url;
         const fit = await shrinkAdPayload(candidate, AD_EFFECTIVE_LIMIT);
         if (!fit.ok) {
             uploadIssue = {
-                zone: target,
+                zone: target === "mobile" ? "main" : target,
                 msg: $_("advertise.b_upload_no_room", { values: { v: heaviestImageLabel(candidate) || "—" } }),
             };
             return; // המצב הקיים לא נגעו בו — אפשר להמשיך לעבוד
@@ -582,13 +596,17 @@
 
         applyPayloadImages(candidate);
         if (res.wasCompressed || fit.changed) {
-            const finalUrl = target === "main" ? candidate.mainImage : candidate.logo;
+            const finalUrl = target === "main" ? candidate.mainImage : target === "mobile" ? candidate.mobileImage : candidate.logo;
             showCompressNotice(res.originalBytes, approxDataUrlBytes(finalUrl));
         }
         if (target === "main") {
             mainImageObjectX = 50;
             mainImageObjectY = 50;
             mainImageZoom = 1;
+        } else if (target === "mobile") {
+            mobileImageObjectX = 50;
+            mobileImageObjectY = 50;
+            mobileImageZoom = 1;
         } else {
             logoOriginal = candidate.logo;
             hasCircleCrop = false;
@@ -598,32 +616,51 @@
 
     /**
      * @param {Event} e
-     * @param {'main' | 'logo'} target
+     * @param {'main' | 'logo' | 'mobile'} target
      */
     async function handleImage(e, target) {
         const input = /** @type {HTMLInputElement} */ (e.target);
         await processImageFile(input.files?.[0], target);
     }
 
-    /** @param {'main' | 'logo'} target */
+    /** @param {'main' | 'logo' | 'mobile'} target */
     function clearImage(target) {
         if (target === "main") { mainImage = ""; mainImageObjectX = 50; mainImageObjectY = 50; mainImageZoom = 1; }
+        else if (target === "mobile") { mobileImage = ""; mobileImageObjectX = 50; mobileImageObjectY = 50; mobileImageZoom = 1; }
         else { logo = ""; logoOriginal = ""; hasCircleCrop = false; }
     }
-    /** @param {'up' | 'down' | 'left' | 'right'} dir */
-    function nudgeMainImage(dir) {
+    /**
+     * @param {'up' | 'down' | 'left' | 'right'} dir
+     * @param {'main' | 'mobile'} [which]
+     */
+    function nudgeMainImage(dir, which = "main") {
         const STEP = 8;
-        if (dir === "up") mainImageObjectY = Math.max(0, mainImageObjectY - STEP);
-        if (dir === "down") mainImageObjectY = Math.min(100, mainImageObjectY + STEP);
-        if (dir === "left") mainImageObjectX = Math.max(0, mainImageObjectX - STEP);
-        if (dir === "right") mainImageObjectX = Math.min(100, mainImageObjectX + STEP);
+        if (which === "mobile") {
+            if (dir === "up") mobileImageObjectY = Math.max(0, mobileImageObjectY - STEP);
+            if (dir === "down") mobileImageObjectY = Math.min(100, mobileImageObjectY + STEP);
+            if (dir === "left") mobileImageObjectX = Math.max(0, mobileImageObjectX - STEP);
+            if (dir === "right") mobileImageObjectX = Math.min(100, mobileImageObjectX + STEP);
+        } else {
+            if (dir === "up") mainImageObjectY = Math.max(0, mainImageObjectY - STEP);
+            if (dir === "down") mainImageObjectY = Math.min(100, mainImageObjectY + STEP);
+            if (dir === "left") mainImageObjectX = Math.max(0, mainImageObjectX - STEP);
+            if (dir === "right") mainImageObjectX = Math.min(100, mainImageObjectX + STEP);
+        }
     }
     /** זום פנימה/החוצה בצעדים יחסיים; 1 = מילוי המשבצת (cover) */
-    /** @param {'in' | 'out'} dir */
-    function zoomMainImage(dir) {
+    /**
+     * @param {'in' | 'out'} dir
+     * @param {'main' | 'mobile'} [which]
+     */
+    function zoomMainImage(dir, which = "main") {
         const FACTOR = 1.15;
-        const next = dir === "in" ? mainImageZoom * FACTOR : mainImageZoom / FACTOR;
-        mainImageZoom = Math.round(Math.min(AD_ZOOM_MAX, Math.max(AD_ZOOM_MIN, next)) * 100) / 100;
+        if (which === "mobile") {
+            const next = dir === "in" ? mobileImageZoom * FACTOR : mobileImageZoom / FACTOR;
+            mobileImageZoom = Math.round(Math.min(AD_ZOOM_MAX, Math.max(AD_ZOOM_MIN, next)) * 100) / 100;
+        } else {
+            const next = dir === "in" ? mainImageZoom * FACTOR : mainImageZoom / FACTOR;
+            mainImageZoom = Math.round(Math.min(AD_ZOOM_MAX, Math.max(AD_ZOOM_MIN, next)) * 100) / 100;
+        }
     }
 
     /**
@@ -810,6 +847,10 @@
                     mainImageObjectX = typeof d.mainImageObjectX === "number" ? d.mainImageObjectX : 50;
                     mainImageObjectY = typeof d.mainImageObjectY === "number" ? d.mainImageObjectY : 50;
                     mainImageZoom = typeof d.mainImageZoom === "number" ? d.mainImageZoom : 1;
+                    mobileImage = d.mobileImage ?? "";
+                    mobileImageObjectX = typeof d.mobileImageObjectX === "number" ? d.mobileImageObjectX : 50;
+                    mobileImageObjectY = typeof d.mobileImageObjectY === "number" ? d.mobileImageObjectY : 50;
+                    mobileImageZoom = typeof d.mobileImageZoom === "number" ? d.mobileImageZoom : 1;
                     title = d.title ?? "";
                     titleColor = d.titleColor ?? "#ffffff";
                     titleOffsetY = typeof d.titleOffsetY === "number" ? d.titleOffsetY : 0;
@@ -875,7 +916,8 @@
         const snapshot = {
             logo, logoOriginal, hasCircleCrop, logoShape, logoBg, logoSize, logoPosition, logoPositionExplicit,
             logoFreeX, logoFreeY,
-            mainImage, mainImageObjectX, mainImageObjectY, mainImageZoom, title, titleColor, titleOffsetY, titleFontSize, lpLogoAlign, lpLogoBg, lpLogoSize,
+            mainImage, mainImageObjectX, mainImageObjectY, mainImageZoom,
+            mobileImage, mobileImageObjectX, mobileImageObjectY, mobileImageZoom, title, titleColor, titleOffsetY, titleFontSize, lpLogoAlign, lpLogoBg, lpLogoSize,
             subtitle, subFontSize, subLineHeight, subAlign, hoverText, cta, gradient, diagHeight,
             landingHeadline, landingPitch, landingExtended, landingImage, landingAdvantages,
             uniqueness, phone, whatsapp, website, email, address, hours, products,
@@ -1563,6 +1605,43 @@
                     </div>
 
                     {#if previewMode === "mobile"}
+                        <!-- החלפת תמונה ייעודית לנייד: ממוקמת מעל התצוגה המקדימה -->
+                        <div class="mobile-image-swap">
+                            <h4 class="mobile-image-swap-title">תמונה אחרת לנייד</h4>
+                            <p class="mobile-image-swap-help">המשבצת בנייד רחבה ונמוכה, ובדסקטופ צרה וגבוהה - אותה תמונה נחתכת אחרת. אפשר להעלות כאן תמונה שמתאימה לנייד; בלעדיה הנייד ממשיך עם התמונה הראשית.</p>
+                            {#if mobileImage}
+                                <div class="mobile-image-swap-frame"
+                                     class:dragging={isDraggingMobile}
+                                     ondragover={(e) => dragOver(e, (v) => (isDraggingMobile = v))}
+                                     ondragleave={(e) => dragLeave(e, (v) => (isDraggingMobile = v))}
+                                     ondrop={(e) => handleDrop(e, "mobile", (v) => (isDraggingMobile = v))}>
+                                    <img src={mobileImage} alt="תמונה לנייד" style:object-position="{mobileImageObjectX}% {mobileImageObjectY}%" use:adImgFit={mobileImageFit} />
+                                    <button type="button" class="crop-arrow up" onclick={() => nudgeMainImage("up", "mobile")} aria-label="למעלה">▲</button>
+                                    <button type="button" class="crop-arrow down" onclick={() => nudgeMainImage("down", "mobile")} aria-label="למטה">▼</button>
+                                    <button type="button" class="crop-arrow left" onclick={() => nudgeMainImage("left", "mobile")} aria-label="שמאלה">◀</button>
+                                    <button type="button" class="crop-arrow right" onclick={() => nudgeMainImage("right", "mobile")} aria-label="ימינה">▶</button>
+                                    <button type="button" class="remove-x" onclick={() => clearImage("mobile")} aria-label="הסר תמונה לנייד">✕</button>
+                                    <button type="button" class="crop-reset" onclick={() => { mobileImageObjectX = 50; mobileImageObjectY = 50; mobileImageZoom = 1; }} aria-label="איפוס">⊙</button>
+                                    <button type="button" class="crop-zoom zoom-in" onclick={() => zoomMainImage("in", "mobile")} aria-label="הגדל">＋</button>
+                                    <button type="button" class="crop-zoom zoom-out" onclick={() => zoomMainImage("out", "mobile")} aria-label="הקטן">－</button>
+                                </div>
+                                <p class="mobile-image-swap-note">התמונה לנייד פעילה ומוצגת בתצוגה</p>
+                            {:else}
+                                <label class="mobile-image-swap-drop"
+                                       class:dragging={isDraggingMobile}
+                                       ondragover={(e) => dragOver(e, (v) => (isDraggingMobile = v))}
+                                       ondragleave={(e) => dragLeave(e, (v) => (isDraggingMobile = v))}
+                                       ondrop={(e) => handleDrop(e, "mobile", (v) => (isDraggingMobile = v))}>
+                                    <span style="font-size: 1.5rem;" aria-hidden="true">{isDraggingMobile ? "✨" : "📱"}</span>
+                                    <span class="mobile-image-swap-drop-main">
+                                        {isDraggingMobile ? "שחררו כאן את התמונה" : "העלאת תמונה ייעודית לנייד"}
+                                    </span>
+                                    <span class="mobile-image-swap-drop-sub">לחיצה או גרירה</span>
+                                    <input type="file" accept="image/*" onchange={(e) => handleImage(e, "mobile")} style="display: none;" />
+                                </label>
+                            {/if}
+                        </div>
+
                         <div class="preview-frame">
                             <div class="phone-screen">
                                 <div class="phone-notch"></div>
@@ -1575,8 +1654,8 @@
                                             <h3 class="popup-title-above" style:color={titleColor}>{title || $_("advertise.b_s3_title")}</h3>
                                         </div>
                                         <div class="popup-img pro-img-wrap">
-                                            {#if mainImage}
-                                                <img src={mainImage} alt={title} style:object-position="{mainImageObjectX}% {mainImageObjectY}%" use:adImgFit={mainImageFit} />
+                                            {#if previewMobileImage}
+                                                <img src={previewMobileImage} alt={title} use:adImgFit={previewMobileFit} />
                                             {:else}
                                                 <div class="img-placeholder">{$_("advertise.b_main_image_alt")}</div>
                                             {/if}
@@ -3518,5 +3597,54 @@
         font-size: 0.75rem;
         font-weight: 700;
         margin: 0;
+    }
+
+    /* ============== תמונה ייעודית לנייד ============== */
+    .mobile-image-swap {
+        margin-bottom: 0.9rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 0.9rem;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 0.75rem 0.85rem;
+        text-align: center;
+    }
+    .mobile-image-swap-title {
+        margin: 0; color: white; font-weight: 900; font-size: 0.9rem;
+    }
+    .mobile-image-swap-help {
+        margin: 0.2rem 0 0.6rem; color: rgb(156, 163, 175); font-size: 0.72rem; line-height: 1.35;
+    }
+    .mobile-image-swap-drop {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem;
+        width: 100%; max-width: 320px; margin: 0 auto;
+        padding: 1rem 0.9rem; border-radius: 0.8rem; cursor: pointer;
+        border: 2px dashed rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.06);
+        color: rgb(253, 230, 138);
+        transition: background 0.15s, border-color 0.15s, transform 0.15s;
+    }
+    .mobile-image-swap-drop:hover {
+        background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.8);
+    }
+    .mobile-image-swap-drop.dragging {
+        border-color: rgb(34, 197, 94); background: rgba(34, 197, 94, 0.12);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18);
+        transform: scale(1.01);
+    }
+    .mobile-image-swap-drop-main { font-weight: 800; font-size: 0.82rem; }
+    .mobile-image-swap-drop-sub { color: rgb(156, 163, 175); font-size: 0.68rem; }
+    .mobile-image-swap-frame.dragging {
+        border-color: rgb(34, 197, 94);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+    }
+    .mobile-image-swap-frame {
+        position: relative; width: 100%; max-width: 320px; margin: 0 auto;
+        aspect-ratio: 384 / 176; border-radius: 0.7rem; overflow: hidden;
+        border: 2px solid rgba(245, 158, 11, 0.45);
+    }
+    .mobile-image-swap-frame img {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .mobile-image-swap-note {
+        margin: 0.45rem 0 0; color: rgb(134, 239, 172); font-size: 0.7rem; font-weight: 700;
     }
 </style>
