@@ -56,14 +56,15 @@ function currentInterstitialAds(): Ad[] {
         cta: a.shop ? '' : (a.cta || 'לפרטים'),
         hover: a.hover || undefined,
         href: `/ads/${a.id}`,
-        image: a.mainImage,
+        // המשבצת בנייד רחבה ונמוכה - תמונה ייעודית לנייד (אם הועלתה) מועדפת
+        image: a.mobileImage || a.mainImage,
         color: '',
         gradientCss: a.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)',
         // מודעה משולמת (לא כרטיס מוצר) מצוירת בדיוק כמו שלב הנייד בבילדר
         card: a.shop ? undefined : {
             logo: a.logo ?? '',
             style: parseAdStyle(a.adStyle) ?? legacyAdStyle(a.title),
-            imageFit: parseAdImageFit(a.mainImageFit),
+            imageFit: parseAdImageFit(a.mobileImage ? a.mobileImageFit : a.mainImageFit),
         },
     }));
     return [...real, inviteAd];

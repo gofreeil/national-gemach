@@ -247,6 +247,7 @@ export async function shrinkAdPayload(payload, limit = AD_BODY_LIMIT) {
             if (typeof cur === "string" && cur.startsWith("data:image/")) imgs.push({ cur, floor, png, apply });
         };
         push(payload.mainImage, MIN_MAIN_CHARS, false, (v) => { payload.mainImage = v; });
+        push(payload.mobileImage, MIN_SIDE_CHARS, false, (v) => { payload.mobileImage = v; });
         push(payload.landing?.image, MIN_SIDE_CHARS, false, (v) => { payload.landing.image = v; });
         for (const p of payload.landing?.products ?? []) push(p.image, MIN_SIDE_CHARS, false, (v) => { p.image = v; });
         push(payload.logo, MIN_LOGO_CHARS, true, (v) => { payload.logo = v; });
@@ -283,6 +284,7 @@ export function heaviestImageLabel(payload) {
         if (cur.length > bestLen) { bestLen = cur.length; bestLabel = label; }
     };
     consider("התמונה הראשית", payload?.mainImage);
+    consider("התמונה לנייד", payload?.mobileImage);
     consider("הלוגו", payload?.logo);
     consider("תמונת דף הנחיתה", payload?.landing?.image);
     (payload?.landing?.products ?? []).forEach((/** @type {any} */ p, /** @type {number} */ i) => {

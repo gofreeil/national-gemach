@@ -59,6 +59,9 @@ export interface SubmittedAd {
     imgVersion: string;
     /** מיקום+זום של התמונה הראשית במשבצת (מהבילדר) */
     mainImageFit: AdImageFit;
+    /** תמונה ייעודית לנייד (data URI); ריק = הנייד מציג את התמונה הראשית */
+    mobileImage: string;
+    mobileImageFit: AdImageFit;
     /** העיצוב שנקבע בבילדר (לוגו, רצועה, כותרת). null = מודעה ותיקה */
     adStyle: AdStyle | null;
     landing: Partial<AdLanding>;
@@ -122,6 +125,9 @@ export interface ApprovedAdPublic {
     logo: string;
     mainImage: string;
     mainImageFit: AdImageFit;
+    /** תמונה ייעודית לנייד (כתובת); ריק כשהמפרסם לא העלה אחת */
+    mobileImage: string;
+    mobileImageFit: AdImageFit;
     /** העיצוב מהבילדר; null במודעות שנשלחו לפני שהוא נשמר */
     adStyle: AdStyle | null;
     /** מספר המקום בלוח (1..12) — נקבע במסך הניהול, מחושב תמיד בשרת */
@@ -181,6 +187,7 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
     const x = (row.extra_fields ?? {}) as Record<string, any>;
     const logo = x.logo ?? '';
     const mainImage = x.main_image ?? '';
+    const mobileImage = typeof x.mobile_image === 'string' ? x.mobile_image : '';
     // גם תמונות דף הנחיתה נכנסות לחותם: כולן מוגשות מאותה כתובת עם אותו ?v=,
     // ולכן החלפת אחת מהן חייבת להחליף אותו - אחרת קאש ה-immutable יחזיק ישנה.
     const landingImages: string[] = [
@@ -199,8 +206,10 @@ function fromStrapi(row: StrapiItem | null | undefined): SubmittedAd | null {
         gradient: x.gradient ?? '',
         logo,
         mainImage,
-        imgVersion: imageStamp(logo, mainImage, ...landingImages),
+        imgVersion: imageStamp(logo, mainImage, mobileImage, ...landingImages),
         mainImageFit: parseAdImageFit(x.main_image_fit),
+        mobileImage,
+        mobileImageFit: parseAdImageFit(x.mobile_image_fit),
         // null במודעות שנשלחו לפני שהעיצוב נשמר — הצרכן נופל ל-legacyAdStyle
         adStyle: parseAdStyle(x.ad_style),
         landing: sanitizeLanding(x.landing),
@@ -458,6 +467,8 @@ export async function submitAd(payload: {
     logo?: string;
     mainImage?: string;
     mainImageFit?: unknown;
+    mobileImage?: string;
+    mobileImageFit?: unknown;
     adStyle?: unknown;
     landing?: Partial<AdLanding>;
     submittedBy?: { id: string; email: string; name: string };
@@ -496,6 +507,9 @@ export async function submitAd(payload: {
                 logo:         payload.logo ?? '',
                 main_image:   payload.mainImage ?? '',
                 main_image_fit: parseAdImageFit(payload.mainImageFit),
+                // תמונה ייעודית לנייד - ריק כשהמפרסם לא העלה אחת
+                mobile_image: payload.mobileImage ?? '',
+                mobile_image_fit: parseAdImageFit(payload.mobileImageFit),
                 // העיצוב שהמפרסם קבע בבילדר — בלעדיו המודעה מתפרסמת עם
                 // ברירות המחדל של האתר ולא עם מה שהוא ראה על המסך
                 ad_style:     parseAdStyle(payload.adStyle),
@@ -558,16 +572,17 @@ export async function submitAd(payload: {
  * logo/main הן תמונות הכרטיס בלוח. landing ו-product-<n> הן של דף הנחיתה
  * (/ads/<id>) - הדף שאליו מגיעה כל לחיצה על פרסומת.
  */
-export type AdImageKind = 'logo' | 'main' | 'landing' | `product-${number}`;
+export type AdImageKind = 'logo' | 'main' | 'mobile' | 'landing' | `product-${number}`;
 
 export function isAdImageKind(v: string | undefined): v is AdImageKind {
     if (!v) return false;
-    return v === 'logo' || v === 'main' || v === 'landing' || /^product-\d+$/.test(v);
+    return v === 'logo' || v === 'main' || v === 'mobile' || v === 'landing' || /^product-\d+$/.test(v);
 }
 
 function pickImage(ad: SubmittedAd, kind: AdImageKind): string {
     if (kind === 'logo') return ad.logo;
     if (kind === 'main') return ad.mainImage;
+    if (kind === 'mobile') return ad.mobileImage;
     if (kind === 'landing') return ad.landing?.image ?? '';
     const idx = Number(kind.slice('product-'.length));
     return ad.landing?.products?.[idx]?.image ?? '';
@@ -600,6 +615,7 @@ export function withAdImageUrls(ad: SubmittedAd): SubmittedAd {
         ...ad,
         logo: adImageUrl(ad, 'logo'),
         mainImage: adImageUrl(ad, 'main'),
+        mobileImage: adImageUrl(ad, 'mobile'),
         landing: { ...ad.landing, image: adImageUrl(ad, 'landing'), products },
     };
 }
@@ -668,6 +684,9 @@ export async function listApproved(): Promise<ApprovedAdPublic[]> {
                 logo: adImageUrl(a, 'logo'),
                 mainImage: adImageUrl(a, 'main'),
                 mainImageFit: a.mainImageFit,
+                // תמונת הנייד (אם הועלתה) - פרסומת-הביניים מעדיפה אותה
+                mobileImage: adImageUrl(a, 'mobile'),
+                mobileImageFit: a.mobileImageFit,
                 adStyle: a.adStyle,
                 // המספר בלוח (1-based) — הלקוח מציב לפיו את המודעה בדיוק
                 // במקום שנקבע לה, והחורים ביניהם נשארים משבצות פנויות
@@ -763,6 +782,9 @@ export async function updateAdContent(
         logo?: string;
         mainImage?: string;
         mainImageFit?: unknown;
+        /** undefined = לא נוגעים; '' = המפרסם הסיר את תמונת הנייד */
+        mobileImage?: string;
+        mobileImageFit?: unknown;
         adStyle?: unknown;
         landing?: Partial<AdLanding>;
     },
@@ -784,6 +806,12 @@ export async function updateAdContent(
                 main_image_fit: patch.mainImageFit !== undefined
                     ? parseAdImageFit(patch.mainImageFit)
                     : (existing.main_image_fit ?? parseAdImageFit(undefined)),
+                mobile_image: patch.mobileImage !== undefined
+                    ? patch.mobileImage
+                    : (existing.mobile_image ?? ''),
+                mobile_image_fit: patch.mobileImage !== undefined
+                    ? parseAdImageFit(patch.mobileImageFit)
+                    : (existing.mobile_image_fit ?? parseAdImageFit(undefined)),
                 // עריכה מהדשבורד שומרת גם את העיצוב; בלי זה עריכת טקסט
                 // הייתה מאפסת את הלוגו והרצועה שהמפרסם כיוון
                 ad_style: patch.adStyle !== undefined

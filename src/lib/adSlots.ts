@@ -25,6 +25,9 @@ export interface ApprovedAd {
     mainImage: string;  // data URI
     /** מיקום+זום מהבילדר; אופציונלי — קאש ישן בדפדפן עוד בלעדיו */
     mainImageFit?: { x: number; y: number; z: number };
+    /** תמונה ייעודית לנייד (כתובת) + המיקום/זום שלה; ריק/חסר = התמונה הראשית */
+    mobileImage?: string;
+    mobileImageFit?: { x: number; y: number; z: number };
     /** העיצוב מהבילדר (לוגו, רצועה, כותרת); חסר במודעות ותיקות */
     adStyle?: AdStyle | null;
     /** מספר המקום בלוח (1..12) — נקבע במסך הניהול; חסר בקאש ישן */
@@ -55,7 +58,8 @@ export const adsHydrated = writable(false);
 // v4: שדות הזזת הכרטיס בנייד (mob*) בתוך adStyle - קאש ישן היה מצייר אותם במיקום ברירת המחדל.
 // v3: נוסף מספר המקום (slot) — בלי המפתח החדש מבקר חוזר היה מצייר את
 // הלוח מרשימה ישנה בלי מספרים, והמודעות היו נדחסות לראש הלוח.
-const CACHE_KEY = 'ng_approved_ads_v4';
+// v5: נוספה התמונה הייעודית לנייד (mobileImage/mobileImageFit).
+const CACHE_KEY = 'ng_approved_ads_v5';
 
 function readLocalCache(): ApprovedAd[] | null {
     try {

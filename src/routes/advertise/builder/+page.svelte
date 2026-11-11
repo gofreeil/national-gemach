@@ -554,8 +554,8 @@
             title, subtitle, hoverText, cta, gradient,
             logo, mainImage,
             mainImageFit: { x: mainImageObjectX, y: mainImageObjectY, z: mainImageZoom },
-            mobileImage: mobileImage || undefined,
-            mobileImageFit: mobileImage ? { x: mobileImageObjectX, y: mobileImageObjectY, z: mobileImageZoom } : undefined,
+            mobileImage,
+            mobileImageFit: { x: mobileImageObjectX, y: mobileImageObjectY, z: mobileImageZoom },
             // העיצוב שנקבע כאן נוסע עם המודעה עד לאתר. בלעדיו המודעה
             // שהתפרסמה נבנתה מחדש מברירות המחדל: הלוגו קפץ מהמקום שאליו
             // נגרר, הרצועה חזרה לגובה הבסיסי והכותרת איבדה את צבעה.
@@ -577,7 +577,7 @@
     /** החלת תמונות שכווצו בחזרה על המצב (אחרי shrinkAdPayload) @param {any} p */
     function applyPayloadImages(p) {
         if (p.mainImage !== mainImage) mainImage = p.mainImage;
-        if (p.mobileImage && p.mobileImage !== mobileImage) mobileImage = p.mobileImage;
+        if (p.mobileImage !== mobileImage) mobileImage = p.mobileImage;
         if (p.logo !== logo) logo = p.logo;
         if (p.landing.image !== landingImage) landingImage = p.landing.image;
         let productsChanged = false;
@@ -730,7 +730,7 @@
     }
     /**
      * @param {DragEvent} e
-     * @param {'main' | 'logo'} target
+     * @param {'main' | 'logo' | 'mobile'} target
      * @param {(v: boolean) => void} setActive
      */
     async function handleDrop(e, target, setActive) {

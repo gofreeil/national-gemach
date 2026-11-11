@@ -45,6 +45,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
             logo: payload.logo ?? '',
             mainImage: payload.mainImage,
             mainImageFit: payload.mainImageFit,
+            // הבילדר שולח את מצב תמונת הנייד: ריק = הוסרה; חסר = לא נוגעים
+            mobileImage: typeof payload.mobileImage === 'string' ? payload.mobileImage : undefined,
+            mobileImageFit: payload.mobileImageFit,
             // העיצוב שנקבע בבילדר נשמר גם בעריכה — בלעדיו עריכת טקסט
             // הייתה מאפסת את מיקום הלוגו, גובה הרצועה וצבע הכותרת
             adStyle: payload.adStyle,
