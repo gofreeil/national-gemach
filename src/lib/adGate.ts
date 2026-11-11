@@ -19,6 +19,8 @@ import { goto } from '$app/navigation';
 import type { Ad } from './adsData';
 import { rightAds } from './rightAdsData';
 import { approvedAds, loadApprovedAds } from './adSlots';
+import { parseAdStyle, legacyAdStyle } from './adStyle';
+import { parseAdImageFit } from './adImageFit';
 
 /** מתג ראשי — כיבוי חירום של כל מנגנון פרסומת-הביניים. */
 export const ADS_ENABLED = true;
@@ -57,6 +59,12 @@ function currentInterstitialAds(): Ad[] {
         image: a.mainImage,
         color: '',
         gradientCss: a.gradient || 'linear-gradient(135deg, #f59e0b, #ea580c)',
+        // מודעה משולמת (לא כרטיס מוצר) מצוירת בדיוק כמו שלב הנייד בבילדר
+        card: a.shop ? undefined : {
+            logo: a.logo ?? '',
+            style: parseAdStyle(a.adStyle) ?? legacyAdStyle(a.title),
+            imageFit: parseAdImageFit(a.mainImageFit),
+        },
     }));
     return [...real, inviteAd];
 }

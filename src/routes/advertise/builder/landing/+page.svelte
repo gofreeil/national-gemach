@@ -387,6 +387,12 @@
                         subFontSize: d.subFontSize,
                         subLineHeight: d.subLineHeight,
                         subAlign: d.subAlign,
+                        mobTitleX: d.mobTitleX,
+                        mobTitleY: d.mobTitleY,
+                        mobSubX: d.mobSubX,
+                        mobSubY: d.mobSubY,
+                        mobCtaX: d.mobCtaX,
+                        mobCtaY: d.mobCtaY,
                     };
                 }
             } catch {}

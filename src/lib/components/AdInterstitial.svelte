@@ -8,6 +8,7 @@
     import { interstitial } from '$lib/adGate';
     import { loadApprovedAds } from '$lib/adSlots';
     import { markAdSeen, trackAdClick } from '$lib/adTrack';
+    import MobileAdCard from '$lib/components/MobileAdCard.svelte';
 
     // הרכיב יושב גלובלית ב-+layout — נקודה נוחה להתניע את טעינת
     // המודעות המאושרות (חד-פעמי, no-op בצד השרת).
@@ -41,6 +42,25 @@
         <div class="ad-int-card">
             <span class="ad-int-badge">פרסומת</span>
 
+            {#if ad.card}
+                <!-- מודעה משולמת: אותו כרטיס בדיוק כמו התצוגה בנייד בבילדר (קריאה בלבד) -->
+                <MobileAdCard
+                    title={ad.title}
+                    subtitle={ad.description}
+                    cta={ad.cta}
+                    image={ad.image}
+                    imageFit={ad.card.imageFit}
+                    logo={ad.card.logo}
+                    gradient={ad.gradientCss}
+                    st={ad.card.style}
+                    showCta={!!ad.cta}
+                    countdown={$interstitial.remaining}
+                    href={ad.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onctaclick={() => trackAdClick(ad.adId)}
+                />
+            {:else}
             <!-- הקריאייטיב — קליק פותח את המפרסם בלשונית חדשה, בלי לעצור את הספירה -->
             <a href={ad.href} target="_blank" rel="noopener noreferrer"
                onclick={() => trackAdClick(ad.adId)}
@@ -57,6 +77,7 @@
                 <p class="ad-int-desc">{ad.description}</p>
                 {#if ad.cta}<span class="ad-int-cta">{ad.cta} ←</span>{/if}
             </a>
+            {/if}
 
             <!-- מחוון טעינה + ספירה-לאחור: הסימן למשתמש שהתוכן נטען וכמה זמן נשאר -->
             <div class="ad-int-loader" aria-live="polite">

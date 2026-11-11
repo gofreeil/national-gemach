@@ -5,6 +5,9 @@
 // (הגמ"ח הארצי) במודעה של קהילה בשכונה.
 // ============================================================
 
+import type { AdStyle } from './adStyle';
+import type { AdImageFit } from './adImageFit';
+
 export interface Ad {
     id: number;
     title: string;
@@ -20,6 +23,8 @@ export interface Ad {
     gradientCss?: string;   // רקע כמחרוזת CSS מלאה (מודעות מהבילדר) — גובר על color
     /** מזהה המודעה ב-Strapi (רק למודעות מהבילדר) — למדידה בדשבורד המפרסם */
     adId?: string;
+    /** מודעה משולמת מהבילדר — פרסומת-הביניים בנייד מצוירת מהכרטיס המשותף (MobileAdCard) */
+    card?: { logo: string; style: AdStyle; imageFit: AdImageFit };
 }
 
 export const ads: Ad[] = [
