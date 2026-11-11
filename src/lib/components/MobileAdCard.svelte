@@ -124,6 +124,10 @@
                 {@render field('sub', subtitle, 70, 'mc-sub', 'p')}
             </div>
         </div>
+        <!-- בלי כפתור CTA (טקסט ריק / כרטיס מוצר) אין יעד לחיצה - אזור התמונה כולו הוא הקישור -->
+        {#if !editable && href && !showCta}
+            <a {href} {target} {rel} onclick={onctaclick} class="mc-img-link" aria-label={title}></a>
+        {/if}
         {#if onclose}
             <button type="button" class="mc-close" onclick={onclose} aria-label="✕">{countdown}</button>
         {:else}
@@ -207,6 +211,7 @@
         color: #fff; font-size: 12px; font-weight: 700; cursor: default;
         display: flex; align-items: center; justify-content: center;
     }
+    .mc-img-link { position: absolute; inset: 0; z-index: 5; }
     button.mc-close { cursor: pointer; }
     .mc-body { padding: 3.5cqw; }
     .mc-cta {
