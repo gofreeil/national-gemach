@@ -9,6 +9,19 @@
 		     כבר עם ה-HTML — במקביל להורדת ה-JS — כך שכשה-fetch רץ התשובה
 		     כבר בדרך/בקאש. crossorigin תואם למצב ברירת-המחדל של fetch. -->
 		<link rel="preload" href="/api/ads/approved" as="fetch" crossorigin="anonymous" />
+		<script>
+			addEventListener('error', function (e) {
+				var t = e.target;
+				if (!t || !t.tagName) return;
+				var u = t.href || t.src || '';
+				if (u.indexOf('/_app/') === -1) return;
+				try {
+					if (sessionStorage.getItem('asset-reload')) return;
+					sessionStorage.setItem('asset-reload', '1');
+				} catch (_) { return; }
+				location.reload();
+			}, true);
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
