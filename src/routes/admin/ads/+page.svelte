@@ -8,6 +8,7 @@
     import { AD_SLOT_COUNT } from '$lib/rightAdsData';
     import { planFor } from '$lib/adPlans';
     import AdCardPreview from '$lib/components/AdCardPreview.svelte';
+    import AdRemoveDialog from '$lib/components/AdRemoveDialog.svelte';
 
     let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -247,6 +248,19 @@
     let trashPreview = $state<any>(null);
     function openTrashPreview(t: any) {
         trashPreview = (data.approved as any[]).find((a) => a.id === t.id) ?? t;
+    }
+
+    // "מחק" פותח חלון עם כרטיס הפרסומת שנמחקת - לראות בדיוק מה מוחקים
+    let removeAsk = $state<{ form: HTMLFormElement; ad: any } | null>(null);
+    function askRemove(e: MouseEvent, ad: any, question = '') {
+        const form = (e.currentTarget as HTMLButtonElement).form;
+        if (form && ad) { e.preventDefault(); removeAsk = { form, ad }; return; }
+        if (question && !confirm(question)) e.preventDefault();
+    }
+    function finishRemove() {
+        const form = removeAsk?.form;
+        removeAsk = null;
+        form?.requestSubmit();
     }
 
     let visibleSelectedIds = $derived(
@@ -678,7 +692,7 @@
                                         <input type="hidden" name="id" value={ad.id} />
                                         <button type="submit"
                                                 class="px-4 py-2 rounded-xl bg-red-600/20 border border-red-500/40 text-red-300 font-black text-sm hover:bg-red-600/30"
-                                                onclick={(e) => { if (!confirm('להעביר את הפרסומת לאשפה? אפשר לשחזר אותה משם.')) e.preventDefault(); }}>
+                                                onclick={(e) => askRemove(e, ad, 'להעביר את הפרסומת לאשפה? אפשר לשחזר אותה משם.')}>
                                             🗑 מחק
                                         </button>
                                     </form>
@@ -696,7 +710,7 @@
                                         <input type="hidden" name="id" value={ad.id} />
                                         <button type="submit"
                                                 class="px-4 py-2 rounded-xl bg-red-600/20 border border-red-500/40 text-red-300 font-black text-sm hover:bg-red-600/30"
-                                                onclick={(e) => { if (!confirm('להעביר את הפרסומת לאשפה? אפשר לשחזר אותה משם.')) e.preventDefault(); }}>
+                                                onclick={(e) => askRemove(e, ad, 'להעביר את הפרסומת לאשפה? אפשר לשחזר אותה משם.')}>
                                             🗑 מחק
                                         </button>
                                     </form>
@@ -943,7 +957,7 @@
                                                 <input type="hidden" name="id" value={s.id} />
                                                 <button type="submit"
                                                         class="h-7 w-full inline-flex items-center justify-center px-1 rounded-lg bg-red-600/20 border border-red-500/40 text-red-300 text-[11px] font-black hover:bg-red-600/30 whitespace-nowrap"
-                                                        onclick={(e) => { if (!confirm(`להעביר את "${s.title}" לאשפה? אפשר לשחזר אותה משם.`)) e.preventDefault(); }}>
+                                                        onclick={(e) => askRemove(e, approvedById.get(s.id), `להעביר את "${s.title}" לאשפה? אפשר לשחזר אותה משם.`)}>
                                                     🗑 מחק
                                                 </button>
                                             </form>
@@ -998,7 +1012,8 @@
                             {#if canDelete}
                                 <form method="POST" action="?/remove" use:enhance>
                                     <input type="hidden" name="id" value={t.id} />
-                                    <button type="submit" class="px-3 py-1.5 rounded-xl text-xs font-black border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10" title="העברה לאשפה — אפשר לשחזר">🗑 מחק</button>
+                                    <button type="submit" class="px-3 py-1.5 rounded-xl text-xs font-black border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10" title="העברה לאשפה — אפשר לשחזר"
+                                            onclick={(e) => askRemove(e, (data.approved as any[]).find((a) => a.id === t.id))}>🗑 מחק</button>
                                 </form>
                             {/if}
                         {/if}
@@ -1227,6 +1242,11 @@
             </p>
         </div>
     </div>
+{/if}
+
+<!-- "מחק": חלון אישור עם כרטיס הפרסומת שנמחקת -->
+{#if removeAsk}
+    <AdRemoveDialog ad={removeAsk.ad} onremove={finishRemove} onclose={() => (removeAsk = null)} />
 {/if}
 
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape') { modalPreviewId = null; hoverPreview = null; durationModal = null; } }} />
