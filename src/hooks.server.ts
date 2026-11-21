@@ -1,5 +1,6 @@
 import { handle as authHandle } from './auth';
 import { shareSessionHandle } from '$lib/server/sharedSession';
+import { ssoAutoAdopt } from '$lib/server/ssoAdopt';
 import { classifyAgent, recordVisit } from '$lib/server/visitStats';
 import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle } from '@sveltejs/kit';
@@ -74,7 +75,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	try {
-		return await sequence(authHandle, skipAuthWhenAnonymous, shareSessionHandle)({ event, resolve });
+		return await sequence(ssoAutoAdopt, authHandle, skipAuthWhenAnonymous, shareSessionHandle)({ event, resolve });
 	} catch (err) {
 		console.warn('[hooks] auth handle threw - continuing anonymously:', err);
 		if (!event.locals.auth) {
