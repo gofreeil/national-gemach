@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FirstTimeTip from '$lib/components/FirstTimeTip.svelte';
 	import PasswordInput from '$lib/components/PasswordInput.svelte';
 	import { signIn } from '@auth/sveltekit/client';
 	import GuestDraftBanner from '$lib/components/GuestDraftBanner.svelte';
@@ -93,13 +94,6 @@
 			<GuestDraftBanner draft={data.draft} />
 		{/if}
 
-		<!-- הודעה למשתמש חדש: הכניסה עם Google/Facebook היא גם ההרשמה -->
-		{#if !data.ssoName}
-			<p class="mb-5 text-center text-amber-200 text-[13px] sm:text-sm font-bold leading-relaxed">
-				👋 פעם ראשונה כאן? כניסה עם Google או Facebook יוצרת לך חשבון בלחיצה אחת.
-			</p>
-		{/if}
-
 		{#if err || data.error}
 			<div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
 				{err ?? errorText(data.error ?? '')}
@@ -158,6 +152,11 @@
 			<span class="whitespace-nowrap text-base font-black text-white">כבר רשומים? התחברו</span>
 			<div class="h-px flex-1 bg-[#1c2f5a]"></div>
 		</div>
+
+		<!-- משתמש חדש: בועה עם יד שמצביעה על כפתור Google — הכניסה היא גם ההרשמה -->
+		{#if !data.ssoName && (data.oauth?.google || data.oauth?.facebook)}
+			<FirstTimeTip text="פעם ראשונה כאן? כניסה עם Google או Facebook יוצרת לך חשבון בלחיצה אחת." />
+		{/if}
 
 		<!-- 1. Google -->
 		{#if data.oauth?.google}
