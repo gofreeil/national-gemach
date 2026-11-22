@@ -2,6 +2,10 @@
     import { headerHeight } from '$lib/actions/headerHeight';
     import { locale } from 'svelte-i18n';
     import { onMount } from 'svelte';
+    import SignupTip from '$lib/components/SignupTip.svelte';
+
+    // בועת "לא רשום עדיין?" כתובה בעברית — מוצגת רק כשהאתר בעברית
+    const isHebrew = $derived(($locale || 'he').startsWith('he'));
 
     // משתמש מחובר (מגיע מ-+layout.server דרך +layout.svelte); null = אנונימי
     let {
@@ -159,14 +163,17 @@
                         {/if}
                     </a>
                 {:else}
-                    <a
-                        href="/login?redirect=/profile"
-                        class="flex items-center justify-center w-8 h-8 rounded-lg login-grad hover:brightness-110 text-white transition-colors"
-                        aria-label="התחברות / אזור אישי"
-                        title="התחברות"
-                    >
-                        <span class="text-xs" aria-hidden="true">👤</span>
-                    </a>
+                    <span class="relative inline-flex flex-shrink-0">
+                        <a
+                            href="/login?redirect=/profile"
+                            class="flex items-center justify-center w-8 h-8 rounded-lg login-grad hover:brightness-110 text-white transition-colors"
+                            aria-label="התחברות / אזור אישי"
+                            title="התחברות"
+                        >
+                            <span class="text-xs" aria-hidden="true">👤</span>
+                        </a>
+                        <SignupTip href="/login?redirect=/profile" from="#db2777" to="#7e22ce" hidden={!isHebrew} />
+                    </span>
                 {/if}
             </div>
         </div>
@@ -263,13 +270,17 @@
                         {/if}
                     </a>
                 {:else}
-                    <a
-                        href="/login?redirect=/profile"
-                        class="flex items-center gap-1.5 rounded-lg login-grad hover:brightness-110 px-3 py-2 text-sm font-bold text-white transition-all"
-                    >
-                        <span aria-hidden="true">👤</span>
-                        <span class="hidden sm:inline">התחברות</span>
-                    </a>
+                    <!-- אורח: יד ובועה "לא רשום עדיין?" תלויות מתחת לכפתור (בעברית בלבד) -->
+                    <span class="relative inline-flex flex-shrink-0">
+                        <a
+                            href="/login?redirect=/profile"
+                            class="flex items-center gap-1.5 rounded-lg login-grad hover:brightness-110 px-3 py-2 text-sm font-bold text-white transition-all"
+                        >
+                            <span aria-hidden="true">👤</span>
+                            <span class="hidden sm:inline">התחברות</span>
+                        </a>
+                        <SignupTip href="/login?redirect=/profile" from="#db2777" to="#7e22ce" hidden={!isHebrew} />
+                    </span>
                 {/if}
             </div>
         </div>
