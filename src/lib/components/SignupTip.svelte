@@ -19,7 +19,7 @@
 	} = $props();
 
 	const KEY = 'signupTipClosed';
-	const SHOW_MS = 6000;
+	const SHOW_MS = 4000;
 	const FADE = { duration: 900 };
 	const AUTH_PAGE = /^\/(login|register|signup|welcome|forgot-password|reset-password|confirm-email|auth)(\/|$)/;
 
